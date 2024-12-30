@@ -176,7 +176,7 @@ const Chat: React.FC = () => {
         if (elementBottom < visibilityStart || elementTop > visibilityEnd) {
           opacity = 0.1;
         } else {
-          const visiblePortion = Math.min(elementBottom, visibilityEnd) - Math.max(elementTop, visibilityStart);
+          // const visiblePortion = Math.min(elementBottom, visibilityEnd) - Math.max(elementTop, visibilityStart);
           const normalizedPosition = (elementTop - visibilityStart) / visibleRange;
           opacity = 1 - normalizedPosition * 0.7;
         }
