@@ -556,7 +556,7 @@ export default Chat;
 
 // // // export const ChatProvider = ({ children }: ChatProviderProps) => {
 // // //     const openai = new OpenAI({
-// // //       apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
+// // //       apiKey: process.env.OPENAI_KEY,
 // // //       dangerouslyAllowBrowser: true,
 // // //     });
   
@@ -872,7 +872,7 @@ export default Chat;
 
 // // // // export const ChatProvider = ({ children }: ChatProviderProps) => {
 // // // //   const openai = new OpenAI({
-// // // //     apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
+// // // //     apiKey: process.env.OPENAI_KEY,
 // // // //     dangerouslyAllowBrowser: true,
 // // // //   });
 
@@ -1198,7 +1198,7 @@ export default Chat;
 // // // // // const Chat = () => {
 
 // // // // //     const openai = new OpenAI({
-// // // // //         apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
+// // // // //         apiKey: process.env.OPENAI_KEY,
 // // // // //         dangerouslyAllowBrowser: true,
 // // // // //     });
 

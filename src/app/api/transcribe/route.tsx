@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
     // Whisper APIに送信するリクエストの詳細をログに出力
     console.log('Sending request to Whisper API');
     console.log('Request headers:', whisperFormData.getHeaders());
-    console.log('API Key:', process.env.NEXT_PUBLIC_OPENAI_KEY ? 'Set' : 'Not set');
+    console.log('API Key:', process.env.OPENAI_KEY ? 'Set' : 'Not set');
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         ...whisperFormData.getHeaders(),
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_KEY}`,
+        'Authorization': `Bearer ${process.env.OPENAI_KEY}`,
       },
       body: whisperFormData,
     })
