@@ -6,7 +6,7 @@ import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, limi
 import { db } from '../../../../firebase';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_KEY || '-',
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
 });
 
 interface LipSync {
@@ -368,7 +368,7 @@ export async function POST(request: Request) {
 // import { db } from '../../../../firebase';
 
 // const openai = new OpenAI({
-//   apiKey: process.env.OPENAI_KEY || '-',
+//   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
 // });
 
 // interface LipSync {
@@ -736,7 +736,7 @@ export async function POST(request: Request) {
 // // import { NextResponse } from 'next/server';
 
 // // const openai = new OpenAI({
-// //   apiKey: process.env.OPENAI_KEY || '-',
+// //   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
 // // });
 
 // // interface LipSync {
