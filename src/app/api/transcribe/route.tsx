@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fetch from 'node-fetch'
 import FormData from 'form-data'
-import { Readable } from 'stream'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
