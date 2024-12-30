@@ -35,16 +35,17 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
   const time = new Date().getTime();
   console.log(`Starting conversion for message ${message}`);
   try {
-    const audioFilePath = path.join('tmp', `message_${message}.mp3`);
-    const wavFilePath = path.join('tmp', `message_${message}.wav`);
-    const jsonFilePath = path.join('tmp', `message_${message}.json`);
+    const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
+    const wavFilePath = path.join('/tmp', `message_${message}.wav`);
+    const jsonFilePath = path.join('/tmp', `message_${message}.json`);
+
+    // ディレクトリの存在を確認し、なければ作成
+    await fs.mkdir('/tmp', { recursive: true });
 
     await execCommand(`ffmpeg -y -i ${audioFilePath} ${wavFilePath}`);
     console.log(`Conversion done in ${new Date().getTime() - time}ms`);
-
     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
     console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
-
     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
     return JSON.parse(jsonData);
   } catch (error) {
@@ -52,6 +53,7 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
     throw error;
   }
 };
+
 
 const generateAudio = async (text: string, fileName: string): Promise<Buffer> => {
   try {
@@ -61,8 +63,13 @@ const generateAudio = async (text: string, fileName: string): Promise<Buffer> =>
       input: text,
     });
     const buffer = Buffer.from(await mp3.arrayBuffer());
-    const audioFilePath = path.join('tmp', fileName);
+    const audioFilePath = path.join('/tmp', fileName);
+
+    // ディレクトリの存在を確認し、なければ作成
+    await fs.mkdir('/tmp', { recursive: true });
+
     await fs.writeFile(audioFilePath, buffer);
+    console.log(`Audio file successfully written to ${audioFilePath}`);
     return buffer;
   } catch (error) {
     console.error(`Error in generateAudio: ${error}`);
@@ -77,7 +84,7 @@ const readJsonTranscript = async (file: string): Promise<LipSync> => {
 
 const audioFileToBase64 = async (fileName: string): Promise<string> => {
   try {
-    const audioFilePath = path.join('tmp', fileName);
+    const audioFilePath = path.join('/tmp', fileName);
     const data = await fs.readFile(audioFilePath);
     return data.toString('base64');
   } catch (error) {
@@ -180,6 +187,10 @@ const phases = [
 
 export async function POST(request: Request) {
   try {
+    await fs.mkdir('/tmp', { recursive: true }).catch(error => {
+      console.error(`Error creating /tmp directory: ${error}`);
+    });
+    
     const { message: userMessage, theme } = await request.json();
     if (!theme) {
       return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });
@@ -228,7 +239,7 @@ export async function POST(request: Request) {
           {
             text: 'インタビューを始めます。まずはあなたの基本的なプロフィールについて教えてください。',
             audio: await audioFileToBase64('intro_0.wav'),
-            lipsync: await readJsonTranscript(path.join('tmp', `message_${totalQuestionCount}.json`)),
+            lipsync: await readJsonTranscript(path.join('/tmp', `message_${totalQuestionCount}.json`)),
             facialExpression: 'smile',
             animation: 'Talking_1',
           },
@@ -288,7 +299,7 @@ export async function POST(request: Request) {
           const botMessage: Message = {
             text: botResponseText,
             audio: await audioFileToBase64(fileName),
-            lipsync: await readJsonTranscript(path.join('tmp', `message_${totalQuestionCount}.json`)),
+            lipsync: await readJsonTranscript(path.join('/tmp', `message_${totalQuestionCount}.json`)),
             facialExpression: 'smile',
             animation: 'Talking_1',
           };
@@ -465,11 +476,11 @@ export async function POST(request: Request) {
 // //   const time = new Date().getTime();
 // //   console.log(`Starting conversion for message ${message}`);
 // //   await execCommand(
-// //     `ffmpeg -y -i tmp/message_${message}.mp3 tmp/message_${message}.wav`
+// //     `ffmpeg -y -i /tmp/message_${message}.mp3 /tmp/message_${message}.wav`
 // //   );
 // //   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
 // //   await execCommand(
-// //     `./bin/rhubarb -f json -o tmp/message_${message}.json tmp/message_${message}.wav -r phonetic`
+// //     `./bin/rhubarb -f json -o /tmp/message_${message}.json /tmp/message_${message}.wav -r phonetic`
 // //   );
 // //   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
 // // };
@@ -502,15 +513,15 @@ export async function POST(request: Request) {
 // //     const messages: Message[] = [
 // //       {
 // //         text: 'Hey dear... How was your day?',
-// //         audio: await audioFileToBase64('tmp/intro_0.wav'),
-// //         lipsync: await readJsonTranscript('tmp/intro_0.json'),
+// //         audio: await audioFileToBase64('/tmp/intro_0.wav'),
+// //         lipsync: await readJsonTranscript('/tmp/intro_0.json'),
 // //         facialExpression: 'smile',
 // //         animation: 'Talking_1',
 // //       },
 // //       {
 // //         text: "I missed you so much... Please don't go for so long!",
-// //         audio: await audioFileToBase64('tmp/intro_1.wav'),
-// //         lipsync: await readJsonTranscript('tmp/intro_1.json'),
+// //         audio: await audioFileToBase64('/tmp/intro_1.wav'),
+// //         lipsync: await readJsonTranscript('/tmp/intro_1.json'),
 // //         facialExpression: 'sad',
 // //         animation: 'Crying',
 // //       },
@@ -522,15 +533,15 @@ export async function POST(request: Request) {
 // //     const messages: Message[] = [
 // //       {
 // //         text: "Please my dear, don't forget to add your API key!",
-// //         audio: await audioFileToBase64('tmp/api_0.wav'),
-// //         lipsync: await readJsonTranscript('tmp/api_0.json'),
+// //         audio: await audioFileToBase64('/tmp/api_0.wav'),
+// //         lipsync: await readJsonTranscript('/tmp/api_0.json'),
 // //         facialExpression: 'angry',
 // //         animation: 'Angry',
 // //       },
 // //       {
 // //         text: "You don't want to ruin Wawa Sensei with a crazy OpenAI bill, right?",
-// //         audio: await audioFileToBase64('tmp/api_1.wav'),
-// //         lipsync: await readJsonTranscript('tmp/api_1.json'),
+// //         audio: await audioFileToBase64('/tmp/api_1.wav'),
+// //         lipsync: await readJsonTranscript('/tmp/api_1.json'),
 // //         facialExpression: 'smile',
 // //         animation: 'Laughing',
 // //       },
@@ -564,11 +575,11 @@ export async function POST(request: Request) {
 // //   const messages: Message[] = JSON.parse(completion.choices[0].message.content ?? '{"messages":[]}').messages;
 // //   for (let i = 0; i < messages.length; i++) {
 // //     const message = messages[i];
-// //     const fileName = `tmp/message_${i}.mp3`;
+// //     const fileName = `/tmp/message_${i}.mp3`;
 // //     await generateAudio(message.text, fileName);
 // //     await lipSyncMessage(i);
 // //     message.audio = await audioFileToBase64(fileName);
-// //     message.lipsync = await readJsonTranscript(`tmp/message_${i}.json`);
+// //     message.lipsync = await readJsonTranscript(`/tmp/message_${i}.json`);
 // //   }
 
 // //   return NextResponse.json({ messages });
