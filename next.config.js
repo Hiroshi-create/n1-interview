@@ -14,17 +14,17 @@ const nextConfig = {
       };
     }
 
-    config.module.rules.push({
-      test: /\.(mp3|wav)$/,
-      use: {
-        loader: 'file-loader',
-        options: {
-          name: '[name].[ext]',
-          publicPath: `/_next/static/audio/`,
-          outputPath: `${isServer ? '../' : ''}static/audio/`,
-        },
-      },
-    });
+    // config.module.rules.push({
+    //   test: /\.(mp3|wav)$/,
+    //   use: {
+    //     loader: 'file-loader',
+    //     options: {
+    //       name: '[name].[ext]',
+    //       publicPath: `/_next/static/audio/`,
+    //       outputPath: `${isServer ? '../' : ''}static/audio/`,
+    //     },
+    //   },
+    // });
 
     return config;
   },

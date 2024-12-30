@@ -35,9 +35,9 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
   const time = new Date().getTime();
   console.log(`Starting conversion for message ${message}`);
   try {
-    const audioFilePath = path.join('audios', `message_${message}.mp3`);
-    const wavFilePath = path.join('audios', `message_${message}.wav`);
-    const jsonFilePath = path.join('audios', `message_${message}.json`);
+    const audioFilePath = path.join('tmp', `message_${message}.mp3`);
+    const wavFilePath = path.join('tmp', `message_${message}.wav`);
+    const jsonFilePath = path.join('tmp', `message_${message}.json`);
 
     await execCommand(`ffmpeg -y -i ${audioFilePath} ${wavFilePath}`);
     console.log(`Conversion done in ${new Date().getTime() - time}ms`);
@@ -61,7 +61,7 @@ const generateAudio = async (text: string, fileName: string): Promise<Buffer> =>
       input: text,
     });
     const buffer = Buffer.from(await mp3.arrayBuffer());
-    const audioFilePath = path.join('audios', fileName);
+    const audioFilePath = path.join('tmp', fileName);
     await fs.writeFile(audioFilePath, buffer);
     return buffer;
   } catch (error) {
@@ -77,7 +77,7 @@ const readJsonTranscript = async (file: string): Promise<LipSync> => {
 
 const audioFileToBase64 = async (fileName: string): Promise<string> => {
   try {
-    const audioFilePath = path.join('audios', fileName);
+    const audioFilePath = path.join('tmp', fileName);
     const data = await fs.readFile(audioFilePath);
     return data.toString('base64');
   } catch (error) {
@@ -228,7 +228,7 @@ export async function POST(request: Request) {
           {
             text: 'インタビューを始めます。まずはあなたの基本的なプロフィールについて教えてください。',
             audio: await audioFileToBase64('intro_0.wav'),
-            lipsync: await readJsonTranscript(path.join('audios', `message_${totalQuestionCount}.json`)),
+            lipsync: await readJsonTranscript(path.join('tmp', `message_${totalQuestionCount}.json`)),
             facialExpression: 'smile',
             animation: 'Talking_1',
           },
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
           const botMessage: Message = {
             text: botResponseText,
             audio: await audioFileToBase64(fileName),
-            lipsync: await readJsonTranscript(path.join('audios', `message_${totalQuestionCount}.json`)),
+            lipsync: await readJsonTranscript(path.join('tmp', `message_${totalQuestionCount}.json`)),
             facialExpression: 'smile',
             animation: 'Talking_1',
           };
@@ -465,11 +465,11 @@ export async function POST(request: Request) {
 // //   const time = new Date().getTime();
 // //   console.log(`Starting conversion for message ${message}`);
 // //   await execCommand(
-// //     `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
+// //     `ffmpeg -y -i tmp/message_${message}.mp3 tmp/message_${message}.wav`
 // //   );
 // //   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
 // //   await execCommand(
-// //     `./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
+// //     `./bin/rhubarb -f json -o tmp/message_${message}.json tmp/message_${message}.wav -r phonetic`
 // //   );
 // //   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
 // // };
@@ -502,15 +502,15 @@ export async function POST(request: Request) {
 // //     const messages: Message[] = [
 // //       {
 // //         text: 'Hey dear... How was your day?',
-// //         audio: await audioFileToBase64('audios/intro_0.wav'),
-// //         lipsync: await readJsonTranscript('audios/intro_0.json'),
+// //         audio: await audioFileToBase64('tmp/intro_0.wav'),
+// //         lipsync: await readJsonTranscript('tmp/intro_0.json'),
 // //         facialExpression: 'smile',
 // //         animation: 'Talking_1',
 // //       },
 // //       {
 // //         text: "I missed you so much... Please don't go for so long!",
-// //         audio: await audioFileToBase64('audios/intro_1.wav'),
-// //         lipsync: await readJsonTranscript('audios/intro_1.json'),
+// //         audio: await audioFileToBase64('tmp/intro_1.wav'),
+// //         lipsync: await readJsonTranscript('tmp/intro_1.json'),
 // //         facialExpression: 'sad',
 // //         animation: 'Crying',
 // //       },
@@ -522,15 +522,15 @@ export async function POST(request: Request) {
 // //     const messages: Message[] = [
 // //       {
 // //         text: "Please my dear, don't forget to add your API key!",
-// //         audio: await audioFileToBase64('audios/api_0.wav'),
-// //         lipsync: await readJsonTranscript('audios/api_0.json'),
+// //         audio: await audioFileToBase64('tmp/api_0.wav'),
+// //         lipsync: await readJsonTranscript('tmp/api_0.json'),
 // //         facialExpression: 'angry',
 // //         animation: 'Angry',
 // //       },
 // //       {
 // //         text: "You don't want to ruin Wawa Sensei with a crazy OpenAI bill, right?",
-// //         audio: await audioFileToBase64('audios/api_1.wav'),
-// //         lipsync: await readJsonTranscript('audios/api_1.json'),
+// //         audio: await audioFileToBase64('tmp/api_1.wav'),
+// //         lipsync: await readJsonTranscript('tmp/api_1.json'),
 // //         facialExpression: 'smile',
 // //         animation: 'Laughing',
 // //       },
@@ -564,11 +564,11 @@ export async function POST(request: Request) {
 // //   const messages: Message[] = JSON.parse(completion.choices[0].message.content ?? '{"messages":[]}').messages;
 // //   for (let i = 0; i < messages.length; i++) {
 // //     const message = messages[i];
-// //     const fileName = `audios/message_${i}.mp3`;
+// //     const fileName = `tmp/message_${i}.mp3`;
 // //     await generateAudio(message.text, fileName);
 // //     await lipSyncMessage(i);
 // //     message.audio = await audioFileToBase64(fileName);
-// //     message.lipsync = await readJsonTranscript(`audios/message_${i}.json`);
+// //     message.lipsync = await readJsonTranscript(`tmp/message_${i}.json`);
 // //   }
 
 // //   return NextResponse.json({ messages });
