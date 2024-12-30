@@ -1,0 +1,8 @@
+{
+    "buildCommand": "npm run build",
+    "outputDirectory": "out",
+    "public": true,
+    "routes": [
+      { "src": "/audios/(.*)", "dest": "/audios/$1" }
+    ]
+  }

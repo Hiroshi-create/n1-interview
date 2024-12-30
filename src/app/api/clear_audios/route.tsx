@@ -10,8 +10,10 @@ export async function POST() {
       const files = fs.readdirSync(folderPath);
       
       for (const file of files) {
-        const filePath = path.join(folderPath, file);
-        fs.unlinkSync(filePath);
+        if (file !== '.gitkeep') {
+          const filePath = path.join(folderPath, file);
+          fs.unlinkSync(filePath);
+        }
       }
       
       return NextResponse.json({ message: 'audiosフォルダの中身を削除しました' }, { status: 200 });

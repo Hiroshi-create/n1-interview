@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  // output: "export",
   webpack: (config, { isServer }) => {
+    // 既存の設定
     config.resolve.alias = {
       ...config.resolve.alias,
       '@ffmpeg/core': '@ffmpeg/core/dist/ffmpeg-core.js',
@@ -14,7 +13,19 @@ const nextConfig = {
         path: false,
       };
     }
-    
+
+    config.module.rules.push({
+      test: /\.(mp3|wav)$/,
+      use: {
+        loader: 'file-loader',
+        options: {
+          name: '[name].[ext]',
+          publicPath: `/_next/static/audio/`,
+          outputPath: `${isServer ? '../' : ''}static/audio/`,
+        },
+      },
+    });
+
     return config;
   },
 };

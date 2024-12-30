@@ -53,13 +53,19 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     let unsubscribe: () => void;
     if (selectedThemeId) {
       const fetchMessages = async () => {
-        const themeDocRef = doc(db, "themes", selectedThemeId);
-        const messagesCollectionRef = collection(themeDocRef, "messages");
-        const q = query(messagesCollectionRef, orderBy("createdAt"));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
-          setMessages(newMessages);
-        });
+        try {
+          const themeDocRef = doc(db, "themes", selectedThemeId);
+          const messagesCollectionRef = collection(themeDocRef, "messages");
+          const q = query(messagesCollectionRef, orderBy("createdAt"));
+          unsubscribe = onSnapshot(q, (snapshot) => {
+            const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
+            setMessages(newMessages);
+          }, (error) => {
+            console.error("メッセージの取得中にエラーが発生しました:", error);
+          });
+        } catch (error) {
+          console.error("メッセージの取得中にエラーが発生しました:", error);
+        }
       };
       fetchMessages();
     }
@@ -75,25 +81,36 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     setLoading(true);
 
     try {
+      if (!selectedThemeId) {
+        throw new Error('テーマが選択されていません');
+      }
+
       const response = await fetch('/api/chat_server', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageText, themeId: selectedThemeId }),
+        body: JSON.stringify({ message: messageText, theme: selectedThemeId }),
       });
       
       if (!response.ok) {
-        throw new Error('サーバーとの通信に失敗しました');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
       }
       
       const data = await response.json();
       
       if (data.messages && data.messages.length > 0) {
         setMessage(data.messages[0]);
+      } else {
+        throw new Error('サーバーからの応答が不正です');
       }
     } catch (error) {
-      console.error('チャット処理中にエラーが発生しました:', error);
+      if (error instanceof Error) {
+        console.error('チャット処理中にエラーが発生しました:', error.message);
+      } else {
+        console.error('チャット処理中に予期せぬエラーが発生しました');
+      }
     } finally {
       setIsLoading(false);
       setLoading(false);
@@ -108,7 +125,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         throw new Error('音声ファイルのクリーンアップに失敗しました');
       }
     } catch (error) {
-      console.error('音声ファイルのクリーンアップ中にエラーが発生しました:', error);
+      if (error instanceof Error) {
+        console.error('音声ファイルのクリーンアップ中にエラーが発生しました:', error.message);
+      } else {
+        console.error('音声ファイルのクリーンアップ中に予期せぬエラーが発生しました');
+      }
     }
   }, []);
 
