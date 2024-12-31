@@ -5,6 +5,9 @@ import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../../../firebase';
+import { v2 as cloudinary } from 'cloudinary';
+// import axios from 'axios';
+// import https from 'https';
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -31,9 +34,135 @@ const execCommand = (command: string): Promise<string> => {
   });
 };
 
+
+// // FFmpeg APIを使用する場合
+// const lipSyncMessage = async (message: number): Promise<LipSync> => {
+//   const time = new Date().getTime();
+//   console.log(`Starting conversion for message ${message}`);
+//   try {
+//     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
+//     const wavFilePath = path.join('/tmp', `message_${message}.wav`);
+//     const jsonFilePath = path.join('/tmp', `message_${message}.json`);
+
+//     // mp3ファイルを読み込む
+//     const mp3File = await fs.readFile(audioFilePath);
+
+//     // FFmpeg APIを使用してmp3をwavに変換
+//     const response = await axios.post('https://api.ffmpeg-api.com/ffmpeg/run', 
+//       {
+//         'input.mp3': mp3File,
+//         'command': JSON.stringify({
+//           inputs: [{ options: [], file: 'input.mp3' }],
+//           outputs: [{ options: [], file: 'output.wav' }]
+//         })
+//       },
+//       {
+//         headers: {
+//           'Authorization': `Bearer ${process.env.FFMPEG_API_KEY}`,
+//           'Content-Type': 'multipart/form-data'
+//         },
+//         responseType: 'arraybuffer'
+//       }
+//     );
+
+//     // 変換されたwavファイルを保存
+//     await fs.writeFile(wavFilePath, Buffer.from(response.data));
+
+//     console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+
+//     // 以降の処理（リップシンク生成など）は変更なし
+//     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
+//     console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+
+//     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
+//     return JSON.parse(jsonData);
+//   } catch (error) {
+//     console.error(`Error in lipSyncMessage: ${error}`);
+//     throw error;
+//   }
+// };
+
+
+
+// // Dockerを使用したFFmpegの利用
+// // Keep-Alive接続を無効化
+
+// const axiosInstance = axios.create({
+//   httpsAgent: new https.Agent({  
+//     rejectUnauthorized: false
+//   })
+// });
+
+// const lipSyncMessage = async (message: number): Promise<LipSync> => {
+//   const time = new Date().getTime();
+//   console.log(`Starting conversion for message ${message}`);
+//   try {
+//     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
+//     const wavFilePath = path.join('/tmp', `message_${message}.wav`);
+//     const jsonFilePath = path.join('/tmp', `message_${message}.json`);
+
+//     await fs.mkdir('/tmp', { recursive: true });
+
+//     const mp3File = await fs.readFile(audioFilePath);
+
+//     const formData = new FormData();
+//     formData.append('file', new Blob([mp3File]), 'input.mp3');
+    
+//     const apiUrl = process.env.NODE_ENV === 'development'
+//     ? process.env.FFMPEG_API_URL_DEV
+//     : process.env.FFMPEG_API_URL_PROD;
+//     const maxRetries = 3;
+//     let retries = 0;
+    
+//     while (retries < maxRetries) {
+//       try {
+//         // axiosInstanceを使用してリクエストを送信
+//         const response = await axiosInstance.post(`${apiUrl}/convert`, formData, {
+//           params: { output: 'wav' },
+//           headers: { 'Content-Type': 'multipart/form-data' },
+//           responseType: 'arraybuffer',
+//           timeout: 60000 // タイムアウトを60秒に延長
+//         });
+
+//         await fs.writeFile(wavFilePath, Buffer.from(response.data));
+//         console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+//         break;
+//       } catch (error) {
+//         retries++;
+//         console.error(`Attempt ${retries} failed: ${error}`);
+//         if (retries === maxRetries) throw error;
+//         await new Promise(resolve => setTimeout(resolve, 1000));
+//       }
+//     }
+
+//     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
+//     console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+
+//     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
+//     return JSON.parse(jsonData);
+//   } catch (error) {
+//     console.error(`Error in lipSyncMessage: ${error}`);
+//     if (axios.isAxiosError(error)) {
+//       console.error(`Request failed: ${error.message}`);
+//       console.error(`Response status: ${error.response?.status}`);
+//       console.error(`Response data: ${JSON.stringify(error.response?.data)}`);
+//     }
+//     throw error;
+//   }
+// };
+
+
+
+// Cloudinaryの設定
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 const lipSyncMessage = async (message: number): Promise<LipSync> => {
   const time = new Date().getTime();
-  console.log(`Starting conversion for message ${message}`);
+  console.log(`メッセージ ${message} の変換を開始します`);
   try {
     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
     const wavFilePath = path.join('/tmp', `message_${message}.wav`);
@@ -42,18 +171,53 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
     // ディレクトリの存在を確認し、なければ作成
     await fs.mkdir('/tmp', { recursive: true });
 
-    await execCommand(`ffmpeg -y -i ${audioFilePath} ${wavFilePath}`);
-    console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+    // cloudinaryを使用してmp3をwavに変換
+    const result = await cloudinary.uploader.upload(audioFilePath, {
+      resource_type: 'video',
+      format: 'wav'
+    });
+
+    // 変換されたwavファイルをダウンロード
+    const response = await fetch(result.secure_url);
+    const arrayBuffer = await response.arrayBuffer();
+    await fs.writeFile(wavFilePath, Buffer.from(arrayBuffer));
+
+    console.log(`変換完了: ${new Date().getTime() - time}ms`);
+
     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
-    console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+    console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
     return JSON.parse(jsonData);
   } catch (error) {
-    console.error(`Error in lipSyncMessage: ${error}`);
+    console.error(`lipSyncMessageでエラーが発生しました: ${error}`);
     throw error;
   }
 };
 
+
+
+// const lipSyncMessage = async (message: number): Promise<LipSync> => {
+//   const time = new Date().getTime();
+//   console.log(`Starting conversion for message ${message}`);
+//   try {
+//     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
+//     const wavFilePath = path.join('/tmp', `message_${message}.wav`);
+//     const jsonFilePath = path.join('/tmp', `message_${message}.json`);
+
+//     // ディレクトリの存在を確認し、なければ作成
+//     await fs.mkdir('/tmp', { recursive: true });
+
+//     await execCommand(`ffmpeg -y -i ${audioFilePath} ${wavFilePath}`);
+//     console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+//     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
+//     console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+//     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
+//     return JSON.parse(jsonData);
+//   } catch (error) {
+//     console.error(`Error in lipSyncMessage: ${error}`);
+//     throw error;
+//   }
+// };
 
 const generateAudio = async (text: string, fileName: string): Promise<Buffer> => {
   try {
@@ -190,7 +354,7 @@ export async function POST(request: Request) {
     await fs.mkdir('/tmp', { recursive: true }).catch(error => {
       console.error(`Error creating /tmp directory: ${error}`);
     });
-    
+
     const { message: userMessage, theme } = await request.json();
     if (!theme) {
       return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });

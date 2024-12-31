@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export async function POST() {
-  const folderPath = path.join(process.cwd(), 'audios');
+  const folderPath = path.join(process.cwd(), 'tmp');
 
   try {
     if (fs.existsSync(folderPath)) {
@@ -16,12 +16,12 @@ export async function POST() {
         }
       }
       
-      return NextResponse.json({ message: 'audiosフォルダの中身を削除しました' }, { status: 200 });
+      return NextResponse.json({ message: 'tmpフォルダの中身を削除しました' }, { status: 200 });
     } else {
-      return NextResponse.json({ message: 'audiosフォルダが存在しません' }, { status: 404 });
+      return NextResponse.json({ message: 'tmpフォルダが存在しません' }, { status: 404 });
     }
   } catch (error) {
-    console.error('audiosフォルダの削除中にエラーが発生しました:', error);
+    console.error('tmpフォルダの削除中にエラーが発生しました:', error);
     return NextResponse.json({ message: 'エラーが発生しました' }, { status: 500 });
   }
 }
