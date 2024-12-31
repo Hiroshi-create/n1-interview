@@ -1,11 +1,14 @@
-import { exec } from 'child_process';
+// import { exec } from 'child_process';
 import path from 'path';
 import { promises as fs } from 'fs';
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../../../firebase';
-import { v2 as cloudinary } from 'cloudinary';
+// import { v2 as cloudinary } from 'cloudinary';
+import { protos, SpeechClient } from '@google-cloud/speech';
+type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
+type IWordInfo = protos.google.cloud.speech.v1.IWordInfo;
 // import axios from 'axios';
 // import https from 'https';
 
@@ -25,14 +28,14 @@ interface Message {
   animation: string;
 }
 
-const execCommand = (command: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    exec(command, (error, stdout) => {
-      if (error) reject(error);
-      resolve(stdout);
-    });
-  });
-};
+// const execCommand = (command: string): Promise<string> => {
+//   return new Promise((resolve, reject) => {
+//     exec(command, (error, stdout) => {
+//       if (error) reject(error);
+//       resolve(stdout);
+//     });
+//   });
+// };
 
 
 // // FFmpeg APIを使用する場合
@@ -153,46 +156,153 @@ const execCommand = (command: string): Promise<string> => {
 
 
 
-// Cloudinaryの設定
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+
+
+// Google Cloud Speech-to-Text API を使用したリップシンクデータ生成
+interface LipSync {
+  mouthCues: {
+    start: number;
+    end: number;
+    value: string;
+  }[];
+}
+
+interface LipSync {
+  mouthCues: {
+    start: number;
+    end: number;
+    value: string;
+  }[];
+}
+
+const generateLipSyncFromTranscription = (results: ISpeechRecognitionResult[]): LipSync => {
+  const lipSyncData: LipSync = { mouthCues: [] };
+
+  results.forEach((result: ISpeechRecognitionResult) => {
+    if (result.alternatives && result.alternatives[0] && result.alternatives[0].words) {
+      result.alternatives[0].words.forEach((word: IWordInfo) => {
+        const start = word.startTime?.seconds !== undefined
+          ? Number(word.startTime.seconds) + (word.startTime.nanos || 0) / 1e9
+          : 0;
+        const end = word.endTime?.seconds !== undefined
+          ? Number(word.endTime.seconds) + (word.endTime.nanos || 0) / 1e9
+          : 0;
+
+        const mouthShape = getMouthShape(word.word || '');
+
+        lipSyncData.mouthCues.push({
+          start,
+          end,
+          value: mouthShape
+        });
+      });
+    }
+  });
+
+  return lipSyncData;
+};
+
+// 簡易的な音素から口の形への変換関数
+const getMouthShape = (word: string): string => {
+  const firstChar = word.charAt(0).toLowerCase();
+  if ('aiueo'.includes(firstChar)) return 'A';
+  if ('kstnhmyrw'.includes(firstChar)) return 'B';
+  if ('bgdj'.includes(firstChar)) return 'C';
+  return 'X'; // デフォルトの口の形
+};
 
 const lipSyncMessage = async (message: number): Promise<LipSync> => {
   const time = new Date().getTime();
   console.log(`メッセージ ${message} の変換を開始します`);
   try {
     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
-    const wavFilePath = path.join('/tmp', `message_${message}.wav`);
-    const jsonFilePath = path.join('/tmp', `message_${message}.json`);
-
-    // ディレクトリの存在を確認し、なければ作成
-    await fs.mkdir('/tmp', { recursive: true });
-
-    // cloudinaryを使用してmp3をwavに変換
-    const result = await cloudinary.uploader.upload(audioFilePath, {
-      resource_type: 'video',
-      format: 'wav'
+    const client = new SpeechClient({
+      projectId: process.env.GCP_PROJECT_ID,
+      credentials: {
+        private_key: (process.env.GCP_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+        client_email: process.env.GCP_CLIENT_EMAIL,
+      },
     });
 
-    // 変換されたwavファイルをダウンロード
-    const response = await fetch(result.secure_url);
-    const arrayBuffer = await response.arrayBuffer();
-    await fs.writeFile(wavFilePath, Buffer.from(arrayBuffer));
+    // 認証情報の検証
+    if (!process.env.GCP_PROJECT_ID || !process.env.GCP_PRIVATE_KEY || !process.env.GCP_CLIENT_EMAIL) {
+      throw new Error('Google Cloud 認証情報が不足しています。環境変数を確認してください。');
+    }
 
-    console.log(`変換完了: ${new Date().getTime() - time}ms`);
+    const audio: protos.google.cloud.speech.v1.IRecognitionAudio = {
+      content: await fs.readFile(audioFilePath),
+    };
+    const config: protos.google.cloud.speech.v1.IRecognitionConfig = {
+      encoding: protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,
+      sampleRateHertz: 16000,
+      languageCode: 'ja-JP',
+      enableWordTimeOffsets: true,
+    };
+    const request: protos.google.cloud.speech.v1.IRecognizeRequest = {
+      audio: audio,
+      config: config,
+    };
 
-    await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
+    const [response] = await client.recognize(request);
+    console.log(`文字起こし完了: ${new Date().getTime() - time}ms`);
+
+    if (!response.results || response.results.length === 0) {
+      throw new Error('音声認識結果が空です');
+    }
+
+    const lipSyncData = generateLipSyncFromTranscription(response.results);
     console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
-    const jsonData = await fs.readFile(jsonFilePath, 'utf8');
-    return JSON.parse(jsonData);
+
+    return lipSyncData;
   } catch (error) {
     console.error(`lipSyncMessageでエラーが発生しました: ${error}`);
     throw error;
   }
 };
+
+
+
+
+// // Cloudinaryの設定
+// cloudinary.config({
+//   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//   api_key: process.env.CLOUDINARY_API_KEY,
+//   api_secret: process.env.CLOUDINARY_API_SECRET
+// });
+
+// const lipSyncMessage = async (message: number): Promise<LipSync> => {
+//   const time = new Date().getTime();
+//   console.log(`メッセージ ${message} の変換を開始します`);
+//   try {
+//     const audioFilePath = path.join('/tmp', `message_${message}.mp3`);
+//     const wavFilePath = path.join('/tmp', `message_${message}.wav`);
+//     const jsonFilePath = path.join('/tmp', `message_${message}.json`);
+
+//     // ディレクトリの存在を確認し、なければ作成
+//     await fs.mkdir('/tmp', { recursive: true });
+
+//     // cloudinaryを使用してmp3をwavに変換
+//     const result = await cloudinary.uploader.upload(audioFilePath, {
+//       resource_type: 'video',
+//       format: 'wav'
+//     });
+
+//     // 変換されたwavファイルをダウンロード
+//     const response = await fetch(result.secure_url);
+//     const arrayBuffer = await response.arrayBuffer();
+//     await fs.writeFile(wavFilePath, Buffer.from(arrayBuffer));
+
+//     console.log(`変換完了: ${new Date().getTime() - time}ms`);
+
+//     await execCommand(`./bin/rhubarb -f json -o ${jsonFilePath} ${wavFilePath} -r phonetic`);
+//     console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
+//     const jsonData = await fs.readFile(jsonFilePath, 'utf8');
+//     return JSON.parse(jsonData);
+//   } catch (error) {
+//     console.error(`lipSyncMessageでエラーが発生しました: ${error}`);
+//     throw error;
+//   }
+// };
 
 
 

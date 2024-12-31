@@ -12,6 +12,7 @@
     "@chengsokdara/use-whisper": "^0.2.0",
     "@ffmpeg/core": "^0.12.8",
     "@ffmpeg/ffmpeg": "^0.12.13",
+    "@google-cloud/speech": "^6.7.0",
     "@react-three/drei": "^9.108.4",
     "@react-three/fiber": "^8.16.8",
     "@react-three/postprocessing": "^2.16.2",
