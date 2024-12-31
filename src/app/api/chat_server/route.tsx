@@ -1,8 +1,6 @@
-// import path from 'path';
-// import { promises as fs } from 'fs';
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc, CollectionReference } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { protos, SpeechClient } from '@google-cloud/speech';
 
@@ -25,7 +23,6 @@ interface Message {
   animation: string;
 }
 
-// メモリ内キャッシュの追加
 const memoryCache: {
   audioFiles: Map<string, Buffer>;
   lipSyncData: Map<string, LipSync>;
@@ -234,46 +231,71 @@ const templates = {
 }
 
 const phases = [
-  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 3 },
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 4 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 3 },
-  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 3 },
+  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 1 },
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 1 },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 1 },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 1 },
 ];
-
 
 export async function POST(request: Request) {
   try {
-    const { message: userMessage, theme } = await request.json();
-    if (!theme) {
-      return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });
+    const { message: userMessage, themeId } = await request.json();
+    if (!themeId) {
+      console.error('テーマIDが指定されていません');
+      return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
     }
+    console.log(`指定されたテーマID: ${themeId}`);
 
-    // 以下の部分は変更なし
     let context = "";
     let currentPhaseIndex = 0;
-    let currentPhaseQuestionCount = 0;
     let totalQuestionCount = 0;
-    const themeDocRef = doc(db, "themes", theme);
+
+    const themeDocRef = doc(db, "themes", themeId);
+    const themeDocSnap = await getDoc(themeDocRef);
+
+    if (!themeDocSnap.exists()) {
+      console.error('指定されたテーマIDのドキュメントが存在しません');
+      return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
+    }
+
+    const theme = themeDocSnap.data().name;
+    console.log(`テーマ名: ${theme}`);
+
     const messageCollectionRef = collection(themeDocRef, "messages");
 
+    // ボットの質問数をカウント
     try {
-      const q = query(messageCollectionRef, orderBy("createdAt", "desc"), limit(1));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const lastMessage = querySnapshot.docs[0].data();
-        if (lastMessage.sender === "bot" && lastMessage.type === "interview") {
-          totalQuestionCount = querySnapshot.size;
-          currentPhaseIndex = phases.findIndex((phase, index) =>
-            totalQuestionCount < phases.slice(0, index + 1).reduce((sum, p) => sum + p.questions, 0)
-          );
-          currentPhaseQuestionCount = totalQuestionCount - phases.slice(0, currentPhaseIndex).reduce((sum, p) => sum + p.questions, 0);
-        }
-      }
+      const botMessagesQuery = query(
+        messageCollectionRef,
+        where("type", "==", "interview"),
+        where("sender", "==", "bot")
+      );
+      const snapshot = await getCountFromServer(botMessagesQuery);
+      totalQuestionCount = snapshot.data().count;
+
+      // 現在のフェーズを決定
+      currentPhaseIndex = phases.findIndex((phase, index) =>
+        totalQuestionCount < phases.slice(0, index + 1).reduce((sum, p) => sum + p.questions, 0)
+      );
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
     }
 
+    // コンテキストの取得
+    try {
+      const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
+      });
+    } catch (error) {
+      console.error('コンテキストの取得中にエラーが発生しました:', error);
+      return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
+    }
+
+    // ユーザーメッセージの保存
     try {
       await addDoc(messageCollectionRef, {
         text: userMessage,
@@ -286,6 +308,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'メッセージの保存に失敗しました' }, { status: 500 });
     }
 
+    // 初期メッセージの処理
     if (!userMessage) {
       try {
         const messages: Message[] = [
@@ -304,35 +327,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // 以下の部分は変更なし
     context += "\nUser: " + userMessage;
-    const updatePhase = () => {
-      if (currentPhaseQuestionCount >= phases[currentPhaseIndex].questions) {
-        currentPhaseIndex++;
-        currentPhaseQuestionCount = 0;
-      }
-    };
 
+    // インタビュー処理
     if (currentPhaseIndex < phases.length) {
       const currentPhase = phases[currentPhaseIndex];
       const currentTemplate = currentPhase.template;
 
-      try {
-        await addDoc(messageCollectionRef, {
-          text: currentPhase.text,
-          sender: "bot",
-          createdAt: serverTimestamp(),
-          type: "interview",
-        });
-      } catch (error) {
-        console.error('フェーズ情報の保存中にエラーが発生しました:', error);
-        return NextResponse.json({ error: 'フェーズ情報の保存に失敗しました' }, { status: 500 });
-      }
-
       const prompt = templates[currentTemplate as keyof typeof templates]
         .replace("{theme}", theme)
         .replace("{context}", context);
-      
+
       try {
         const gpt4Response = await openai.chat.completions.create({
           messages: [
@@ -341,11 +346,14 @@ export async function POST(request: Request) {
           ],
           model: "gpt-4"
         });
+
         const botResponseText = gpt4Response.choices[0].message.content ?? null;
+
         if (botResponseText) {
           const fileName = `message_${totalQuestionCount}.mp3`;
           await generateAudio(botResponseText, fileName);
           await lipSyncMessage(totalQuestionCount);
+
           const botMessage: Message = {
             text: botResponseText,
             audio: await audioFileToBase64(fileName),
@@ -353,15 +361,27 @@ export async function POST(request: Request) {
             facialExpression: 'smile',
             animation: 'Talking_1',
           };
+
           await addDoc(messageCollectionRef, {
             ...botMessage,
             sender: "bot",
             createdAt: serverTimestamp(),
             type: "interview",
           });
+
           context += "\nBot: " + botResponseText;
-          currentPhaseQuestionCount++;
-          updatePhase();
+          totalQuestionCount++;
+
+          // フェーズの更新チェック
+          if (totalQuestionCount >= phases.slice(0, currentPhaseIndex + 1).reduce((sum, p) => sum + p.questions, 0)) {
+            currentPhaseIndex++;
+          }
+
+          // すべてのフェーズが終了したかチェック
+          if (currentPhaseIndex >= phases.length) {
+            return await handleInterviewEnd(messageCollectionRef, theme, context);
+          }
+
           return NextResponse.json({ messages: [botMessage] });
         } else {
           console.error('botResponseTextがnullです');
@@ -372,45 +392,49 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'AI応答の生成に失敗しました' }, { status: 500 });
       }
     } else {
-      try {
-        await addDoc(messageCollectionRef, {
-          text: "インタビューを終了します。ありがとうございました。",
-          sender: "bot",
-          createdAt: serverTimestamp(),
-          type: "interview",
-        });
-
-        console.log("レポート作成中");
-        const reportPrompt = templates.summary
-          .replace("{theme}", theme)
-          .replace("{context}", context);
-
-        const reportResponse = await openai.chat.completions.create({
-          messages: [
-            { role: "system", content: "あなたは優秀なマーケティングアナリストです。" },
-            { role: "user", content: reportPrompt }
-          ],
-          model: "gpt-4"
-        });
-
-        const report = reportResponse.choices[0].message.content;
-
-        await addDoc(messageCollectionRef, {
-          text: report,
-          sender: "bot",
-          createdAt: serverTimestamp(),
-          type: "report"
-        });
-
-        return NextResponse.json({ messages: [{ text: "インタビューが終了しました。レポートを生成しました。" }] });
-      } catch (error) {
-        console.error('レポート生成中にエラーが発生しました:', error);
-        return NextResponse.json({ error: 'レポートの生成に失敗しました' }, { status: 500 });
-      }
+      return await handleInterviewEnd(messageCollectionRef, theme, context);
     }
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);
     return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });
+  }
+}
+
+async function handleInterviewEnd(messageCollectionRef: CollectionReference, theme: string, context: string) {
+  try {
+    await addDoc(messageCollectionRef, {
+      text: "インタビューを終了します。ありがとうございました。",
+      sender: "bot",
+      createdAt: serverTimestamp(),
+      type: "interview",
+    });
+
+    console.log("レポート作成中");
+    const reportPrompt = templates.summary
+      .replace("{theme}", theme)
+      .replace("{context}", context);
+
+    const reportResponse = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: "あなたは優秀なマーケティングアナリストです。" },
+        { role: "user", content: reportPrompt }
+      ],
+      model: "gpt-4"
+    });
+
+    const report = reportResponse.choices[0].message.content;
+
+    await addDoc(messageCollectionRef, {
+      text: report,
+      sender: "bot",
+      createdAt: serverTimestamp(),
+      type: "report"
+    });
+
+    return NextResponse.json({ messages: [{ text: "インタビューが終了しました。レポートを生成しました。" }] });
+  } catch (error) {
+    console.error('レポート生成中にエラーが発生しました:', error);
+    return NextResponse.json({ error: 'レポートの生成に失敗しました' }, { status: 500 });
   }
 }
 

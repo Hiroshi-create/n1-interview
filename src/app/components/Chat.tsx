@@ -90,7 +90,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageText, theme: selectedThemeId }),
+        body: JSON.stringify({ message: messageText, themeId: selectedThemeId }),
       });
       
       if (!response.ok) {
