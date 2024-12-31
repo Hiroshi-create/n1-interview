@@ -1,7 +1,8 @@
 {
     "functions": {
-      "api/**/*.js": {
-        "includeFiles": "bin/**"
-      }
+        "src/app/api/**/*.tsx": {
+            "includeFiles": "bin/**"
+        }
     }
-  }
+}
+  
