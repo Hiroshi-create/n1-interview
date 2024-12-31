@@ -60,6 +60,8 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
             setMessages(newMessages);
+            // ここでメッセージをコンソールに出力
+            console.log('Messages:', JSON.stringify(newMessages, null, 2));
           }, (error) => {
             console.error("メッセージの取得中にエラーが発生しました:", error);
           });
