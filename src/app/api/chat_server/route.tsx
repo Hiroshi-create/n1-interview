@@ -347,48 +347,15 @@ const templates = {
   - 各対話につき質問は１つに絞る
   - なぜそう思ったのかを深掘りする
   `,
-  // summary: `
-  // テーマ: {theme}
-  // インタビュー全体を分析し、以下の形式で分析レポートを作成してください：
-  // 1. どんな{theme}が選ばれるか:ここに記載
-  // 2. 今の{theme}を選んだ理由:ここに記載
-  // 3. 他社{theme}と比較したときの魅力:ここに記載
-  // 4. これから{theme}を選ぶとしたらどこを重視するか:ここに記載
-  // 5. {theme}における不満や問題:ここに記載
-  // 6. {theme}において新しく求める特徴や機能:ここに記載
-  // これまでの会話コンテキスト: {context}
-  // `,
-  summary: `
-  テーマ: {theme}
-  インタビュー全体を分析し、以下の形式で詳細なレポートを作成してください：
-
-  1. インタビューの概要:
-  ここに{theme}に関するインタビューの全体的な概要を記載
-
-  2. 主要な発見事項:
-  ここに{theme}に関する重要な発見や洞察を記載
-
-  3. ユーザーの特性と行動パターン:
-  ここに{theme}に関連するユーザーの特徴や行動傾向を記載
-
-  4. {theme}に対する意見や要望:
-  ここに{theme}についてのユーザーの具体的な意見や改善要望を記載
-
-  5. 競合分析の結果:
-  ここに{theme}の競合製品やサービスに関する分析結果を記載
-
-  6. 結論と推奨事項:
-  ここに{theme}に関する総括と今後のアクションプランを記載
-
-  これまでの会話コンテキスト:{context}
-  `,
+  thank_you: `インタビューにご協力いただき、ありがとうございました。貴重なご意見を頂戴し、大変参考になりました。`
 }
 
 const phases = [
   { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 2 },
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 4 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 4 },
-  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 4 }
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 3 },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 3 },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 3 },
+  { template: "thank_you", text: "現在のフェーズ: お礼", questions: 1 }
 ];
 
 export async function POST(request: Request) {
@@ -398,15 +365,14 @@ export async function POST(request: Request) {
       console.error('テーマIDが指定されていません');
       return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
     }
-    console.log(`指定されたテーマID: ${themeId}`);
 
+    console.log(`指定されたテーマID: ${themeId}`);
     let context = "";
     let currentPhaseIndex = 0;
     let totalQuestionCount = 0;
 
     const themeDocRef = doc(db, "themes", themeId);
     const themeDocSnap = await getDoc(themeDocRef);
-
     if (!themeDocSnap.exists()) {
       console.error('指定されたテーマIDのドキュメントが存在しません');
       return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
@@ -417,7 +383,6 @@ export async function POST(request: Request) {
 
     const messageCollectionRef = collection(themeDocRef, "messages");
 
-    // ボットの質問数をカウント
     try {
       const botMessagesQuery = query(
         messageCollectionRef,
@@ -426,8 +391,6 @@ export async function POST(request: Request) {
       );
       const snapshot = await getCountFromServer(botMessagesQuery);
       totalQuestionCount = snapshot.data().count;
-
-      // 現在のフェーズを決定
       currentPhaseIndex = phases.findIndex((phase, index) =>
         totalQuestionCount < phases.slice(0, index + 1).reduce((sum, p) => sum + p.questions, 0)
       );
@@ -436,7 +399,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
     }
 
-    // コンテキストの取得
     try {
       const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
       const querySnapshot = await getDocs(q);
@@ -449,20 +411,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
     }
 
-    // ユーザーメッセージの保存
-    try {
-      await addDoc(messageCollectionRef, {
-        text: userMessage,
-        sender: "user",
-        createdAt: serverTimestamp(),
-        type: "interview",
-      });
-    } catch (error) {
-      console.error('ユーザーメッセージの保存中にエラーが発生しました:', error);
-      return NextResponse.json({ error: 'メッセージの保存に失敗しました' }, { status: 500 });
-    }
-
-    // 初期メッセージの処理
     if (!userMessage) {
       try {
         const messages: Message[] = [
@@ -481,12 +429,27 @@ export async function POST(request: Request) {
       }
     }
 
+    try {
+      await addDoc(messageCollectionRef, {
+        text: userMessage,
+        sender: "user",
+        createdAt: serverTimestamp(),
+        type: "interview",
+      });
+    } catch (error) {
+      console.error('ユーザーメッセージの保存中にエラーが発生しました:', error);
+      return NextResponse.json({ error: 'メッセージの保存に失敗しました' }, { status: 500 });
+    }
+
     context += "\nUser: " + userMessage;
 
-    // インタビュー処理
     if (currentPhaseIndex < phases.length) {
       const currentPhase = phases[currentPhaseIndex];
       const currentTemplate = currentPhase.template;
+      
+      if (currentTemplate === "thank_you") {
+        return await handleInterviewEnd(messageCollectionRef);
+      }
 
       const prompt = templates[currentTemplate as keyof typeof templates]
         .replace("{theme}", theme)
@@ -526,14 +489,8 @@ export async function POST(request: Request) {
           context += "\nBot: " + botResponseText;
           totalQuestionCount++;
 
-          // フェーズの更新チェック
           if (totalQuestionCount >= phases.slice(0, currentPhaseIndex + 1).reduce((sum, p) => sum + p.questions, 0)) {
             currentPhaseIndex++;
-          }
-
-          // すべてのフェーズが終了したかチェック
-          if (currentPhaseIndex >= phases.length) {
-            return await handleInterviewEnd(messageCollectionRef, theme, context);
           }
 
           return NextResponse.json({ messages: [botMessage] });
@@ -546,7 +503,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'AI応答の生成に失敗しました' }, { status: 500 });
       }
     } else {
-      return await handleInterviewEnd(messageCollectionRef, theme, context);
+      return await handleInterviewEnd(messageCollectionRef);
     }
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);
@@ -554,43 +511,27 @@ export async function POST(request: Request) {
   }
 }
 
-async function handleInterviewEnd(messageCollectionRef: CollectionReference, theme: string, context: string) {
+
+async function handleInterviewEnd(messageCollectionRef: CollectionReference) {
   try {
+    const thanksMessage = templates.thank_you;
     await addDoc(messageCollectionRef, {
-      text: "インタビューを終了します。ありがとうございました。",
+      text: thanksMessage,
       sender: "bot",
       createdAt: serverTimestamp(),
       type: "interview",
     });
 
-    console.log("レポート作成中");
-    const reportPrompt = templates.summary
-      .replace("{theme}", theme)
-      .replace("{context}", context);
-
-    const reportResponse = await openai.chat.completions.create({
-      messages: [
-        { role: "system", content: "あなたは優秀なマーケティングアナリストです。" },
-        { role: "user", content: reportPrompt }
-      ],
-      model: "gpt-4"
-    });
-
-    const report = reportResponse.choices[0].message.content;
-
-    await addDoc(messageCollectionRef, {
-      text: report,
-      sender: "bot",
-      createdAt: serverTimestamp(),
-      type: "report"
-    });
-
-    return NextResponse.json({ messages: [{ text: "インタビューが終了しました。レポートを生成しました。" }] });
+    return NextResponse.json({ interviewEnd: true });
   } catch (error) {
-    console.error('レポート生成中にエラーが発生しました:', error);
-    return NextResponse.json({ error: 'レポートの生成に失敗しました' }, { status: 500 });
+    console.error('お礼メッセージの保存中にエラーが発生しました:', error);
+    return NextResponse.json({ error: 'お礼メッセージの保存に失敗しました' }, { status: 500 });
   }
 }
+
+
+
+
 
 
 

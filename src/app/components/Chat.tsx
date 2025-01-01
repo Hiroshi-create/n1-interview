@@ -60,7 +60,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
             setMessages(newMessages);
-            // ここでメッセージをコンソールに出力
             console.log('Messages:', JSON.stringify(newMessages, null, 2));
           }, (error) => {
             console.error("メッセージの取得中にエラーが発生しました:", error);
@@ -101,6 +100,25 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       }
       
       const data = await response.json();
+      
+      if (data.interviewEnd) {
+        // インタビュー終了時にレポート生成APIを呼び出す
+        const reportResponse = await fetch('/api/report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ themeId: selectedThemeId }),
+        });
+
+        if (!reportResponse.ok) {
+          throw new Error('レポート生成に失敗しました');
+        }
+
+        const reportData = await reportResponse.json();
+        console.log('生成されたレポート:', reportData.report);
+        return;
+      }
       
       if (data.messages && data.messages.length > 0) {
         setMessage(data.messages[0]);
@@ -199,7 +217,6 @@ const Chat: React.FC = () => {
         if (elementBottom < visibilityStart || elementTop > visibilityEnd) {
           opacity = 0.1;
         } else {
-          // const visiblePortion = Math.min(elementBottom, visibilityEnd) - Math.max(elementTop, visibilityStart);
           const normalizedPosition = (elementTop - visibilityStart) / visibleRange;
           opacity = 1 - normalizedPosition * 0.7;
         }
@@ -243,6 +260,7 @@ const Chat: React.FC = () => {
 };
 
 export default Chat;
+
 
 
 
