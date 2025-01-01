@@ -3,16 +3,18 @@ import { NextResponse } from 'next/server';
 import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc, CollectionReference } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { protos, SpeechClient } from '@google-cloud/speech';
+import axios from 'axios';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
-type IWordInfo = protos.google.cloud.speech.v1.IWordInfo;
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
 });
 
 interface LipSync {
-  mouthCues: Array<{ start: number; end: number; value: string; }>;
+  mouthCues: Array<{ start: number; end: number; value: string; intensity: number; }>;
+  blinkCues: Array<{ time: number; duration: number; }>;
+  emotionCues: Array<{ start: number; end: number; emotion: string; intensity: number; }>;
 }
 
 interface Message {
@@ -31,27 +33,179 @@ const memoryCache: {
   lipSyncData: new Map()
 };
 
-const generateLipSyncFromTranscription = (results: ISpeechRecognitionResult[]): LipSync => {
-  const lipSyncData: LipSync = { mouthCues: [] };
-  results.forEach((result: ISpeechRecognitionResult) => {
+const japanesePhonemeToViseme: { [key: string]: string } = {
+  'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+  'a': 'A', 'i': 'I', 'u': 'U', 'e': 'E', 'o': 'O',
+  'カ': 'K', 'キ': 'KI', 'ク': 'KU', 'ケ': 'KE', 'コ': 'KO',
+  'ka': 'K', 'ki': 'KI', 'ku': 'KU', 'ke': 'KE', 'ko': 'KO',
+  'サ': 'S', 'シ': 'SH', 'ス': 'S', 'セ': 'S', 'ソ': 'S',
+  'sa': 'S', 'shi': 'SH', 'su': 'S', 'se': 'S', 'so': 'S',
+  'タ': 'T', 'チ': 'CH', 'ツ': 'TS', 'テ': 'T', 'ト': 'T',
+  'ta': 'T', 'chi': 'CH', 'tsu': 'TS', 'te': 'T', 'to': 'T',
+  'ナ': 'N', 'ニ': 'N', 'ヌ': 'N', 'ネ': 'N', 'ノ': 'N',
+  'na': 'N', 'ni': 'N', 'nu': 'N', 'ne': 'N', 'no': 'N',
+  'ハ': 'F', 'ヒ': 'F', 'フ': 'F', 'ヘ': 'F', 'ホ': 'F',
+  'ha': 'F', 'hi': 'F', 'fu': 'F', 'he': 'F', 'ho': 'F',
+  'マ': 'M', 'ミ': 'M', 'ム': 'M', 'メ': 'M', 'モ': 'M',
+  'ma': 'M', 'mi': 'M', 'mu': 'M', 'me': 'M', 'mo': 'M',
+  'ヤ': 'I', 'ユ': 'U', 'ヨ': 'O',
+  'ya': 'I', 'yu': 'U', 'yo': 'O',
+  'ラ': 'R', 'リ': 'R', 'ル': 'R', 'レ': 'R', 'ロ': 'R',
+  'ra': 'R', 'ri': 'R', 'ru': 'R', 're': 'R', 'ro': 'R',
+  'ワ': 'W', 'ヲ': 'W',
+  'wa': 'W', 'wo': 'W',
+  'ン': 'N', 'n': 'N',
+  // 濁音
+  'ガ': 'K', 'ギ': 'KI', 'グ': 'KU', 'ゲ': 'KE', 'ゴ': 'KO',
+  'ga': 'K', 'gi': 'KI', 'gu': 'KU', 'ge': 'KE', 'go': 'KO',
+  'ザ': 'S', 'ジ': 'CH', 'ズ': 'S', 'ゼ': 'S', 'ゾ': 'S',
+  'za': 'S', 'ji': 'CH', 'zu': 'S', 'ze': 'S', 'zo': 'S',
+  'ダ': 'T', 'ヂ': 'CH', 'ヅ': 'TS', 'デ': 'T', 'ド': 'T',
+  'da': 'T', 'di': 'CH', 'du': 'TS', 'de': 'T', 'do': 'T',
+  'バ': 'M', 'ビ': 'M', 'ブ': 'M', 'ベ': 'M', 'ボ': 'M',
+  'ba': 'M', 'bi': 'M', 'bu': 'M', 'be': 'M', 'bo': 'M',
+  // 半濁音
+  'パ': 'M', 'ピ': 'M', 'プ': 'M', 'ペ': 'M', 'ポ': 'M',
+  'pa': 'M', 'pi': 'M', 'pu': 'M', 'pe': 'M', 'po': 'M',
+  // 拗音
+  'キャ': 'KI', 'キュ': 'KU', 'キョ': 'KO',
+  'kya': 'KI', 'kyu': 'KU', 'kyo': 'KO',
+  'シャ': 'SH', 'シュ': 'SH', 'ショ': 'SH',
+  'sha': 'SH', 'shu': 'SH', 'sho': 'SH',
+  'チャ': 'CH', 'チュ': 'CH', 'チョ': 'CH',
+  'cha': 'CH', 'chu': 'CH', 'cho': 'CH',
+  'ニャ': 'N', 'ニュ': 'N', 'ニョ': 'N',
+  'nya': 'N', 'nyu': 'N', 'nyo': 'N',
+  'ヒャ': 'F', 'ヒュ': 'F', 'ヒョ': 'F',
+  'hya': 'F', 'hyu': 'F', 'hyo': 'F',
+  'ミャ': 'M', 'ミュ': 'M', 'ミョ': 'M',
+  'mya': 'M', 'myu': 'M', 'myo': 'M',
+  'リャ': 'R', 'リュ': 'R', 'リョ': 'R',
+  'rya': 'R', 'ryu': 'R', 'ryo': 'R',
+  'ギャ': 'KI', 'ギュ': 'KU', 'ギョ': 'KO',
+  'gya': 'KI', 'gyu': 'KU', 'gyo': 'KO',
+  'ジャ': 'CH', 'ジュ': 'CH', 'ジョ': 'CH',
+  'ja': 'CH', 'ju': 'CH', 'jo': 'CH',
+  'ビャ': 'M', 'ビュ': 'M', 'ビョ': 'M',
+  'bya': 'M', 'byu': 'M', 'byo': 'M',
+  'ピャ': 'M', 'ピュ': 'M', 'ピョ': 'M',
+  'pya': 'M', 'pyu': 'M', 'pyo': 'M',
+  // 外来音
+  'ファ': 'F', 'フィ': 'F', 'フェ': 'F', 'フォ': 'F',
+  'fa': 'F', 'fi': 'F', 'fe': 'F', 'fo': 'F',
+  'ヴァ': 'F', 'ヴィ': 'F', 'ヴ': 'F', 'ヴェ': 'F', 'ヴォ': 'F',
+  'va': 'F', 'vi': 'F', 've': 'F', 'vo': 'F',
+  'ティ': 'CH', 'トゥ': 'TS',
+  'ti': 'CH', 'tu': 'TS',
+  'ウィ': 'W', 'ウェ': 'W',
+  'wi': 'W', 'we': 'W',
+  'クァ': 'KU', 'クィ': 'KI', 'クェ': 'KE', 'クォ': 'KO',
+  'kwa': 'KU', 'kwi': 'KI', 'kwe': 'KE', 'kwo': 'KO',
+  'グァ': 'KU',
+  'gwa': 'KU',
+  // 長音
+  'ー': 'X',
+  'ァ': 'A', 'ィ': 'I', 'ゥ': 'U', 'ェ': 'E', 'ォ': 'O',
+  'ッ': 'TS', 'ャ': 'I', 'ュ': 'U', 'ョ': 'O',
+};
+
+
+const generateLipSyncFromTranscription = async (results: ISpeechRecognitionResult[]): Promise<LipSync> => {
+  const lipSyncData: LipSync = {
+    mouthCues: [],
+    blinkCues: [],
+    emotionCues: []
+  };
+  let lastEndTime = 0;
+
+  for (const result of results) {
     if (result.alternatives && result.alternatives[0] && result.alternatives[0].words) {
-      result.alternatives[0].words.forEach((word: IWordInfo) => {
+      for (const word of result.alternatives[0].words) {
         const start = word.startTime?.seconds !== undefined ? Number(word.startTime.seconds) + (word.startTime.nanos || 0) / 1e9 : 0;
         const end = word.endTime?.seconds !== undefined ? Number(word.endTime.seconds) + (word.endTime.nanos || 0) / 1e9 : 0;
-        const mouthShape = getMouthShape(word.word || '');
-        lipSyncData.mouthCues.push({ start, end, value: mouthShape });
-      });
+        const phonemes = await getJapanesePhonemes(word.word || '');
+        console.log(`Word: ${word.word}, Phonemes: ${phonemes.join(', ')}`);
+
+        for (let index = 0; index < phonemes.length; index++) {
+          const phoneme = phonemes[index];
+          const phonemeDuration = (end - start) / phonemes.length;
+          const phonemeStart = start + index * phonemeDuration;
+          const phonemeEnd = phonemeStart + phonemeDuration;
+          const viseme = japanesePhonemeToViseme[phoneme] || 'X';
+          const intensity = getIntensity(phoneme, index, phonemes.length);
+        
+          console.log(`Phoneme: ${phoneme}, Viseme: ${viseme}, Intensity: ${intensity}`);
+        
+          lipSyncData.mouthCues.push({
+            start: phonemeStart,
+            end: phonemeEnd,
+            value: viseme,
+            intensity: intensity
+          });
+        }
+
+        if (Math.random() < 0.2) {
+          lipSyncData.blinkCues.push({
+            time: end + Math.random() * 0.3,
+            duration: 0.1 + Math.random() * 0.1
+          });
+        }
+
+        lastEndTime = end;
+      }
     }
-  });
+  }
+
+  lipSyncData.emotionCues = analyzeEmotions(results, lastEndTime);
   return lipSyncData;
 };
 
-const getMouthShape = (word: string): string => {
-  const firstChar = word.charAt(0).toLowerCase();
-  if ('aiueo'.includes(firstChar)) return 'A';
-  if ('kstnhmyrw'.includes(firstChar)) return 'B';
-  if ('bgdj'.includes(firstChar)) return 'C';
-  return 'X';
+const getJapanesePhonemes = async (word: string): Promise<string[]> => {
+  try {
+    const response = await axios.post('https://labs.goo.ne.jp/api/morph', {
+      app_id: process.env.GOO_LAB_APP_ID,
+      sentence: word,
+      info_filter: 'form|read'
+    });
+    console.log('API response:', JSON.stringify(response.data, null, 2));
+    if (response.data.word_list && response.data.word_list[0]) {
+      return response.data.word_list[0].flatMap((item: string[]) => {
+        const reading = item[1] || item[0];
+        return reading.split('');
+      });
+    } else {
+      console.error('Unexpected API response structure:', response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error in getJapanesePhonemes:', error);
+    return [];
+  }
+};
+
+const getIntensity = (phoneme: string, index: number, totalPhonemes: number): number => {
+  let baseIntensity = 0.5 + (index / totalPhonemes) * 0.5;
+  if ('アイウエオァィゥェォ'.includes(phoneme)) baseIntensity *= 1.2;
+  return Math.min(baseIntensity, 1);
+};
+
+const analyzeEmotions = (results: ISpeechRecognitionResult[], duration: number): Array<{ start: number; end: number; emotion: string; intensity: number; }> => {
+  const emotions = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
+  const emotionCues = [];
+  let currentTime = 0;
+
+  while (currentTime < duration) {
+    const emotionDuration = 1 + Math.random() * 2;
+    emotionCues.push({
+      start: currentTime,
+      end: Math.min(currentTime + emotionDuration, duration),
+      emotion: emotions[Math.floor(Math.random() * emotions.length)],
+      intensity: 0.5 + Math.random() * 0.5
+    });
+    currentTime += emotionDuration;
+  }
+
+  return emotionCues;
 };
 
 const lipSyncMessage = async (message: number): Promise<LipSync> => {
@@ -97,7 +251,7 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
       throw new Error('音声認識結果が空です');
     }
 
-    const lipSyncData = generateLipSyncFromTranscription(response.results);
+    const lipSyncData = await generateLipSyncFromTranscription(response.results);
     memoryCache.lipSyncData.set(`message_${message}`, lipSyncData);
     console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
 
