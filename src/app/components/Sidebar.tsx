@@ -5,7 +5,6 @@ import { SlLogout } from "react-icons/sl";
 import { auth, db } from '../../../firebase';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
-// import { unsubscribe } from 'diagnostics_channel';
 
 type Theme = {
     id: string;
