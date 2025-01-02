@@ -8,6 +8,7 @@ import Link from 'next/link'
 type Inputs = {
     email: string
     password: string
+    name: string
 }
 
 const Register = () => {
@@ -30,6 +31,9 @@ const Register = () => {
             });
 
             if (response.ok) {
+                const result = await response.json();
+                // トークンをローカルストレージに保存
+                localStorage.setItem('token', result.token);
                 router.push("/users/login");
             } else {
                 const errorData = await response.json();
@@ -48,6 +52,23 @@ const Register = () => {
                 className='bg-white p-8 rounded-lg shadow-md w-96'
             >
                 <h1 className='mb-4 text-2xl text-gray-700 font-medium'>新規登録</h1>
+                <div className='mb-4'>
+                    <label className='block text-sm font-medium text-gray-600'>
+                        名前
+                    </label>
+                    <input
+                        {...register("name", {
+                            required: "名前は必須です。",
+                            minLength: {
+                                value: 2,
+                                message: "2文字以上入力してください。"
+                            }
+                        })}
+                        type='text'
+                        className='mt-1 border-2 rounded-md w-full p-2'
+                    />
+                    {errors.name && <span className='text-red-600 text-sm'>{errors.name.message}</span>}
+                </div>
                 <div className='mb-4'>
                     <label className='block text-sm font-medium text-gray-600'>
                         メールアドレス
@@ -73,8 +94,8 @@ const Register = () => {
                         {...register("password", {
                             required: "パスワードは必須です。",
                             minLength: {
-                                value: 8,
-                                message: "8文字以上入力してください。"
+                                value: 6,
+                                message: "6文字以上入力してください。"
                             }
                         })}
                         type='password'

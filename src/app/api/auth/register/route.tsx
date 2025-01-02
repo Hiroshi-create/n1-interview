@@ -1,67 +1,50 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { NextRequest, NextResponse } from 'next/server';
+import { auth, db } from '../../../../../firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// Firebaseの初期化
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'メソッドが許可されていません' });
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name } = await req.json();
 
     // 入力値のバリデーション
     if (!email || !password || !name) {
-      return res.status(400).json({ message: '全てのフィールドを入力してください' });
+      return NextResponse.json({ message: '全てのフィールドを入力してください' }, { status: 400 });
     }
 
     // パスワードの強度チェック
     if (password.length < 6) {
-      return res.status(400).json({ message: 'パスワードは8文字以上である必要があります' });
+      return NextResponse.json({ message: 'パスワードは6文字以上である必要があります' }, { status: 400 });
     }
 
     // Firebaseでユーザー作成
-    const auth = getAuth();
-    const userRecord = await auth.createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // ユーザープロフィールの更新
+    await updateProfile(user, { displayName: name });
 
     // Firestoreにユーザー情報を保存
-    const db = getFirestore();
-    await db.collection('users').doc(userRecord.uid).set({
-      email: userRecord.email,
-      name: userRecord.displayName,
-      createdAt: new Date(),
+    await setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      name: user.displayName,
+      createdAt: serverTimestamp(),
     });
 
-    // カスタムトークンの生成
-    const token = await auth.createCustomToken(userRecord.uid);
+    // IDトークンの取得
+    const token = await user.getIdToken();
 
-    res.status(201).json({
+    return NextResponse.json({
       message: 'ユーザーが正常に登録されました',
       token,
       user: {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        name: userRecord.displayName,
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName,
       },
-    });
+    }, { status: 201 });
   } catch (error) {
     console.error('登録エラー:', error);
-    res.status(500).json({ message: 'ユーザー登録中にエラーが発生しました' });
+    return NextResponse.json({ message: 'ユーザー登録中にエラーが発生しました' }, { status: 500 });
   }
 }
