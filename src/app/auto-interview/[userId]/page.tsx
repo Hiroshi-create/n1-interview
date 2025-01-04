@@ -1,9 +1,9 @@
 "use client"
 
 import React from 'react'
-import Sidebar from '../components/Sidebar'
-import Chat, { ChatProvider } from '../components/Chat'
-import App from "../components/App";
+import Sidebar from '../../components/Sidebar'
+import Chat, { ChatProvider } from '../../components/Chat'
+import App from "../../components/App";
 
 const AutoInterview = () => {
   return (

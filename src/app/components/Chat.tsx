@@ -1,11 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
-import { collection, doc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
-import { FieldValue } from 'firebase/firestore';
+import { Message } from '@/stores/Message';
 
 type ChatContextType = {
     chat: (message: string) => Promise<void>;
@@ -21,21 +21,6 @@ type ChatContextType = {
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
-
-type Message = {
-  text: string;
-  sender: string;
-  createdAt: Timestamp | FieldValue;
-  type: string;
-  lipsync?: LipSync;
-  facialExpression?: string;
-  animation?: string;
-  opacity?: number;
-}
-
-interface LipSync {
-  mouthCues: Array<{ start: number; end: number; value: string; }>;
-}
 
 type ChatProviderProps = {
   children: ReactNode;

@@ -23,18 +23,39 @@ const Login = () => {
     } = useForm<Inputs>();
 
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
-        await signInWithEmailAndPassword(auth, data.email, data.password).then(
-            (userCredential) => {
-                const user = userCredential.user
-                router.push(`/auto-interview/${user.uid}`)
-            }
-        ).catch((error) => {
-            if(error.code === "auth/invalid-credential") {
-                alert("ユーザーが登録されていません。")
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+            const userId = userCredential.user.uid;
+
+            const response = await fetch('/api/auth/client_login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId }),
+            });
+
+            if (response.ok) {
+                const { organizationId } = await response.json();
+                if (organizationId) {
+                    router.push(`/client-view/${organizationId}`);
+                } else {
+                    alert("組織に所属していません。");
+                }
             } else {
-                alert(error.message)
+                throw new Error('ログインに失敗しました。');
             }
-        });
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                if ('code' in error && error.code === "auth/invalid-credential") {
+                    alert("ユーザーが登録されていません。");
+                } else {
+                    alert(error.message);
+                }
+            } else {
+                alert("不明なエラーが発生しました。");
+            }
+        }
     }
 
     return (
@@ -43,7 +64,7 @@ const Login = () => {
                 onSubmit={handleSubmit(onSubmit)}
                 className='bg-white p-8 rounded-lg shadow-md w-96'
             >
-                <h1 className='mb-4 text-2xl text-gray-700 font-medium'>ログイン</h1>
+                <h1 className='mb-4 text-2xl text-gray-700 font-medium'>ログイン(組織)</h1>
                 <div className='mb-4'>
                     <label className='block text-sm font-medium text-gray-600'>
                         Email
@@ -88,7 +109,7 @@ const Login = () => {
                     <span className='text-gray-600 text-sm'>
                         初めてのご利用の方はこちら
                     </span>
-                    <Link href={"/users/register"} className='text-blue-500 text-sm font-bold ml-1 hover:text-blue-700'>
+                    <Link href={"/clients/register"} className='text-blue-500 text-sm font-bold ml-1 hover:text-blue-700'>
                         新規登録ページへ
                     </Link>
                 </div>

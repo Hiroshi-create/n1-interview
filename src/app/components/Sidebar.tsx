@@ -3,14 +3,9 @@
 import React, { useEffect, useState } from 'react'
 import { SlLogout } from "react-icons/sl";
 import { auth, db } from '../../../firebase';
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
-
-type Theme = {
-    id: string;
-    name: string;
-    createdAt: Timestamp;
-}
+import { Theme } from '@/stores/Theme';
 
 const Sidebar = () => {
     const { user, userId, setSelectedThemeId, setSelectThemeName } = useAppsContext();  // userId 等の取得
