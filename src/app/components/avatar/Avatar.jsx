@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { button, useControls } from "leva";
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useChat } from "../Chat";
+import { useChat } from "../users/Chat";
 
 const facialExpressions = {
   default: {},
@@ -87,33 +87,40 @@ const facialExpressions = {
 };
 
 const corresponding = {
-  A: "viseme_PP",
+  C: "viseme_PP",
+  O: "viseme_O",
   I: "viseme_I",
   U: "viseme_U",
   E: "viseme_AA",
-  O: "viseme_O",
-  K: "viseme_kk",
-  G: "viseme_kk",
-  S: "viseme_SS",
-  Z: "viseme_SS",
-  T: "viseme_TH",
-  D: "viseme_TH",
-  N: "viseme_nn",
-  H: "viseme_FF",
-  B: "viseme_PP",
-  P: "viseme_PP",
-  M: "viseme_PP",
-  Y: "viseme_I",
-  R: "viseme_TH",
-  W: "viseme_U",
-  F: "viseme_FF",
-  V: "viseme_FF",
-  CH: "viseme_SS",
-  SH: "viseme_SS",
-  TS: "viseme_SS",
-  J: "viseme_SS",
-  X: "viseme_PP"
 };
+// const corresponding = {
+//   A: "viseme_PP",
+//   I: "viseme_I",
+//   U: "viseme_U",
+//   E: "viseme_AA",
+//   O: "viseme_O",
+//   K: "viseme_kk",
+//   G: "viseme_kk",
+//   S: "viseme_SS",
+//   Z: "viseme_SS",
+//   T: "viseme_TH",
+//   D: "viseme_TH",
+//   N: "viseme_nn",
+//   H: "viseme_FF",
+//   B: "viseme_PP",
+//   P: "viseme_PP",
+//   M: "viseme_PP",
+//   Y: "viseme_I",
+//   R: "viseme_TH",
+//   W: "viseme_U",
+//   F: "viseme_FF",
+//   V: "viseme_FF",
+//   CH: "viseme_SS",
+//   SH: "viseme_SS",
+//   TS: "viseme_SS",
+//   J: "viseme_SS",
+//   X: "viseme_PP"
+// };
 
 let setupMode = false;
 
@@ -149,14 +156,18 @@ export function Avatar(props) {
     animations.find((a) => a.name === "Idle") ? "Idle" : animations[0].name
   );
   useEffect(() => {
-  if (actions && actions[animation]) {
-    actions[animation]
-      .reset()
-      .fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5)
-      .play();
-    return () => actions[animation].fadeOut(0.5);
-  }
-}, [animation]);
+    if (actions && actions[animation]) {
+      actions[animation]
+        .reset()
+        .fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5)
+        .play();
+      return () => {
+        if (actions[animation] && typeof actions[animation].fadeOut === 'function') {
+          actions[animation].fadeOut(0.5);
+        }
+      };
+    }
+  }, [animation]);
 
   const lerpMorphTarget = (target, value, speed = 0.1) => {
     scene.traverse((child) => {

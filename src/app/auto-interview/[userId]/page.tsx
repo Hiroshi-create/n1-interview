@@ -1,11 +1,25 @@
 "use client"
 
-import React from 'react'
-import Sidebar from '../../components/Sidebar'
-import Chat, { ChatProvider } from '../../components/Chat'
-import App from "../../components/App";
+import React, { useEffect } from 'react'
+import Sidebar from '../../components/users/Sidebar'
+import Chat, { ChatProvider } from '../../components/users/Chat'
+import App from "../../components/users/App";
+import { usePathname } from 'next/navigation';
+
 
 const AutoInterview = () => {
+  
+  // 遷移先のURLをローカルストレージに保存
+  const pathname = usePathname();
+  useEffect(() => {
+    const saveLastVisitedUrl = (url: string) => {
+      localStorage.setItem('lastVisitedUrl', url);
+    };
+    if (pathname) {
+      saveLastVisitedUrl(pathname);
+    }
+  }, [pathname]);
+
   return (
     <div className="flex h-screen justify-center items-center">
       <div className="h-full flex" style={{ width: "1280px" }}>

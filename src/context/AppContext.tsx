@@ -2,8 +2,9 @@
 
 import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
 
 type AppProviderProps = {
     children: ReactNode;
@@ -31,6 +32,16 @@ const AppContext = createContext<AppContextType>({
     resetContext: () => {},
 });
 
+// ページ遷移時に実行
+const saveLastVisitedUrl = (url: string) => {
+    localStorage.setItem('lastVisitedUrl', url);
+};
+  
+// ログイン後やリロード時に実行
+const getLastVisitedUrl = () => {
+    return localStorage.getItem('lastVisitedUrl');
+};
+
 export function AppProvider({ children }: AppProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
@@ -39,19 +50,31 @@ export function AppProvider({ children }: AppProviderProps) {
     const router = useRouter();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (newUser) => {
-            setUser(newUser);
-            setUserId(newUser ? newUser.uid : null)
-
-            if(!newUser) {
-                router.push("/home/");
+        const unsubscribe = onAuthStateChanged(auth, async (newUser) => {
+          setUser(newUser);
+          setUserId(newUser ? newUser.uid : null);
+      
+          if (!newUser) {
+            router.push("/home/");
+          } else {
+            const lastVisitedUrl = getLastVisitedUrl();
+            if (lastVisitedUrl) {
+              router.push(lastVisitedUrl);
             } else {
+              // ユーザーの種類を判定
+              const userDoc = await getDoc(doc(db, "users", newUser.uid));
+              const userData = userDoc.data();
+              if (userData && userData.inOrganization) {
+                router.push(`/client-view/${newUser.uid}`);
+              } else {
                 router.push(`/auto-interview/${newUser.uid}`);
+              }
             }
+          }
         });
-
+      
         return () => {
-            unsubscribe();
+          unsubscribe();
         }
     }, []);
 

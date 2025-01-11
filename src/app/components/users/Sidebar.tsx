@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { SlLogout } from "react-icons/sl";
-import { auth, db } from '../../../firebase';
+import { auth, db } from '../../../../firebase';
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import { Theme } from '@/stores/Theme';

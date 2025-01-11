@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from "react";
-import { useChat } from "../Chat";
+import { useChat } from "../users/Chat";
 import BallTriangle from 'react-loading-icons';
 
 interface UIProps {

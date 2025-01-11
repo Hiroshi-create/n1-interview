@@ -4,8 +4,14 @@ import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, wher
 import { db } from '../../../../firebase';
 import { protos, SpeechClient } from '@google-cloud/speech';
 import axios from 'axios';
+import { kv } from '@vercel/kv';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
+
+const startTimer = (label: string) => {  // timer
+  console.time(label);
+  return () => console.timeEnd(label);
+};
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -34,81 +40,85 @@ const memoryCache: {
 };
 
 const japanesePhonemeToViseme: { [key: string]: string } = {
-  'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
-  'a': 'A', 'i': 'I', 'u': 'U', 'e': 'E', 'o': 'O',
-  'カ': 'K', 'キ': 'KI', 'ク': 'KU', 'ケ': 'KE', 'コ': 'KO',
-  'ka': 'K', 'ki': 'KI', 'ku': 'KU', 'ke': 'KE', 'ko': 'KO',
-  'サ': 'S', 'シ': 'SH', 'ス': 'S', 'セ': 'S', 'ソ': 'S',
-  'sa': 'S', 'shi': 'SH', 'su': 'S', 'se': 'S', 'so': 'S',
-  'タ': 'T', 'チ': 'CH', 'ツ': 'TS', 'テ': 'T', 'ト': 'T',
-  'ta': 'T', 'chi': 'CH', 'tsu': 'TS', 'te': 'T', 'to': 'T',
-  'ナ': 'N', 'ニ': 'N', 'ヌ': 'N', 'ネ': 'N', 'ノ': 'N',
-  'na': 'N', 'ni': 'N', 'nu': 'N', 'ne': 'N', 'no': 'N',
-  'ハ': 'F', 'ヒ': 'F', 'フ': 'F', 'ヘ': 'F', 'ホ': 'F',
-  'ha': 'F', 'hi': 'F', 'fu': 'F', 'he': 'F', 'ho': 'F',
-  'マ': 'M', 'ミ': 'M', 'ム': 'M', 'メ': 'M', 'モ': 'M',
-  'ma': 'M', 'mi': 'M', 'mu': 'M', 'me': 'M', 'mo': 'M',
+  'ア': 'O', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+  'a': 'O', 'i': 'I', 'u': 'U', 'e': 'E', 'o': 'O',
+  'カ': 'O', 'キ': 'I', 'ク': 'U', 'ケ': 'E', 'コ': 'O',
+  'ka': 'O', 'ki': 'I', 'ku': 'U', 'ke': 'E', 'ko': 'O',
+  'サ': 'I', 'シ': 'I', 'ス': 'U', 'セ': 'E', 'ソ': 'O',
+  'sa': 'I', 'shi': 'I', 'su': 'U', 'se': 'E', 'so': 'O',
+  'タ': 'I', 'チ': 'I', 'ツ': 'U', 'テ': 'E', 'ト': 'O',
+  'ta': 'I', 'chi': 'I', 'tsu': 'U', 'te': 'E', 'to': 'O',
+  'ナ': 'O', 'ニ': 'I', 'ヌ': 'U', 'ネ': 'E', 'ノ': 'O',
+  'na': 'O', 'ni': 'I', 'nu': 'U', 'ne': 'E', 'no': 'O',
+  'ハ': 'O', 'ヒ': 'I', 'フ': 'U', 'ヘ': 'E', 'ホ': 'O',
+  'ha': 'O', 'hi': 'I', 'fu': 'U', 'he': 'E', 'ho': 'O',
+  'マ': 'C', 'ミ': 'I', 'ム': 'U', 'メ': 'E', 'モ': 'O',
+  'ma': 'C', 'mi': 'I', 'mu': 'U', 'me': 'E', 'mo': 'O',
   'ヤ': 'I', 'ユ': 'U', 'ヨ': 'O',
   'ya': 'I', 'yu': 'U', 'yo': 'O',
-  'ラ': 'R', 'リ': 'R', 'ル': 'R', 'レ': 'R', 'ロ': 'R',
-  'ra': 'R', 'ri': 'R', 'ru': 'R', 're': 'R', 'ro': 'R',
-  'ワ': 'W', 'ヲ': 'W',
-  'wa': 'W', 'wo': 'W',
-  'ン': 'N', 'n': 'N',
+  'ラ': 'O', 'リ': 'I', 'ル': 'U', 'レ': 'E', 'ロ': 'O',
+  'ra': 'O', 'ri': 'I', 'ru': 'U', 're': 'E', 'ro': 'O',
+  'ワ': 'U', 'ヲ': 'O',
+  'wa': 'U', 'wo': 'O',
+  'ン': 'C', 'n': 'C',
   // 濁音
-  'ガ': 'K', 'ギ': 'KI', 'グ': 'KU', 'ゲ': 'KE', 'ゴ': 'KO',
-  'ga': 'K', 'gi': 'KI', 'gu': 'KU', 'ge': 'KE', 'go': 'KO',
-  'ザ': 'S', 'ジ': 'CH', 'ズ': 'S', 'ゼ': 'S', 'ゾ': 'S',
-  'za': 'S', 'ji': 'CH', 'zu': 'S', 'ze': 'S', 'zo': 'S',
-  'ダ': 'T', 'ヂ': 'CH', 'ヅ': 'TS', 'デ': 'T', 'ド': 'T',
-  'da': 'T', 'di': 'CH', 'du': 'TS', 'de': 'T', 'do': 'T',
-  'バ': 'M', 'ビ': 'M', 'ブ': 'M', 'ベ': 'M', 'ボ': 'M',
-  'ba': 'M', 'bi': 'M', 'bu': 'M', 'be': 'M', 'bo': 'M',
+  'ガ': 'O', 'ギ': 'I', 'グ': 'U', 'ゲ': 'E', 'ゴ': 'O',
+  'ga': 'O', 'gi': 'I', 'gu': 'U', 'ge': 'E', 'go': 'O',
+  'ザ': 'I', 'ジ': 'I', 'ズ': 'U', 'ゼ': 'E', 'ゾ': 'O',
+  'za': 'I', 'ji': 'I', 'zu': 'U', 'ze': 'E', 'zo': 'O',
+  'ダ': 'O', 'ヂ': 'I', 'ヅ': 'U', 'デ': 'E', 'ド': 'O',
+  'da': 'O', 'di': 'I', 'du': 'U', 'de': 'E', 'do': 'O',
+  'バ': 'C', 'ビ': 'I', 'ブ': 'U', 'ベ': 'E', 'ボ': 'O',
+  'ba': 'C', 'bi': 'I', 'bu': 'U', 'be': 'E', 'bo': 'O',
   // 半濁音
-  'パ': 'M', 'ピ': 'M', 'プ': 'M', 'ペ': 'M', 'ポ': 'M',
-  'pa': 'M', 'pi': 'M', 'pu': 'M', 'pe': 'M', 'po': 'M',
+  'パ': 'C', 'ピ': 'I', 'プ': 'U', 'ペ': 'E', 'ポ': 'O',
+  'pa': 'C', 'pi': 'I', 'pu': 'U', 'pe': 'E', 'po': 'O',
   // 拗音
-  'キャ': 'KI', 'キュ': 'KU', 'キョ': 'KO',
-  'kya': 'KI', 'kyu': 'KU', 'kyo': 'KO',
-  'シャ': 'SH', 'シュ': 'SH', 'ショ': 'SH',
-  'sha': 'SH', 'shu': 'SH', 'sho': 'SH',
-  'チャ': 'CH', 'チュ': 'CH', 'チョ': 'CH',
-  'cha': 'CH', 'chu': 'CH', 'cho': 'CH',
-  'ニャ': 'N', 'ニュ': 'N', 'ニョ': 'N',
-  'nya': 'N', 'nyu': 'N', 'nyo': 'N',
-  'ヒャ': 'F', 'ヒュ': 'F', 'ヒョ': 'F',
-  'hya': 'F', 'hyu': 'F', 'hyo': 'F',
-  'ミャ': 'M', 'ミュ': 'M', 'ミョ': 'M',
-  'mya': 'M', 'myu': 'M', 'myo': 'M',
-  'リャ': 'R', 'リュ': 'R', 'リョ': 'R',
-  'rya': 'R', 'ryu': 'R', 'ryo': 'R',
-  'ギャ': 'KI', 'ギュ': 'KU', 'ギョ': 'KO',
-  'gya': 'KI', 'gyu': 'KU', 'gyo': 'KO',
-  'ジャ': 'CH', 'ジュ': 'CH', 'ジョ': 'CH',
-  'ja': 'CH', 'ju': 'CH', 'jo': 'CH',
-  'ビャ': 'M', 'ビュ': 'M', 'ビョ': 'M',
-  'bya': 'M', 'byu': 'M', 'byo': 'M',
-  'ピャ': 'M', 'ピュ': 'M', 'ピョ': 'M',
-  'pya': 'M', 'pyu': 'M', 'pyo': 'M',
+  'キャ': 'I', 'キュ': 'U', 'キョ': 'O',
+  'kya': 'I', 'kyu': 'U', 'kyo': 'O',
+  'シャ': 'I', 'シュ': 'U', 'ショ': 'O',
+  'sha': 'I', 'shu': 'U', 'sho': 'O',
+  'チャ': 'I', 'チュ': 'U', 'チョ': 'O',
+  'cha': 'I', 'chu': 'U', 'cho': 'O',
+  'ニャ': 'I', 'ニュ': 'U', 'ニョ': 'O',
+  'nya': 'I', 'nyu': 'U', 'nyo': 'O',
+  'ヒャ': 'I', 'ヒュ': 'U', 'ヒョ': 'O',
+  'hya': 'I', 'hyu': 'U', 'hyo': 'O',
+  'ミャ': 'I', 'ミュ': 'U', 'ミョ': 'O',
+  'mya': 'I', 'myu': 'U', 'myo': 'O',
+  'リャ': 'I', 'リュ': 'U', 'リョ': 'O',
+  'rya': 'I', 'ryu': 'U', 'ryo': 'O',
+  'ギャ': 'I', 'ギュ': 'U', 'ギョ': 'O',
+  'gya': 'I', 'gyu': 'U', 'gyo': 'O',
+  'ジャ': 'I', 'ジュ': 'U', 'ジョ': 'O',
+  'ja': 'I', 'ju': 'U', 'jo': 'O',
+  'ビャ': 'I', 'ビュ': 'U', 'ビョ': 'O',
+  'bya': 'I', 'byu': 'U', 'byo': 'O',
+  'ピャ': 'I', 'ピュ': 'U', 'ピョ': 'O',
+  'pya': 'I', 'pyu': 'U', 'pyo': 'O',
   // 外来音
-  'ファ': 'F', 'フィ': 'F', 'フェ': 'F', 'フォ': 'F',
-  'fa': 'F', 'fi': 'F', 'fe': 'F', 'fo': 'F',
-  'ヴァ': 'F', 'ヴィ': 'F', 'ヴ': 'F', 'ヴェ': 'F', 'ヴォ': 'F',
-  'va': 'F', 'vi': 'F', 've': 'F', 'vo': 'F',
-  'ティ': 'CH', 'トゥ': 'TS',
-  'ti': 'CH', 'tu': 'TS',
-  'ウィ': 'W', 'ウェ': 'W',
-  'wi': 'W', 'we': 'W',
-  'クァ': 'KU', 'クィ': 'KI', 'クェ': 'KE', 'クォ': 'KO',
-  'kwa': 'KU', 'kwi': 'KI', 'kwe': 'KE', 'kwo': 'KO',
-  'グァ': 'KU',
-  'gwa': 'KU',
+  'ファ': 'U', 'フィ': 'I', 'フェ': 'E', 'フォ': 'O',
+  'fa': 'U', 'fi': 'I', 'fe': 'E', 'fo': 'O',
+  'ヴァ': 'U', 'ヴィ': 'I', 'ヴ': 'U', 'ヴェ': 'E', 'ヴォ': 'O',
+  'va': 'U', 'vi': 'I', 've': 'E', 'vo': 'O',
+  'ティ': 'I', 'トゥ': 'U',
+  'ti': 'I', 'tu': 'U',
+  'ウィ': 'I', 'ウェ': 'E',
+  'wi': 'I', 'we': 'E',
+  'クァ': 'O', 'クィ': 'I', 'クェ': 'E', 'クォ': 'O',
+  'kwa': 'O', 'kwi': 'I', 'kwe': 'E', 'kwo': 'O',
+  'グァ': 'O',
+  'gwa': 'O',
   // 長音
-  'ー': 'X',
-  'ァ': 'A', 'ィ': 'I', 'ゥ': 'U', 'ェ': 'E', 'ォ': 'O',
-  'ッ': 'TS', 'ャ': 'I', 'ュ': 'U', 'ョ': 'O',
+  'ー': 'C',
+  'ァ': 'O', 'ィ': 'I', 'ゥ': 'U', 'ェ': 'E', 'ォ': 'O',
+  'ッ': 'C', 'ャ': 'I', 'ュ': 'U', 'ョ': 'O',
 };
 
+const audioCache = new Map<string, Buffer>();
+const lipSyncCache = new Map<string, LipSync>();
+// const phonemeCache = new Map<string, string[]>();
+const memoryPhonemeCache = new Map<string, string[]>();  // メモリキャッシュとVercel KVに保存用
 
 const generateLipSyncFromTranscription = async (results: ISpeechRecognitionResult[]): Promise<LipSync> => {
   const lipSyncData: LipSync = {
@@ -118,61 +128,87 @@ const generateLipSyncFromTranscription = async (results: ISpeechRecognitionResul
   };
   let lastEndTime = 0;
 
-  for (const result of results) {
-    if (result.alternatives && result.alternatives[0] && result.alternatives[0].words) {
-      for (const word of result.alternatives[0].words) {
-        const start = word.startTime?.seconds !== undefined ? Number(word.startTime.seconds) + (word.startTime.nanos || 0) / 1e9 : 0;
-        const end = word.endTime?.seconds !== undefined ? Number(word.endTime.seconds) + (word.endTime.nanos || 0) / 1e9 : 0;
-        const phonemes = await getJapanesePhonemes(word.word || '');
-        console.log(`Word: ${word.word}, Phonemes: ${phonemes.join(', ')}`);
+  const words = results.flatMap(result => result.alternatives?.[0]?.words || []);
+  const endTimerPhonemes = startTimer('Japanese Phonemes Generation');  // timer
+  const phonemePromises = words.map(async (word, index) => {
+    const phonemes = await getJapanesePhonemes(word.word || '');
+    return { index, word, phonemes };
+  });
+  endTimerPhonemes();  // timer
+  const phonemeResults = await Promise.all(phonemePromises);
+  phonemeResults.sort((a, b) => a.index - b.index);
 
-        for (let index = 0; index < phonemes.length; index++) {
-          const phoneme = phonemes[index];
-          const phonemeDuration = (end - start) / phonemes.length;
-          const phonemeStart = start + index * phonemeDuration;
-          const phonemeEnd = phonemeStart + phonemeDuration;
-          const viseme = japanesePhonemeToViseme[phoneme] || 'X';
-          const intensity = getIntensity(phoneme, index, phonemes.length);
-        
-          console.log(`Phoneme: ${phoneme}, Viseme: ${viseme}, Intensity: ${intensity}`);
-        
-          lipSyncData.mouthCues.push({
-            start: phonemeStart,
-            end: phonemeEnd,
-            value: viseme,
-            intensity: intensity
-          });
-        }
+  for (const { word, phonemes } of phonemeResults) {
+    const start = word.startTime?.seconds !== undefined ? Number(word.startTime.seconds) + (word.startTime.nanos || 0) / 1e9 : 0;
+    const end = word.endTime?.seconds !== undefined ? Number(word.endTime.seconds) + (word.endTime.nanos || 0) / 1e9 : 0;
 
-        if (Math.random() < 0.2) {
-          lipSyncData.blinkCues.push({
-            time: end + Math.random() * 0.3,
-            duration: 0.1 + Math.random() * 0.1
-          });
-        }
+    let frameNum = 1;
+    for (let index = 0; index < phonemes.length; index+=frameNum) {
+      const phoneme = phonemes[index];
+      const phonemeDuration = (end - start) / (phonemes.length / frameNum);
+      const phonemeStart = start + (index / frameNum) * phonemeDuration;
+      const phonemeEnd = phonemeStart + phonemeDuration;
 
-        lastEndTime = end;
-      }
+      const viseme = japanesePhonemeToViseme[phoneme] || 'C';
+      const intensity = viseme === 'C' ? 0.2 : 0.8;
+    
+      lipSyncData.mouthCues.push({
+        start: phonemeStart,
+        end: phonemeEnd,
+        value: viseme,
+        intensity: intensity
+      });
     }
+
+    if (Math.random() < 0.2) {
+      lipSyncData.blinkCues.push({
+        time: end + Math.random() * 0.3,
+        duration: 0.1 + Math.random() * 0.1
+      });
+    }
+
+    lastEndTime = end;
   }
 
+  const endTimerEmotionAnalysis = startTimer('Emotion Analysis');  // timer
   lipSyncData.emotionCues = analyzeEmotions(results, lastEndTime);
+  endTimerEmotionAnalysis();  // timer
   return lipSyncData;
 };
 
+
 const getJapanesePhonemes = async (word: string): Promise<string[]> => {
+  // メモリキャッシュを確認
+  if (memoryPhonemeCache.has(word)) {
+    return memoryPhonemeCache.get(word)!;
+  }
+
+  // Vercel KVを確認
+  const kvKey = `phoneme:${word}`;
+  const cachedPhonemes = await kv.get<string[]>(kvKey);
+  if (cachedPhonemes) {
+    memoryPhonemeCache.set(word, cachedPhonemes);
+    return cachedPhonemes;
+  }
+
   try {
     const response = await axios.post('https://labs.goo.ne.jp/api/morph', {
       app_id: process.env.GOO_LAB_APP_ID,
       sentence: word,
       info_filter: 'form|read'
     });
-    console.log('API response:', JSON.stringify(response.data, null, 2));
+
     if (response.data.word_list && response.data.word_list[0]) {
-      return response.data.word_list[0].flatMap((item: string[]) => {
+      const phonemes = response.data.word_list[0].flatMap((item: string[]) => {
         const reading = item[1] || item[0];
         return reading.split('');
       });
+      
+      // メモリキャッシュとVercel KVに保存
+      memoryPhonemeCache.set(word, phonemes);
+      await kv.set(kvKey, phonemes, { ex: 86400 }); // 1日間キャッシュ
+
+      return phonemes;
     } else {
       console.error('Unexpected API response structure:', response.data);
       return [];
@@ -182,14 +218,43 @@ const getJapanesePhonemes = async (word: string): Promise<string[]> => {
     return [];
   }
 };
+// const getJapanesePhonemes = async (word: string): Promise<string[]> => {
+//   if (phonemeCache.has(word)) {
+//     return phonemeCache.get(word)!;
+//   }
 
-const getIntensity = (phoneme: string, index: number, totalPhonemes: number): number => {
-  let baseIntensity = 0.5 + (index / totalPhonemes) * 0.5;
-  if ('アイウエオァィゥェォ'.includes(phoneme)) baseIntensity *= 1.2;
-  return Math.min(baseIntensity, 1);
-};
+//   try {
+//     const response = await axios.post('https://labs.goo.ne.jp/api/morph', {
+//       app_id: process.env.GOO_LAB_APP_ID,
+//       sentence: word,
+//       info_filter: 'form|read'
+//     });
+
+//     if (response.data.word_list && response.data.word_list[0]) {
+//       const phonemes = response.data.word_list[0].flatMap((item: string[]) => {
+//         const reading = item[1] || item[0];
+//         return reading.split('');
+//       });
+//       phonemeCache.set(word, phonemes);
+//       return phonemes;
+//     } else {
+//       console.error('Unexpected API response structure:', response.data);
+//       return [];
+//     }
+//   } catch (error) {
+//     console.error('Error in getJapanesePhonemes:', error);
+//     return [];
+//   }
+// };
+
+// const getIntensity = (phoneme: string, index: number, totalPhonemes: number): number => {
+//   let baseIntensity = 0.5 + (index / totalPhonemes) * 0.5;
+//   if ('アイウエオァィゥェォ'.includes(phoneme)) baseIntensity *= 1.2;
+//   return Math.min(baseIntensity, 1);
+// };
 
 const analyzeEmotions = (results: ISpeechRecognitionResult[], duration: number): Array<{ start: number; end: number; emotion: string; intensity: number; }> => {
+  const endTimerEmotionAnalysis = startTimer('Analyze Emotions');  // timer
   const emotions = ['neutral', 'happy', 'sad', 'surprised', 'angry'];
   const emotionCues = [];
   let currentTime = 0;
@@ -205,12 +270,15 @@ const analyzeEmotions = (results: ISpeechRecognitionResult[], duration: number):
     currentTime += emotionDuration;
   }
 
+  endTimerEmotionAnalysis();  // timer
   return emotionCues;
 };
 
+
+
 const lipSyncMessage = async (message: number): Promise<LipSync> => {
-  const time = new Date().getTime();
-  console.log(`メッセージ ${message} の変換を開始します`);
+  const endTimerLipSync = startTimer('Lip Sync Message');  // timer
+  // console.log(`メッセージ ${message} の変換を開始します`);
   try {
     const fileName = `message_${message}.mp3`;
     const audioBuffer = memoryCache.audioFiles.get(fileName);
@@ -218,6 +286,12 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
       throw new Error(`Audio file not found in memory cache: ${fileName}`);
     }
 
+    // キャッシュの確認
+    if (lipSyncCache.has(fileName)) {
+      return lipSyncCache.get(fileName)!;
+    }
+
+    const endTimerSpeechClient = startTimer('Speech Client Creation');  // timer
     const client = new SpeechClient({
       projectId: process.env.GCP_PROJECT_ID,
       credentials: {
@@ -225,17 +299,19 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
         client_email: process.env.GCP_CLIENT_EMAIL,
       },
     });
+    endTimerSpeechClient();  // timer
 
     if (!process.env.GCP_PROJECT_ID || !process.env.GCP_PRIVATE_KEY || !process.env.GCP_CLIENT_EMAIL) {
       throw new Error('Google Cloud 認証情報が不足しています。環境変数を確認してください。');
     }
 
+    // 音声認識
     const audio: protos.google.cloud.speech.v1.IRecognitionAudio = {
       content: audioBuffer,
     };
     const config: protos.google.cloud.speech.v1.IRecognitionConfig = {
       encoding: protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,
-      sampleRateHertz: 16000,
+      sampleRateHertz: 8000,
       languageCode: 'ja-JP',
       enableWordTimeOffsets: true,
     };
@@ -243,38 +319,67 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
       audio: audio,
       config: config,
     };
-
+    const endTimerSpeechRecognition = startTimer('Speech Recognition');  // timer
     const [response] = await client.recognize(request);
-    console.log(`文字起こし完了: ${new Date().getTime() - time}ms`);
+    endTimerSpeechRecognition();  // timer
+    // console.log(`文字起こし完了: ${new Date().getTime() - time}ms`);
 
     if (!response.results || response.results.length === 0) {
       throw new Error('音声認識結果が空です');
     }
 
+    // リップシンクデータの生成
+    const endTimerLipSyncGeneration = startTimer('Lip Sync Generation');  // timer
     const lipSyncData = await generateLipSyncFromTranscription(response.results);
+    endTimerLipSyncGeneration();  // timer
+
     memoryCache.lipSyncData.set(`message_${message}`, lipSyncData);
-    console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
+    // console.log(`リップシンク完了: ${new Date().getTime() - time}ms`);
 
     return lipSyncData;
   } catch (error) {
     console.error(`lipSyncMessageでエラーが発生しました: ${error}`);
     throw error;
+  } finally {  // timer
+    endTimerLipSync();
   }
 };
 
+// 音声処理
 const generateAudio = async (text: string, fileName: string): Promise<void> => {
+  const endTimerGenerateAudio = startTimer('Generate Audio');  // timer
   try {
+    // 音声データのキャッシュを実装して、同じテキストの音声を再利用
+    if (audioCache.has(text)) {
+      memoryCache.audioFiles.set(fileName, audioCache.get(text)!);
+      console.log(`Audio data retrieved from cache for ${fileName}`);
+      return;
+    }
+
+    const endTimerOpenAIAPI = startTimer('OpenAI API Call mp3');  // timer
     const mp3 = await openai.audio.speech.create({
       model: 'tts-1',
       voice: 'nova',
       input: text,
     });
+    endTimerOpenAIAPI();  // timer
+
+    const endTimerBufferCreation = startTimer('Buffer Creation');  // timer
     const buffer = Buffer.from(await mp3.arrayBuffer());
+    endTimerBufferCreation();  // timer
+
+    // キャッシュに保存
+    const endTimerCacheStore = startTimer('Cache Store');  // timer
+    audioCache.set(text, buffer);
     memoryCache.audioFiles.set(fileName, buffer);
-    console.log(`Audio data successfully stored in memory cache for ${fileName}`);
+    endTimerCacheStore();  // timer
+
+    // console.log(`Audio data successfully stored in memory cache for ${fileName}`);
   } catch (error) {
     console.error(`Error in generateAudio: ${error}`);
     throw error;
+  } finally {  // timer
+    endTimerGenerateAudio();
   }
 };
 
@@ -359,30 +464,35 @@ const phases = [
 ];
 
 export async function POST(request: Request) {
+  const endTimer = startTimer('POST function total time');  // timer
   try {
     const { message: userMessage, themeId } = await request.json();
+    // const endTimerUserMessage = startTimer('User message processing');  // timer
     if (!themeId) {
       console.error('テーマIDが指定されていません');
+      // endTimerUserMessage();  // timer
       return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
     }
 
-    console.log(`指定されたテーマID: ${themeId}`);
     let context = "";
     let currentPhaseIndex = 0;
     let totalQuestionCount = 0;
 
+    // const endTimerThemeDoc = startTimer('Theme document retrieval');  // timer
     const themeDocRef = doc(db, "themes", themeId);
     const themeDocSnap = await getDoc(themeDocRef);
     if (!themeDocSnap.exists()) {
       console.error('指定されたテーマIDのドキュメントが存在しません');
+      // endTimerThemeDoc();  // timer
       return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
     }
 
     const theme = themeDocSnap.data().name;
-    console.log(`テーマ名: ${theme}`);
+    // endTimerThemeDoc();  // timer
 
     const messageCollectionRef = collection(themeDocRef, "messages");
 
+    // const endTimerMessageCount = startTimer('Message count retrieval');  // timer
     try {
       const botMessagesQuery = query(
         messageCollectionRef,
@@ -396,9 +506,12 @@ export async function POST(request: Request) {
       );
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
+      // endTimerMessageCount();  // timer
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
     }
+    // endTimerMessageCount();  // timer
 
+    // const endTimerContext = startTimer('Context retrieval');  // timer
     try {
       const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
       const querySnapshot = await getDocs(q);
@@ -408,8 +521,10 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       console.error('コンテキストの取得中にエラーが発生しました:', error);
+      // endTimerContext();  // timer
       return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
     }
+    // endTimerContext();  // timer
 
     if (!userMessage) {
       try {
@@ -455,21 +570,33 @@ export async function POST(request: Request) {
         .replace("{theme}", theme)
         .replace("{context}", context);
 
+      // const endTimerGPT4 = startTimer('GPT API call');  // timer
       try {
+        const endTimerAPICall = startTimer('OpenAI API Call');  // timer
         const gpt4Response = await openai.chat.completions.create({
           messages: [
             { role: "system", content: prompt },
             { role: "user", content: userMessage }
           ],
-          model: "gpt-4"
+          // model: "gpt-4"
+          model: "gpt-3.5-turbo"
         });
+        endTimerAPICall();  // timer
 
+        // const endTimerResponseGeneration = startTimer('Bot Response Generation');  // timer
         const botResponseText = gpt4Response.choices[0].message.content ?? null;
+        // endTimerResponseGeneration();  // timer
 
         if (botResponseText) {
+          const endTimerTextProcessing = startTimer('Text Processing');  // timer
           const fileName = `message_${totalQuestionCount}.mp3`;
+          const endTimerAudioGeneration = startTimer('Audio Generation');  // timer
           await generateAudio(botResponseText, fileName);
+          endTimerAudioGeneration();  // timer
+
+          const endTimerLipSyncProcessing = startTimer('Lip Sync Processing');  // timer
           await lipSyncMessage(totalQuestionCount);
+          endTimerLipSyncProcessing();  // timer
 
           const botMessage: Message = {
             text: botResponseText,
@@ -493,14 +620,19 @@ export async function POST(request: Request) {
             currentPhaseIndex++;
           }
 
+          endTimerTextProcessing();  // timer
+          // endTimerUserMessage();  // timer
+          // endTimerGPT4();  // timer
           return NextResponse.json({ messages: [botMessage] });
         } else {
           console.error('botResponseTextがnullです');
           return NextResponse.json({ error: 'AI応答の生成に失敗しました' }, { status: 500 });
         }
       } catch (error) {
-        console.error('GPT-4 APIの呼び出し中にエラーが発生しました:', error);
+        console.error('GPT APIの呼び出し中にエラーが発生しました:', error);
         return NextResponse.json({ error: 'AI応答の生成に失敗しました' }, { status: 500 });
+      } finally {  // timer
+        // endTimerGPT4();
       }
     } else {
       return await handleInterviewEnd(messageCollectionRef);
@@ -508,9 +640,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);
     return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });
+  } finally {  // timer
+    endTimer();
   }
 }
-
 
 async function handleInterviewEnd(messageCollectionRef: CollectionReference) {
   try {

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../../../firebase';
+import { db } from '../../../../firebase';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
 import { Message } from '@/stores/Message';
@@ -71,7 +71,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         throw new Error('テーマが選択されていません');
       }
 
-      const response = await fetch('/api/chat_server', {
+      const response = await fetch('/api/interview_server', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -25,7 +25,7 @@ const Home = () => {
           <div className="hidden md:flex items-center gap-8">
               <Image
                 src="/logo/logo_yoko.svg"
-                alt="Logo"
+                alt="感性分析 Logo"
                 width={120}
                 height={120}
                 className="text-white"
@@ -45,12 +45,11 @@ const Home = () => {
                 <span>|</span>
                 <Link href="/users/login" className="hover:text-white">Login</Link>
               </div>
-              <Button
-                className="bg-[#E31C58] hover:bg-[#C01548] text-white"
-                href="/users"
-              >
-                SIGN UP FOR FREE
-              </Button>
+              <Link href="/users">
+                <Button className="bg-[#E31C58] hover:bg-[#C01548] text-white">
+                  SIGN UP FOR FREE
+                </Button>
+              </Link>
             </div>
           </nav>
         </div>
