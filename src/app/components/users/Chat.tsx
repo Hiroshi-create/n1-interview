@@ -18,6 +18,7 @@ type ChatContextType = {
     message: Message | null;
     onMessagePlayed: () => void;
     themeId: string | undefined;
+    isThinking: boolean;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -33,6 +34,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [cameraZoomed, setCameraZoomed] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -65,6 +67,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const chat = async (messageText: string) => {
     setIsLoading(true);
     setLoading(true);
+    setIsThinking(true);
 
     try {
       if (!selectedThemeId) {
@@ -119,6 +122,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     } finally {
       setIsLoading(false);
       setLoading(false);
+      setIsThinking(false);
     }
   };
   
@@ -150,6 +154,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       message,
       onMessagePlayed,
       themeId: selectedThemeId ?? undefined,
+      isThinking,
     }}>
       {children}
     </ChatContext.Provider>

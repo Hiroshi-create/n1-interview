@@ -129,14 +129,14 @@ export function Avatar(props) {
     "/models/64f1a714fe61576b46f27ca2.glb"
   );
 
-  const { message, onMessagePlayed, chat } = useChat();
+  const { message, onMessagePlayed, chat, isThinking } = useChat();
 
   const [lipsync, setLipsync] = useState();
 
   useEffect(() => {
     console.log(message);
     if (!message) {
-      setAnimation("Idle");
+      setAnimation(isThinking ? "Thinking" : "Idle");
       return;
     }
     setAnimation(message.animation);
@@ -146,7 +146,7 @@ export function Avatar(props) {
     audio.play();
     setAudio(audio);
     audio.onended = onMessagePlayed;
-  }, [message]);
+  }, [message, isThinking]);
 
   const { animations } = useGLTF("/models/animations.glb");
 
