@@ -34,18 +34,36 @@ export async function POST(request: NextRequest) {
     console.log('File size:', file.size, 'bytes');
 
     if (file.size === 0) {
+      console.log('ファイルサイズが0です');
       return NextResponse.json({ error: 'ファイルが空です' }, { status: 400 })
     }
 
+    console.log('ファイルサイズチェック完了');
+
     const buffer = await file.arrayBuffer()
+    console.log('ArrayBuffer取得完了');
+
     const header = Buffer.from(buffer.slice(0, 4)).toString('hex')
+    console.log('ファイルヘッダー:', header);
+
     if (header !== '1a45dfa3') {  // WebMファイルのマジックナンバー
+      console.log('無効なWebMファイルです');
       return NextResponse.json({ error: '無効なWebMファイルです' }, { status: 400 })
     }
 
+    console.log('WebMファイル形式チェック完了');
+
     // 一時ファイルを作成
     tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
-    await fs.promises.writeFile(tempFilePath, Buffer.from(buffer));
+    console.log('一時ファイルパス:', tempFilePath);
+
+    try {
+      await fs.promises.writeFile(tempFilePath, Buffer.from(buffer));
+      console.log('一時ファイル作成完了');
+    } catch (error) {
+      console.error('一時ファイル作成エラー:', error);
+      return NextResponse.json({ error: '一時ファイルの作成に失敗しました' }, { status: 500 })
+    }
 
     const whisperFormData = new FormData()
     whisperFormData.append('file', fs.createReadStream(tempFilePath), {
@@ -53,11 +71,43 @@ export async function POST(request: NextRequest) {
       contentType: 'audio/webm',
     })
     whisperFormData.append('model', 'whisper-1')
+    console.log('WhisperAPI用FormData作成完了');
 
     // Whisper APIに送信するリクエストの詳細をログに出力
     console.log('Sending request to Whisper API');
     console.log('Request headers:', whisperFormData.getHeaders());
     console.log('API Key:', process.env.NEXT_PUBLIC_OPENAI_KEY ? 'Set' : 'Not set');
+
+    // // ファイルの詳細をログに出力
+    // console.log('File name:', file.name);
+    // console.log('File type:', file.type);
+    // console.log('File size:', file.size, 'bytes');
+
+    // if (file.size === 0) {
+    //   return NextResponse.json({ error: 'ファイルが空です' }, { status: 400 })
+    // }
+
+    // const buffer = await file.arrayBuffer()
+    // const header = Buffer.from(buffer.slice(0, 4)).toString('hex')
+    // if (header !== '1a45dfa3') {  // WebMファイルのマジックナンバー
+    //   return NextResponse.json({ error: '無効なWebMファイルです' }, { status: 400 })
+    // }
+
+    // // 一時ファイルを作成
+    // tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
+    // await fs.promises.writeFile(tempFilePath, Buffer.from(buffer));
+
+    // const whisperFormData = new FormData()
+    // whisperFormData.append('file', fs.createReadStream(tempFilePath), {
+    //   filename: 'audio.webm',
+    //   contentType: 'audio/webm',
+    // })
+    // whisperFormData.append('model', 'whisper-1')
+
+    // // Whisper APIに送信するリクエストの詳細をログに出力
+    // console.log('Sending request to Whisper API');
+    // console.log('Request headers:', whisperFormData.getHeaders());
+    // console.log('API Key:', process.env.NEXT_PUBLIC_OPENAI_KEY ? 'Set' : 'Not set');
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
