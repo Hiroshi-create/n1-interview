@@ -38,22 +38,22 @@ export async function POST(request: NextRequest) {
     const buffer = await file.arrayBuffer()
     console.log('ArrayBuffer取得完了');
 
-    const header = Buffer.from(buffer.slice(0, 4)).toString('hex')
+    const header = Buffer.from(buffer.slice(0, 32)).toString('hex')
     console.log('ファイルヘッダー:', header);
 
     let contentType = '';
     let fileExtension = '';
 
-    if (header === '1a45dfa3') {
+    if (header.includes('1a45dfa3') || file.type === 'audio/webm') {
       contentType = 'audio/webm';
       fileExtension = 'webm';
-    } else if (header === '494433') {
+    } else if (header.startsWith('494433') || file.type === 'audio/mpeg') {
       contentType = 'audio/mpeg';
       fileExtension = 'mp3';
-    } else if (header === '52494646') {
+    } else if (header.startsWith('52494646') || file.type === 'audio/wav') {
       contentType = 'audio/wav';
       fileExtension = 'wav';
-    } else if (header === '4f676753') {
+    } else if (header.startsWith('4f676753') || file.type === 'audio/ogg') {
       contentType = 'audio/ogg';
       fileExtension = 'ogg';
     } else {
