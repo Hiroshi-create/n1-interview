@@ -29,7 +29,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     console.log("音声入力の時" + currentThemeId);
     setIsProcessingAudio(true);
     const formData = new FormData();
-    formData.append('file', audioBlob, `audio.${audioBlob.type.split('/')[1]}`);
+    formData.append('file', audioBlob, 'audio.webm');
     formData.append('themeId', currentThemeId || '');
   
     try {
@@ -79,7 +79,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       mediaRecorder.onstop = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        const audioBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
         console.log("Total audio size:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
@@ -94,7 +94,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
-      setIsProcessingAudio(true);
+      setIsProcessingAudio(true);  // 録音停止時にも処理中フラグを立てる
     }
   };
 

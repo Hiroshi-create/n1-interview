@@ -5,6 +5,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
+// CORS用のヘッダーを設定する関数
 function setCorsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', 'https://n1-interview-kanseibunseki-incs-projects.vercel.app')
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -12,6 +13,7 @@ function setCorsHeaders(response: NextResponse) {
   return response
 }
 
+// OPTIONSリクエストに対応するハンドラー
 export async function OPTIONS() {
   return setCorsHeaders(NextResponse.json({}, { status: 200 }))
 }
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ファイルが見つかりません' }, { status: 400 })
     }
 
+    // ファイルの詳細をログに出力
     console.log('File name:', file.name);
     console.log('File type:', file.type);
     console.log('File size:', file.size, 'bytes');
@@ -35,27 +38,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ファイルが空です' }, { status: 400 })
     }
 
+    console.log('ファイルサイズチェック完了');
+
     const buffer = await file.arrayBuffer()
+    console.log('ArrayBuffer取得完了');
+
     const header = Buffer.from(buffer.slice(0, 4)).toString('hex')
     console.log('ファイルヘッダー:', header);
 
-    let fileExtension = '';
-    let contentType = '';
-
-    if (header === '1a45dfa3') {
-      fileExtension = 'webm';
-      contentType = 'audio/webm';
-      console.log('WebMファイル形式チェック完了');
-    } else if (file.type === 'audio/mpeg') {
-      fileExtension = 'mp3';
-      contentType = 'audio/mpeg';
-      console.log('MPEGファイル形式チェック完了');
-    } else {
-      console.log('無効なファイル形式です');
-      return NextResponse.json({ error: '無効なファイル形式です' }, { status: 400 })
+    if (header !== '1a45dfa3') {  // WebMファイルのマジックナンバー
+      console.log('無効なWebMファイルです');
+      return NextResponse.json({ error: '無効なWebMファイルです' }, { status: 400 })
     }
 
-    tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.${fileExtension}`);
+    console.log('WebMファイル形式チェック完了');
+
+    // 一時ファイルを作成
+    tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
     console.log('一時ファイルパス:', tempFilePath);
 
     try {
@@ -68,15 +67,47 @@ export async function POST(request: NextRequest) {
 
     const whisperFormData = new FormData()
     whisperFormData.append('file', fs.createReadStream(tempFilePath), {
-      filename: `audio.${fileExtension}`,
-      contentType: contentType,
+      filename: 'audio.webm',
+      contentType: 'audio/webm',
     })
     whisperFormData.append('model', 'whisper-1')
     console.log('WhisperAPI用FormData作成完了');
 
+    // Whisper APIに送信するリクエストの詳細をログに出力
     console.log('Sending request to Whisper API');
     console.log('Request headers:', whisperFormData.getHeaders());
     console.log('API Key:', process.env.NEXT_PUBLIC_OPENAI_KEY ? 'Set' : 'Not set');
+
+    // // ファイルの詳細をログに出力
+    // console.log('File name:', file.name);
+    // console.log('File type:', file.type);
+    // console.log('File size:', file.size, 'bytes');
+
+    // if (file.size === 0) {
+    //   return NextResponse.json({ error: 'ファイルが空です' }, { status: 400 })
+    // }
+
+    // const buffer = await file.arrayBuffer()
+    // const header = Buffer.from(buffer.slice(0, 4)).toString('hex')
+    // if (header !== '1a45dfa3') {  // WebMファイルのマジックナンバー
+    //   return NextResponse.json({ error: '無効なWebMファイルです' }, { status: 400 })
+    // }
+
+    // // 一時ファイルを作成
+    // tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
+    // await fs.promises.writeFile(tempFilePath, Buffer.from(buffer));
+
+    // const whisperFormData = new FormData()
+    // whisperFormData.append('file', fs.createReadStream(tempFilePath), {
+    //   filename: 'audio.webm',
+    //   contentType: 'audio/webm',
+    // })
+    // whisperFormData.append('model', 'whisper-1')
+
+    // // Whisper APIに送信するリクエストの詳細をログに出力
+    // console.log('Sending request to Whisper API');
+    // console.log('Request headers:', whisperFormData.getHeaders());
+    // console.log('API Key:', process.env.NEXT_PUBLIC_OPENAI_KEY ? 'Set' : 'Not set');
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -98,8 +129,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...data, themeId });
   } catch (error) {
     console.error('Error:', error)
-    return setCorsHeaders(NextResponse.json({ error: 'Whisper APIの呼び出しに失敗しました' }, { status: 500 }))
+    return setCorsHeaders(NextResponse.json({ error: 'Whisper APIの呼び出しに失敗しました' }, { status: 500 }))//
   } finally {
+    // 一時ファイルを削除
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try {
         await fs.promises.unlink(tempFilePath);
@@ -112,5 +144,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return setCorsHeaders(NextResponse.json({ message: 'このエンドポイントはPOSTリクエストのみを受け付けます' }, { status: 405 }))
+  return setCorsHeaders(NextResponse.json({ message: 'このエンドポイントはPOSTリクエストのみを受け付けます' }, { status: 405 }))//
 }
