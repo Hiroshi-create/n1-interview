@@ -14,6 +14,10 @@ const Auth = () => {
     router.push('/users/register')
   }
 
+  const handleLogin = () => {
+    router.push('/users/login')
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-4xl grid md:grid-cols-2 overflow-hidden">
@@ -61,7 +65,9 @@ const Auth = () => {
             </p>
             <p>
               すでにアカウントをお持ちですか？
-              <a href="/users/login" className="text-primary hover:underline ml-1">ログイン</a>
+              <Button variant="link" className="text-primary hover:underline ml-1 p-0" onClick={handleLogin}>
+                ログイン
+              </Button>
             </p>
           </div>
         </div>
