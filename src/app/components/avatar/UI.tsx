@@ -29,7 +29,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     console.log("音声入力の時" + currentThemeId);
     setIsProcessingAudio(true);
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('file', audioBlob, `audio.${audioBlob.type.split('/')[1]}`);
     formData.append('themeId', currentThemeId || '');
   
     try {
@@ -64,7 +64,8 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mpeg';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       chunksRef.current = [];
@@ -79,7 +80,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       mediaRecorder.onstop = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const audioBlob = new Blob(chunksRef.current, { type: mimeType });
         console.log("Total audio size:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
