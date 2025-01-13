@@ -166,9 +166,9 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
             </button>
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={isProcessingAudio}
+              disabled={isLoading || isProcessingAudio}
               className={`w-24 bg-blue-500 hover:bg-blue-600 text-white p-4 font-semibold uppercase rounded-md ${
-                isProcessingAudio ? "cursor-not-allowed opacity-30" : ""
+                isLoading || isProcessingAudio ? "cursor-not-allowed opacity-30" : ""
               }`}
             >
               {isRecording || isProcessingAudio ? (

@@ -5,6 +5,19 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
+// CORS用のヘッダーを設定する関数
+function setCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', 'https://n1-interview-kanseibunseki-incs-projects.vercel.app')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  return response
+}
+
+// OPTIONSリクエストに対応するハンドラー
+export async function OPTIONS() {
+  return setCorsHeaders(NextResponse.json({}, { status: 200 }))
+}
+
 export async function POST(request: NextRequest) {
   let tempFilePath = '';
   try {
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ...data, themeId });
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json({ error: 'Whisper APIの呼び出しに失敗しました' }, { status: 500 })
+    return setCorsHeaders(NextResponse.json({ error: 'Whisper APIの呼び出しに失敗しました' }, { status: 500 }))//
   } finally {
     // 一時ファイルを削除
     if (tempFilePath && fs.existsSync(tempFilePath)) {
@@ -81,5 +94,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ message: 'このエンドポイントはPOSTリクエストのみを受け付けます' }, { status: 405 })
+  return setCorsHeaders(NextResponse.json({ message: 'このエンドポイントはPOSTリクエストのみを受け付けます' }, { status: 405 }))//
 }
