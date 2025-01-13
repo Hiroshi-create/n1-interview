@@ -64,8 +64,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mpeg';
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       chunksRef.current = [];
@@ -80,7 +79,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       mediaRecorder.onstop = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        const audioBlob = new Blob(chunksRef.current, { type: mimeType });
+        const audioBlob = new Blob(chunksRef.current, { type: mediaRecorder.mimeType });
         console.log("Total audio size:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
@@ -95,7 +94,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
-      setIsProcessingAudio(true);  // 録音停止時にも処理中フラグを立てる
+      setIsProcessingAudio(true);
     }
   };
 
