@@ -40,7 +40,7 @@ const AppContext = createContext<AppContextType>({
 const saveLastVisitedUrl = (url: string) => {
   localStorage.setItem('lastVisitedUrl', url);
 };
-  
+
 // ログイン後やリロード時に実行
 const getLastVisitedUrl = () => {
   return localStorage.getItem('lastVisitedUrl');
