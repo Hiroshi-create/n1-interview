@@ -38,7 +38,7 @@ const Login = () => {
             if (response.ok) {
                 const { organizationId } = await response.json();
                 if (organizationId) {
-                    router.push(`/client-view/${organizationId}`);
+                    router.push(`/client-view/${organizationId}/Report`);
                 } else {
                     alert("組織に所属していません。");
                 }

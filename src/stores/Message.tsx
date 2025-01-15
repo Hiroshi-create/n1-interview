@@ -5,8 +5,4 @@ export type Message = {
     sender: string;
     createdAt: Timestamp | FieldValue;
     type: string;
-    lipsync?: LipSync;
-    facialExpression?: string;
-    animation?: string;
-    opacity?: number;
 }

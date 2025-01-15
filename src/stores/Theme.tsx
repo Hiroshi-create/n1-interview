@@ -1,13 +1,11 @@
 import { Timestamp } from "firebase/firestore";
 
 export type Theme = {
-    id: string;
-    name: string;
+    themeId: string;
+    theme: string;
+    createUserId: string;
     createdAt: Timestamp;
-
-    // themeId: string;
-    // theme: string;
-    // createdAt: Timestamp;
-    // participatingClientIds: [];
-    // interviewCount: number;
+    searchClientId: string;
+    interviewsRequestedCount: number;
+    collectInterviewsCount: number;
 }

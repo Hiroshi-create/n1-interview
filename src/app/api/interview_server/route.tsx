@@ -5,6 +5,7 @@ import { db } from '../../../../firebase';
 import { protos, SpeechClient } from '@google-cloud/speech';
 import axios from 'axios';
 import { kv } from '@vercel/kv';
+import { Theme } from '@/stores/Theme';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
 
@@ -218,34 +219,6 @@ const getJapanesePhonemes = async (word: string): Promise<string[]> => {
     return [];
   }
 };
-// const getJapanesePhonemes = async (word: string): Promise<string[]> => {
-//   if (phonemeCache.has(word)) {
-//     return phonemeCache.get(word)!;
-//   }
-
-//   try {
-//     const response = await axios.post('https://labs.goo.ne.jp/api/morph', {
-//       app_id: process.env.GOO_LAB_APP_ID,
-//       sentence: word,
-//       info_filter: 'form|read'
-//     });
-
-//     if (response.data.word_list && response.data.word_list[0]) {
-//       const phonemes = response.data.word_list[0].flatMap((item: string[]) => {
-//         const reading = item[1] || item[0];
-//         return reading.split('');
-//       });
-//       phonemeCache.set(word, phonemes);
-//       return phonemes;
-//     } else {
-//       console.error('Unexpected API response structure:', response.data);
-//       return [];
-//     }
-//   } catch (error) {
-//     console.error('Error in getJapanesePhonemes:', error);
-//     return [];
-//   }
-// };
 
 // const getIntensity = (phoneme: string, index: number, totalPhonemes: number): number => {
 //   let baseIntensity = 0.5 + (index / totalPhonemes) * 0.5;
@@ -466,12 +439,13 @@ const phases = [
 export async function POST(request: Request) {
   const endTimer = startTimer('POST function total time');  // timer
   try {
-    const { message: userMessage, themeId } = await request.json();
+    const { message: userMessage, interviewRefPath: interviewRefPath } = await request.json();
+    const interviewRef = doc(db, interviewRefPath);
     // const endTimerUserMessage = startTimer('User message processing');  // timer
-    if (!themeId) {
-      console.error('テーマIDが指定されていません');
+    if (!interviewRef) {
+      console.error('インタビューが指定されていません');
       // endTimerUserMessage();  // timer
-      return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
+      return NextResponse.json({ error: 'インタビューが指定されていません' }, { status: 400 });
     }
 
     let context = "";
@@ -479,18 +453,18 @@ export async function POST(request: Request) {
     let totalQuestionCount = 0;
 
     // const endTimerThemeDoc = startTimer('Theme document retrieval');  // timer
-    const themeDocRef = doc(db, "themes", themeId);
-    const themeDocSnap = await getDoc(themeDocRef);
+    const themeDocSnap = await getDoc(interviewRef);
     if (!themeDocSnap.exists()) {
       console.error('指定されたテーマIDのドキュメントが存在しません');
       // endTimerThemeDoc();  // timer
       return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
     }
 
-    const theme = themeDocSnap.data().name;
+    const themeData = themeDocSnap.data() as Theme;
+    const theme = themeData.theme;
     // endTimerThemeDoc();  // timer
 
-    const messageCollectionRef = collection(themeDocRef, "messages");
+    const messageCollectionRef = collection(interviewRef, "messages");
 
     // const endTimerMessageCount = startTimer('Message count retrieval');  // timer
     try {
@@ -607,7 +581,7 @@ export async function POST(request: Request) {
           };
 
           await addDoc(messageCollectionRef, {
-            ...botMessage,
+            text: botResponseText,
             sender: "bot",
             createdAt: serverTimestamp(),
             type: "interview",

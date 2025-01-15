@@ -1,9 +1,9 @@
 import { FieldValue, Timestamp } from "firebase/firestore";
 
-export type Interview = {
+export type Interviews = {
     interviewId: string;
     intervieweeId: string;
     createdAt: Timestamp | FieldValue;
-    clientId: string;
     questionCount: number;
+    theme: string;
 }

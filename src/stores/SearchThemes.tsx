@@ -1,6 +1,6 @@
 import { FieldValue, Timestamp } from "firebase/firestore";
 
-export type IndividualReport = {
+export type SearchThemes = {
     createdAt: Timestamp | FieldValue;
-    report: string;
+    themeId: string;
 }

@@ -4,7 +4,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { auth, db } from "../../firebase";
 import { useRouter } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, DocumentReference, getDoc } from "firebase/firestore";
 
 type AppProviderProps = {
     children: ReactNode;
@@ -14,8 +14,10 @@ type AppContextType = {
     user: User | null;
     userId: string | null,
     setUser: React.Dispatch<React.SetStateAction<User | null>>;
-    selectedThemeId: string | null,
-    setSelectedThemeId: React.Dispatch<React.SetStateAction<string | null>>;
+    selectedInterviewId: string | null,
+    setSelectedInterviewId: React.Dispatch<React.SetStateAction<string | null>>;
+    selectedInterviewRef: DocumentReference | null,
+    setSelectedInterviewRef: React.Dispatch<React.SetStateAction<DocumentReference | null>>;
     selectThemeName: string | null,
     setSelectThemeName: React.Dispatch<React.SetStateAction<string | null>>;
     resetContext: () => void;
@@ -25,8 +27,10 @@ const AppContext = createContext<AppContextType>({
     user: null,
     userId: null,
     setUser: () => {},
-    selectedThemeId: null,
-    setSelectedThemeId: () => {},
+    selectedInterviewId: null,
+    setSelectedInterviewId: () => {},
+    selectedInterviewRef: null,
+    setSelectedInterviewRef: () => {},
     selectThemeName: null,
     setSelectThemeName: () => {},
     resetContext: () => {},
@@ -45,7 +49,8 @@ const getLastVisitedUrl = () => {
 export function AppProvider({ children }: AppProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
-    const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
+    const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
+    const [selectedInterviewRef, setSelectedInterviewRef] = useState<DocumentReference | null>(null);
     const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
     const router = useRouter();
 
@@ -65,7 +70,7 @@ export function AppProvider({ children }: AppProviderProps) {
               const userDoc = await getDoc(doc(db, "users", newUser.uid));
               const userData = userDoc.data();
               if (userData && userData.inOrganization) {
-                router.push(`/client-view/${newUser.uid}`);
+                router.push(`/client-view/${newUser.uid}/Report`);
               } else {
                 router.push(`/auto-interview/${newUser.uid}`);
               }
@@ -79,8 +84,9 @@ export function AppProvider({ children }: AppProviderProps) {
     }, []);
 
     const resetContext = () => {
-        setSelectedThemeId(null);
+        setSelectedInterviewId(null);
         setSelectThemeName(null);
+        setSelectedInterviewRef(null);
     };
 
     return (
@@ -89,8 +95,10 @@ export function AppProvider({ children }: AppProviderProps) {
                 user, 
                 userId, 
                 setUser, 
-                selectedThemeId, 
-                setSelectedThemeId, 
+                selectedInterviewId, 
+                setSelectedInterviewId, 
+                selectedInterviewRef, 
+                setSelectedInterviewRef, 
                 selectThemeName, 
                 setSelectThemeName,
                 resetContext

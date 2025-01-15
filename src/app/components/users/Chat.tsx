@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '../../../../firebase';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
 import { Message } from '@/stores/Message';
@@ -28,7 +27,7 @@ type ChatProviderProps = {
 };
 
 export const ChatProvider = ({ children }: ChatProviderProps) => {
-  const { selectedThemeId, selectThemeName } = useAppsContext();
+  const { selectedInterviewId, selectedInterviewRef, selectThemeName } = useAppsContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cameraZoomed, setCameraZoomed] = useState(true);
@@ -38,11 +37,10 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
   useEffect(() => {
     let unsubscribe: () => void;
-    if (selectedThemeId) {
+    if (selectedInterviewId && selectedInterviewRef) {
       const fetchMessages = async () => {
         try {
-          const themeDocRef = doc(db, "themes", selectedThemeId);
-          const messagesCollectionRef = collection(themeDocRef, "messages");
+          const messagesCollectionRef = collection(selectedInterviewRef, "messages");
           const q = query(messagesCollectionRef, orderBy("createdAt"));
           unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
@@ -62,7 +60,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         unsubscribe();
       }
     };
-  }, [selectedThemeId]);
+  }, [selectedInterviewId, selectedInterviewRef]);
 
   const chat = async (messageText: string) => {
     setIsLoading(true);
@@ -70,8 +68,8 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     setIsThinking(true);
 
     try {
-      if (!selectedThemeId) {
-        throw new Error('テーマが選択されていません');
+      if (!selectedInterviewRef) {
+        throw new Error('インタビューが選択されていません');
       }
 
       const response = await fetch('/api/interview_server', {
@@ -79,7 +77,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: messageText, themeId: selectedThemeId }),
+        body: JSON.stringify({ message: messageText, interviewRefPath: selectedInterviewRef.path }),
       });
       
       if (!response.ok) {
@@ -96,7 +94,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ themeId: selectedThemeId }),
+          body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
         });
 
         if (!reportResponse.ok) {
@@ -153,7 +151,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       loading,
       message,
       onMessagePlayed,
-      themeId: selectedThemeId ?? undefined,
+      themeId: selectedInterviewId ?? undefined,
       isThinking,
     }}>
       {children}
