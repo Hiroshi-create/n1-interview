@@ -75,16 +75,16 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
         mimeType: isIOS ? 'audio/m4a' : 'audio/webm'
       });
       mediaRecorderRef.current = mediaRecorder;
-
+  
       chunksRef.current = [];
-
+  
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
           console.log("Audio chunk size:", event.data.size);
         }
       };
-
+  
       mediaRecorder.onstop = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
@@ -92,13 +92,19 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
         console.log("Total audio size:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
-
-      mediaRecorder.start(1000);
+  
+      await new Promise<void>((resolve) => {
+        mediaRecorder.onstart = () => {
+          resolve();
+        };
+        mediaRecorder.start(1000);
+      });
+  
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
     }
-  }, [sendAudioToWhisper, themeId]);
+  }, [sendAudioToWhisper, themeId, isIOS]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
