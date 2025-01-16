@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { collection, query, orderBy, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
 import { Theme } from '@/stores/Theme';
 import { IndividualReport } from '@/stores/IndividualReport';
 import { db } from '../../../../../firebase';
+import { v4 as uuidv4 } from 'uuid';
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -80,11 +81,13 @@ export async function POST(req: NextRequest) {
     }
 
     const reportsCollectionRef = collection(interviewRef, "individualReport");
+    const newReportId = uuidv4();
     const newReport: IndividualReport = {
       createdAt: serverTimestamp(),
       report: report,
+      individualReportId: newReportId,
     };
-    await addDoc(reportsCollectionRef, newReport);
+    await setDoc(doc(reportsCollectionRef, newReportId), newReport);
 
     await updateDoc(interviewRef, {
       reportCreated: true
