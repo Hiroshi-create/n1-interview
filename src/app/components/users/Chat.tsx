@@ -89,7 +89,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       
       if (data.interviewEnd) {
         // インタビュー終了時にレポート生成APIを呼び出す
-        const reportResponse = await fetch('/api/report', {
+        const reportResponse = await fetch('/api/report/individualReport', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -126,18 +126,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   
   const onMessagePlayed = useCallback(async () => {
     setMessage(null);
-    try {
-      const response = await fetch('/api/clear_audios', { method: 'POST' });
-      if (!response.ok) {
-        throw new Error('音声ファイルのクリーンアップに失敗しました');
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('音声ファイルのクリーンアップ中にエラーが発生しました:', error.message);
-      } else {
-        console.error('音声ファイルのクリーンアップ中に予期せぬエラーが発生しました');
-      }
-    }
   }, []);
 
   return (

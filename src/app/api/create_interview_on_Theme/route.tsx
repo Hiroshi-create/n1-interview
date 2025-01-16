@@ -53,6 +53,7 @@ export async function POST(request: Request) {
             createdAt: serverTimestamp(),
             questionCount: 0,
             theme: theme,
+            reportCreated: false,
         };
         await setDoc(interviewDocRef, interviewData);
 

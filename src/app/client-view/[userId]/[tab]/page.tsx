@@ -2,10 +2,10 @@
 
 import { useParams, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import PatternA from '../contents/analysisNav/patternA';
-import PatternB from '../contents/analysisNav/patternB';
-import PatternC from '../contents/analysisNav/patternC';
-import PatternD from '../contents/analysisNav/patternD';
+import PatternA from '../contents/analysisNav/PatternA';
+import PatternB from '../contents/analysisNav/PatternB';
+import PatternC from '../contents/analysisNav/PatternC';
+import PatternD from '../contents/analysisNav/PatternD';
 import AddTheme from '../contents/mainNav/AddTheme';
 import Report from '../contents/mainNav/Report';
 

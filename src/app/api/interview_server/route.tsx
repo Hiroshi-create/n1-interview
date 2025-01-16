@@ -462,6 +462,7 @@ export async function POST(request: Request) {
 
     const themeData = themeDocSnap.data() as Theme;
     const theme = themeData.theme;
+    console.log("theme : " + theme)
     // endTimerThemeDoc();  // timer
 
     const messageCollectionRef = collection(interviewRef, "messages");
@@ -547,7 +548,7 @@ export async function POST(request: Request) {
       // const endTimerGPT4 = startTimer('GPT API call');  // timer
       try {
         const endTimerAPICall = startTimer('OpenAI API Call');  // timer
-        const gpt4Response = await openai.chat.completions.create({
+        const gptResponse = await openai.chat.completions.create({
           messages: [
             { role: "system", content: prompt },
             { role: "user", content: userMessage }
@@ -558,7 +559,7 @@ export async function POST(request: Request) {
         endTimerAPICall();  // timer
 
         // const endTimerResponseGeneration = startTimer('Bot Response Generation');  // timer
-        const botResponseText = gpt4Response.choices[0].message.content ?? null;
+        const botResponseText = gptResponse.choices[0].message.content ?? null;
         // endTimerResponseGeneration();  // timer
 
         if (botResponseText) {

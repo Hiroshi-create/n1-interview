@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { collection, query, orderBy, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Theme } from '@/stores/Theme';
 import { IndividualReport } from '@/stores/IndividualReport';
-import { db } from '../../../../firebase';
+import { db } from '../../../../../firebase';
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -18,12 +18,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
     }
 
-    // Firestoreからインタビューデータを取得
-    // const themeDocRef = doc(db, "themes", themeId);
     const themeDocSnap = await getDoc(interviewRef);
     if (!themeDocSnap.exists()) {
-        console.error('指定されたテーマIDのドキュメントが存在しません');
-        return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
+      console.error('指定されたテーマIDのドキュメントが存在しません');
+      return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
     }
     const themeData = themeDocSnap.data() as Theme;
     const theme = themeData.theme;
@@ -38,18 +36,6 @@ export async function POST(req: NextRequest) {
       context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
     });
 
-    // レポート生成のためのプロンプト
-    // summary: `
-    // テーマ: {theme}
-    // インタビュー全体を分析し、以下の形式で分析レポートを作成してください：
-    // 1. どんな{theme}が選ばれるか:ここに記載
-    // 2. 今の{theme}を選んだ理由:ここに記載
-    // 3. 他社{theme}と比較したときの魅力:ここに記載
-    // 4. これから{theme}を選ぶとしたらどこを重視するか:ここに記載
-    // 5. {theme}における不満や問題:ここに記載
-    // 6. {theme}において新しく求める特徴や機能:ここに記載
-    // これまでの会話コンテキスト: {context}
-    // `,
     const summary_template = `
     テーマ: ${theme}
     インタビュー全体を分析し、以下の形式で詳細なレポートを作成してください：
@@ -93,13 +79,16 @@ export async function POST(req: NextRequest) {
       throw new Error('レポートの内容がnullです');
     }
 
-    // レポートをFirebaseに保存
-    const reportsCollectionRef = collection(interviewRef, "reports");
+    const reportsCollectionRef = collection(interviewRef, "individualReport");
     const newReport: IndividualReport = {
       createdAt: serverTimestamp(),
       report: report,
     };
     await addDoc(reportsCollectionRef, newReport);
+
+    await updateDoc(interviewRef, {
+      reportCreated: true
+    });
 
     return NextResponse.json({ report });
   } catch (error) {
