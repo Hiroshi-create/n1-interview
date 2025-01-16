@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
       childUsersCount: 1,
       childUserIds: [user.uid],
       createdAt: serverTimestamp(),
+      themesCount: 0,
     };
 
 

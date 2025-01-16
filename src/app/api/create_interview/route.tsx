@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
 import { AnswerInterviews } from '@/stores/AnswerInterviews';
+import { ManageThemes } from '@/stores/ManageThemes';
 
 export async function POST(request: Request) {
   try {
@@ -45,26 +46,35 @@ export async function POST(request: Request) {
 
     const interviewsCollection = collection(newThemeRef, 'interviews');
     const promises = intervieweeIds.map(async (intervieweeId) => {
-        const interviewId = uuidv4();
-        const interviewDocRef = doc(interviewsCollection, interviewId);
-        const interviewData: Interviews = {
-            interviewId: interviewId,
-            intervieweeId: intervieweeId,
-            createdAt: serverTimestamp(),
-            questionCount: 0,
-            theme: theme,
-            reportCreated: false,
-        };
-        await setDoc(interviewDocRef, interviewData);
+      const interviewId = uuidv4();
+      const interviewDocRef = doc(interviewsCollection, interviewId);
+      const interviewData: Interviews = {
+        interviewId: interviewId,
+        intervieweeId: intervieweeId,
+        createdAt: serverTimestamp(),
+        questionCount: 0,
+        theme: theme,
+        reportCreated: false,
+      };
+      await setDoc(interviewDocRef, interviewData);
 
-        // users コレクションの intervieweeId に answerInterviews サブコレクションを作成
-        const userAnswerInterviewsCollection = collection(doc(db, "users", intervieweeId), "answerInterviews");
-        const answerInterviewDocRef = doc(userAnswerInterviewsCollection);
-        const answerInterviewData: AnswerInterviews = {
-            createdAt: serverTimestamp(),
-            interviewReference: interviewDocRef,
-        };
-        return setDoc(answerInterviewDocRef, answerInterviewData);
+      // users コレクションの intervieweeId に answerInterviews サブコレクションを作成
+      const userAnswerInterviewsCollection = collection(doc(db, "users", intervieweeId), "answerInterviews");
+      const answerInterviewDocRef = doc(userAnswerInterviewsCollection);
+      const answerInterviewData: AnswerInterviews = {
+        createdAt: serverTimestamp(),
+        interviewReference: interviewDocRef,
+      };
+      await setDoc(answerInterviewDocRef, answerInterviewData);
+
+      // clients コレクションの organizationId に manageThemes サブコレクションを作成
+      const clientManageThemesCollection = collection(doc(db, "clients", organizationId), "manageThemes");
+      const manageThemeDocRef = doc(clientManageThemesCollection);
+      const manageThemeData: ManageThemes = {
+        createdAt: serverTimestamp(),
+        themeReference: newThemeRef,
+      };
+      return setDoc(manageThemeDocRef, manageThemeData);
     });
 
     await Promise.all(promises);

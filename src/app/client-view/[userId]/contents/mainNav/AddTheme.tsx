@@ -17,7 +17,7 @@ const AddTheme = () => {
   const onSubmit = async (data: FormData) => {
     if (data.theme && userId) {
       try {
-        const response = await fetch('/api/create_interview_on_Theme', {
+        const response = await fetch('/api/create_interview', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

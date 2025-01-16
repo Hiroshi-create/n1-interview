@@ -8,4 +8,5 @@ export type Client = {
     childUsersCount: number;
     childUserIds: string[];
     createdAt: Timestamp | FieldValue;
+    themesCount: number;
 }

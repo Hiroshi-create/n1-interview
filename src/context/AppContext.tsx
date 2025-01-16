@@ -16,8 +16,12 @@ type AppContextType = {
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   selectedInterviewId: string | null,
   setSelectedInterviewId: React.Dispatch<React.SetStateAction<string | null>>;
+  selectedThemeId: string | null,
+  setSelectedThemeId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedInterviewRef: DocumentReference | null,
   setSelectedInterviewRef: React.Dispatch<React.SetStateAction<DocumentReference | null>>;
+  selectedThemeRef: DocumentReference | null,
+  setSelectedThemeRef: React.Dispatch<React.SetStateAction<DocumentReference | null>>;
   selectThemeName: string | null,
   setSelectThemeName: React.Dispatch<React.SetStateAction<string | null>>;
   resetContext: () => void;
@@ -29,8 +33,12 @@ const AppContext = createContext<AppContextType>({
   setUser: () => {},
   selectedInterviewId: null,
   setSelectedInterviewId: () => {},
+  selectedThemeId: null,
+  setSelectedThemeId: () => {},
   selectedInterviewRef: null,
   setSelectedInterviewRef: () => {},
+  selectedThemeRef: null,
+  setSelectedThemeRef: () => {},
   selectThemeName: null,
   setSelectThemeName: () => {},
   resetContext: () => {},
@@ -50,7 +58,9 @@ export function AppProvider({ children }: AppProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
   const [selectedInterviewRef, setSelectedInterviewRef] = useState<DocumentReference | null>(null);
+  const [selectedThemeRef, setSelectedThemeRef] = useState<DocumentReference | null>(null);
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
   const router = useRouter();
 
@@ -85,8 +95,10 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const resetContext = () => {
     setSelectedInterviewId(null);
+    setSelectedThemeId(null);
     setSelectThemeName(null);
     setSelectedInterviewRef(null);
+    setSelectedThemeRef(null);
   };
 
   return (
@@ -97,8 +109,12 @@ export function AppProvider({ children }: AppProviderProps) {
         setUser, 
         selectedInterviewId, 
         setSelectedInterviewId, 
+        selectedThemeId, 
+        setSelectedThemeId, 
         selectedInterviewRef, 
         setSelectedInterviewRef, 
+        selectedThemeRef, 
+        setSelectedThemeRef, 
         selectThemeName, 
         setSelectThemeName,
         resetContext

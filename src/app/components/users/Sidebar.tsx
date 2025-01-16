@@ -32,7 +32,8 @@ const Sidebar = () => {
                                         intervieweeId: data.intervieweeId,
                                         createdAt: data.createdAt,
                                         questionCount: data.questionCount,
-                                        theme: data.theme
+                                        theme: data.theme,
+                                        reportCreated: data.reportCreated,
                                     } as Interviews;
                                 }
                             }
@@ -104,12 +105,7 @@ const Sidebar = () => {
     )
 }
 
-function isValidInterviewData(data: unknown): data is {
-    intervieweeId: string;
-    createdAt: Timestamp | FieldValue;
-    questionCount: number;
-    theme: string;
-} {
+function isValidInterviewData(data: unknown): data is Interviews {
     return (
         typeof data === 'object' &&
         data !== null &&
@@ -117,9 +113,12 @@ function isValidInterviewData(data: unknown): data is {
         'createdAt' in data &&
         'questionCount' in data &&
         'theme' in data &&
+        'reportCreated' in data &&
         typeof (data as any).intervieweeId === 'string' &&
+        (data as any).createdAt instanceof Timestamp || (data as any).createdAt instanceof FieldValue &&
         typeof (data as any).questionCount === 'number' &&
-        typeof (data as any).theme === 'string'
+        typeof (data as any).theme === 'string' &&
+        typeof (data as any).reportCreated === 'boolean'
     );
 }
 
