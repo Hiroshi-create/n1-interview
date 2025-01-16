@@ -42,7 +42,7 @@ export const organizationTypes = [
 
 export const mainNav = [
   {
-    title: "インタビューテーマを追加",
+    title: "インタビューを追加",
     icon: Plus,
     href: "/client-view/[userId]/AddTheme",
     isActive: false,

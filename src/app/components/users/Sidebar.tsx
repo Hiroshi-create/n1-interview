@@ -75,31 +75,35 @@ const Sidebar = () => {
     }
 
     return (
-        <div className='bg-custom-blue h-full overflow-y-auto px-5 flex flex-col'>
+        <div className='bg-custom-blue h-full overflow-y-auto px-3 flex flex-col'>
             <div className='flex-grow'>
-                <ul>
+                <ul className="space-y-1 py-4">
                     {interviews.map((interview) => (
                         <li 
                             key={interview.interviewId}
-                            className='cursor-pointer border-b p-4 text-slate-100 hover:bg-slate-700 duration-150'
+                            className='cursor-pointer transition-all duration-200 ease-in-out bg-slate-800 hover:bg-slate-700 rounded-md'
                             onClick={() => selectInterview(interview.interviewId, interview.theme)}
                         >
-                            {interview.theme}
+                            <div className="p-2">
+                                <div className="flex items-center space-x-2 px-2">
+                                    <span className="text-slate-100 text-base font-medium">{interview.theme}</span>
+                                </div>
+                            </div>
                         </li>
                     ))}
                 </ul>
             </div>
             {user && (
-                <div className='mb-2 p-4 text-slate-100 text-lg font-medium'>
-                    {user.email}
+                <div className='mb-2 p-4 text-slate-100 text-base font-medium bg-slate-800 rounded-md'>
+                    <span className="block truncate">{user.email}</span>
                 </div>
             )}
             <div
                 onClick={() => handleLogout()}
-                className='text-lg flex items-center justify-evenly mb-2 cursor-pointer p-4 text-slate-100 hover:bg-slate-700 duration'
+                className='text-base flex items-center justify-center space-x-2 mb-4 cursor-pointer p-3 text-slate-100 bg-slate-800 hover:bg-slate-700 rounded-md transition-all duration-200 ease-in-out'
             >
-                <SlLogout />
-                <span>ログアウト</span>
+                <SlLogout className="h-5 w-5" />
+                <span className="font-medium">ログアウト</span>
             </div>
         </div>
     )
