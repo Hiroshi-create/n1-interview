@@ -207,7 +207,7 @@ const getJapanesePhonemes = async (word: string): Promise<string[]> => {
       
       // メモリキャッシュとVercel KVに保存
       memoryPhonemeCache.set(word, phonemes);
-      await kv.set(kvKey, phonemes, { ex: 86400 }); // 1日間キャッシュ
+      await kv.set(kvKey, phonemes, { ex: 604800 }); // 1週間キャッシュ
 
       return phonemes;
     } else {
@@ -429,10 +429,10 @@ const templates = {
 }
 
 const phases = [
-  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 2 },
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 3 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 3 },
-  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 3 },
+  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 1 },
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 1 },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 1 },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 2 },
   { template: "thank_you", text: "現在のフェーズ: お礼", questions: 1 }
 ];
 
