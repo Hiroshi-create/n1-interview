@@ -183,7 +183,6 @@ export function Avatar(props) {
 
         audio.oncanplay = () => {
           console.log("音声再生準備完了");
-          
           const playAudio = async () => {
             try {
               if (audioContext?.state === 'suspended') {
@@ -191,22 +190,21 @@ export function Avatar(props) {
               }
               await audio.play();
             } catch (error) {
-              console.error("音声再生開始エラー:", error);
+              if (error.name === 'NotAllowedError') {
+                // ユーザーインタラクションを待つ
+                const handleInteraction = async () => {
+                  await audio.play();
+                  document.removeEventListener('touchstart', handleInteraction);
+                  document.removeEventListener('click', handleInteraction);
+                };
+                document.addEventListener('touchstart', handleInteraction);
+                document.addEventListener('click', handleInteraction);
+              } else {
+                console.error("音声再生エラー:", error);
+              }
             }
           };
-    
-          if (hasInteracted) {
-            playAudio();
-          } else {
-            const handleInteraction = () => {
-              playAudio();
-              document.removeEventListener('touchstart', handleInteraction);
-              document.removeEventListener('click', handleInteraction);
-            };
-            
-            document.addEventListener('touchstart', handleInteraction);
-            document.addEventListener('click', handleInteraction);
-          }
+          playAudio();
         };
 
         audio.onended = () => {

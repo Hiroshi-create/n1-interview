@@ -30,7 +30,7 @@ type AppContextType = {
   hasInteracted: boolean;
   setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
   audioContext: AudioContext | null;
-  initializeAudioContext: () => void;
+  initializeAudioContext: () => Promise<void>;
   resetContext: () => void;
 }
 
@@ -54,7 +54,7 @@ const AppContext = createContext<AppContextType>({
   hasInteracted: false,
   setHasInteracted: () => {},
   audioContext: null,
-  initializeAudioContext: () => {},
+  initializeAudioContext: async () => {},
   resetContext: () => {},
 });
 
@@ -79,10 +79,17 @@ export function AppProvider({ children }: AppProviderProps) {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const router = useRouter();
 
-  const initializeAudioContext = () => {
+  const initializeAudioContext = async () => {
     if (!audioContext) {
-      const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      setAudioContext(newAudioContext);
+      try {
+        const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (newAudioContext.state === 'suspended') {
+          await newAudioContext.resume();
+        }
+        setAudioContext(newAudioContext);
+      } catch (error) {
+        console.error('AudioContext初期化エラー:', error);
+      }
     }
   };
 

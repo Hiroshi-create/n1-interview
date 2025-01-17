@@ -130,7 +130,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       setHasInteracted(true);
-      initializeAudioContext();
+      initializeAudioContext().catch(console.error);
       mediaRecorderRef.current.stop();
       setIsProcessingAudio(true);
     }
