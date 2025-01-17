@@ -187,50 +187,29 @@ export function Avatar(props) {
 
         audio.oncanplay = () => {
           console.log("音声再生準備完了");
-          if (hasInteracted) {
-            audio.play().catch(error => {
+          const playAudio = async () => {
+            try {
+              if (audioContext?.state === 'suspended') {
+                await audioContext.resume();
+              }
+              await audio.play();
+            } catch (error) {
               if (error.name === 'NotAllowedError') {
+                // ユーザーインタラクションを待つ
                 const handleInteraction = async () => {
-                  try {
-                    await audio.play();
-                    console.log("音声再生開始");
-                  } catch (e) {
-                    console.error("再生エラー:", e);
-                  }
+                  await audio.play();
                   document.removeEventListener('touchstart', handleInteraction);
                   document.removeEventListener('click', handleInteraction);
                 };
-                document.addEventListener('touchstart', handleInteraction, { once: true });
-                document.addEventListener('click', handleInteraction, { once: true });
+                document.addEventListener('touchstart', handleInteraction);
+                document.addEventListener('click', handleInteraction);
+              } else {
+                console.error("音声再生エラー:", error);
               }
-            });
-          }
+            }
+          };
+          playAudio();
         };
-        // audio.oncanplay = () => {
-        //   console.log("音声再生準備完了");
-        //   const playAudio = async () => {
-        //     try {
-        //       if (audioContext?.state === 'suspended') {
-        //         await audioContext.resume();
-        //       }
-        //       await audio.play();
-        //     } catch (error) {
-        //       if (error.name === 'NotAllowedError') {
-        //         // ユーザーインタラクションを待つ
-        //         const handleInteraction = async () => {
-        //           await audio.play();
-        //           document.removeEventListener('touchstart', handleInteraction);
-        //           document.removeEventListener('click', handleInteraction);
-        //         };
-        //         document.addEventListener('touchstart', handleInteraction);
-        //         document.addEventListener('click', handleInteraction);
-        //       } else {
-        //         console.error("音声再生エラー:", error);
-        //       }
-        //     }
-        //   };
-        //   playAudio();
-        // };
 
         audio.onended = () => {
           console.log("音声再生終了");
