@@ -29,6 +29,8 @@ type AppContextType = {
   requestMicPermission: () => Promise<boolean>;
   hasInteracted: boolean;
   setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
+  audioContext: AudioContext | null;
+  initializeAudioContext: () => void;
   resetContext: () => void;
 }
 
@@ -51,6 +53,8 @@ const AppContext = createContext<AppContextType>({
   requestMicPermission: async () => false,
   hasInteracted: false,
   setHasInteracted: () => {},
+  audioContext: null,
+  initializeAudioContext: () => {},
   resetContext: () => {},
 });
 
@@ -72,7 +76,15 @@ export function AppProvider({ children }: AppProviderProps) {
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const router = useRouter();
+
+  const initializeAudioContext = () => {
+    if (!audioContext) {
+      const newAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      setAudioContext(newAudioContext);
+    }
+  };
 
   const requestMicPermission = async () => {
     try {
@@ -144,6 +156,8 @@ export function AppProvider({ children }: AppProviderProps) {
         requestMicPermission,
         hasInteracted,
         setHasInteracted,
+        audioContext,
+        initializeAudioContext,
         resetContext
       }}
     >

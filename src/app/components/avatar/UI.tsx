@@ -11,7 +11,7 @@ interface UIProps {
 export const UI: React.FC<UIProps> = ({ hidden }) => {
   const input = useRef<HTMLInputElement>(null);
   const { chat, isLoading, cameraZoomed, setCameraZoomed, message, themeId } = useChat();
-  const { micPermission, requestMicPermission, setHasInteracted } = useAppsContext();
+  const { micPermission, requestMicPermission, setHasInteracted, initializeAudioContext } = useAppsContext();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
@@ -130,6 +130,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       setHasInteracted(true);
+      initializeAudioContext();
       mediaRecorderRef.current.stop();
       setIsProcessingAudio(true);
     }
