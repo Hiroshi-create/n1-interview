@@ -134,7 +134,7 @@ export function Avatar(props) {
   const [lipsync, setLipsync] = useState();
 
   useEffect(() => {
-    console.log(message);
+    console.log("メッセージ受信:", message);
     if (!message) {
       setAnimation(isThinking ? "Thinking" : "Idle");
       return;
@@ -142,10 +142,37 @@ export function Avatar(props) {
     setAnimation(message.animation);
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
-    const audio = new Audio("data:audio/mp3;base64," + message.audio);
-    audio.play();
-    setAudio(audio);
-    audio.onended = onMessagePlayed;
+    if (!message.audio) {
+      console.error("音声データがありません");
+      return;
+    }
+    console.log("音声データサイズ:", message.audio.length, "バイト");
+    try {
+      const audio = new Audio("data:audio/mp3;base64," + message.audio);
+      
+      audio.onloadedmetadata = () => {
+        console.log("音声メタデータ読み込み完了:", {
+          duration: audio.duration,
+          readyState: audio.readyState
+        });
+      };
+      audio.oncanplay = () => {
+        console.log("音声再生準備完了");
+        audio.play().catch(error => {
+          console.error("音声再生開始エラー:", error);
+        });
+      };
+      audio.onended = () => {
+        console.log("音声再生終了");
+        onMessagePlayed();
+      };
+      audio.onerror = (event) => {
+        console.error("音声読み込みエラー:", event);
+      };
+      setAudio(audio);
+    } catch (error) {
+      console.error("音声オブジェクト作成エラー:", error);
+    }
   }, [message, isThinking]);
 
   const { animations } = useGLTF("/models/animations.glb");
