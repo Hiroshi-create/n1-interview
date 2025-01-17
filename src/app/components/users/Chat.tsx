@@ -27,13 +27,20 @@ type ChatProviderProps = {
 };
 
 export const ChatProvider = ({ children }: ChatProviderProps) => {
-  const { selectedInterviewId, selectedInterviewRef, selectThemeName } = useAppsContext();
+  const { selectedInterviewId, selectedInterviewRef, selectThemeName, requestMicPermission, micPermission } = useAppsContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cameraZoomed, setCameraZoomed] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+
+  // マイク、音声の許可を取得
+  useEffect(() => {
+    if (micPermission === null) {
+      requestMicPermission();
+    }
+  }, []);
 
   useEffect(() => {
     let unsubscribe: () => void;

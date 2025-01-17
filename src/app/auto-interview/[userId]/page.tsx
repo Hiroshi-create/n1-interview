@@ -5,11 +5,9 @@ import Sidebar from '../../components/users/Sidebar'
 import Chat, { ChatProvider } from '../../components/users/Chat'
 import App from "../../components/users/App";
 import { usePathname } from 'next/navigation';
-import { useAppsContext } from '@/context/AppContext';
 
 
 const AutoInterview = () => {
-  const { requestMicPermission, micPermission } = useAppsContext();
   
   // 遷移先のURLをローカルストレージに保存
   const pathname = usePathname();
@@ -21,13 +19,6 @@ const AutoInterview = () => {
       saveLastVisitedUrl(pathname);
     }
   }, [pathname]);
-
-  // マイク、音声の許可を取得
-  useEffect(() => {
-    if (micPermission === null) {
-      requestMicPermission();
-    }
-  }, []);
 
   return (
     <div className="flex h-screen justify-center items-center">
