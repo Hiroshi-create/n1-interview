@@ -284,6 +284,7 @@ export function Avatar(props) {
   const [audio, setAudio] = useState();
 
   useFrame(() => {
+    // 表情制御の部分は変更なし
     !setupMode &&
       Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
         const mapping = facialExpressions[facialExpression];
@@ -297,6 +298,7 @@ export function Avatar(props) {
         }
       });
 
+    // まばたき制御も変更なし
     lerpMorphTarget("eyeBlinkLeft", blink || winkLeft ? 1 : 0, 0.5);
     lerpMorphTarget("eyeBlinkRight", blink || winkRight ? 1 : 0, 0.5);
 
@@ -304,36 +306,59 @@ export function Avatar(props) {
       return;
     }
 
+    // iOS検出
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const appliedMorphTargets = [];
+
     if (message && lipsync && audio) {
       const currentAudioTime = audio.currentTime;
       let appliedMorphTarget = false;
-  
+
+      // iOS向けの時間精度調整
+      const getAdjustedTime = (time) => {
+        return isIOS ? Math.round(time * 100) / 100 : time;
+      };
+
+      const adjustedCurrentTime = getAdjustedTime(currentAudioTime);
+
+      // リップシンク処理
       for (let i = 0; i < lipsync.mouthCues.length; i++) {
         const mouthCue = lipsync.mouthCues[i];
-        if (currentAudioTime >= mouthCue.start && currentAudioTime <= mouthCue.end) {
+        const start = getAdjustedTime(mouthCue.start);
+        const end = getAdjustedTime(mouthCue.end);
+
+        if (adjustedCurrentTime >= start && adjustedCurrentTime <= end) {
           const morphTarget = corresponding[mouthCue.value];
           if (morphTarget) {
-            lerpMorphTarget(morphTarget, 1, 0.2);
+            // iOSの場合は補間速度を調整
+            const lerpSpeed = isIOS ? 0.3 : 0.2;
+            lerpMorphTarget(morphTarget, 1, lerpSpeed);
             appliedMorphTarget = true;
-            console.log("Applying mouth shape:", mouthCue.value, "at time:", currentAudioTime);
+            appliedMorphTargets.push(morphTarget);
+            
+            // デバッグログ
+            if (process.env.NODE_ENV === 'development') {
+              console.log("Applying mouth shape:", mouthCue.value, "at time:", adjustedCurrentTime);
+            }
           }
           break;
         }
       }
-  
+
+      // 適用されていないモーフターゲットをリセット
       if (!appliedMorphTarget) {
         Object.values(corresponding).forEach(value => {
-          lerpMorphTarget(value, 0, 0.1);
+          lerpMorphTarget(value, 0, isIOS ? 0.15 : 0.1);
         });
       }
     }
 
+    // 未使用のモーフターゲットをリセット
     Object.values(corresponding).forEach((value) => {
       if (appliedMorphTargets.includes(value)) {
         return;
       }
-      lerpMorphTarget(value, 0, 0.1);
+      lerpMorphTarget(value, 0, isIOS ? 0.15 : 0.1);
     });
   });
 
