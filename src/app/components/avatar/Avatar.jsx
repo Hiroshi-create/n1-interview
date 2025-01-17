@@ -126,7 +126,7 @@ const corresponding = {
 let setupMode = false;
 
 export function Avatar(props) {
-  const { micPermission, requestMicPermission } = useAppsContext();
+  const { micPermission, requestMicPermission, hasInteracted } = useAppsContext();
   const { nodes, materials, scene } = useGLTF(
     "/models/64f1a714fe61576b46f27ca2.glb"
   );
@@ -183,9 +183,21 @@ export function Avatar(props) {
 
         audio.oncanplay = () => {
           console.log("音声再生準備完了");
-          audio.play().catch(error => {
-            console.error("音声再生開始エラー:", error);
-          });
+          if (hasInteracted) {
+            // ユーザーインタラクションが記録されている場合は直接再生
+            audio.play().catch(error => {
+              console.error("音声再生開始エラー:", error);
+            });
+          } else {
+            // ユーザーインタラクションを待つ
+            const playAudio = () => {
+              audio.play().catch(error => {
+                console.error("音声再生開始エラー:", error);
+              });
+              document.removeEventListener('touchstart', playAudio);
+            };
+            document.addEventListener('touchstart', playAudio, { once: true });
+          }
         };
 
         audio.onended = () => {

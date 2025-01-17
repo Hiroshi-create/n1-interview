@@ -27,6 +27,8 @@ type AppContextType = {
   micPermission: boolean | null;
   setMicPermission: React.Dispatch<React.SetStateAction<boolean | null>>;
   requestMicPermission: () => Promise<boolean>;
+  hasInteracted: boolean;
+  setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
   resetContext: () => void;
 }
 
@@ -47,6 +49,8 @@ const AppContext = createContext<AppContextType>({
   micPermission: null,
   setMicPermission: () => {},
   requestMicPermission: async () => false,
+  hasInteracted: false,
+  setHasInteracted: () => {},
   resetContext: () => {},
 });
 
@@ -67,6 +71,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [selectedThemeRef, setSelectedThemeRef] = useState<DocumentReference | null>(null);
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
   const router = useRouter();
 
   const requestMicPermission = async () => {
@@ -137,6 +142,8 @@ export function AppProvider({ children }: AppProviderProps) {
         micPermission,
         setMicPermission,
         requestMicPermission,
+        hasInteracted,
+        setHasInteracted,
         resetContext
       }}
     >
