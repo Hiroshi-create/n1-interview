@@ -70,7 +70,10 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
 
   const startRecording = useCallback(async () => {
     try {
+      // マイクアクセスの要求
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // アクセスが許可された場合、MediaRecorderオブジェクトを作成
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: isIOS ? 'audio/m4a' : 'audio/webm'
       });
@@ -81,7 +84,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
-          console.log("Audio chunk size:", event.data.size);
+          console.log("音声チャンクサイズ:", event.data.size);
         }
       };
   
@@ -89,10 +92,11 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/m4a' : 'audio/webm' });
-        console.log("Total audio size:", audioBlob.size);
+        console.log("総音声サイズ:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
   
+      // 録音開始
       await new Promise<void>((resolve) => {
         mediaRecorder.onstart = () => {
           resolve();
@@ -101,10 +105,13 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       });
   
       setIsRecording(true);
+      console.log("録音が開始されました");
     } catch (error) {
-      console.error("Error starting recording:", error);
+      console.error("録音の開始中にエラーが発生しました:", error);
+      // ユーザーにエラーを通知する処理をここに追加することができます
     }
   }, [sendAudioToWhisper, themeId, isIOS]);
+  
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
