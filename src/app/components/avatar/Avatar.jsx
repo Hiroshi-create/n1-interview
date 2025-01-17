@@ -133,6 +133,8 @@ export function Avatar(props) {
 
   const [lipsync, setLipsync] = useState();
 
+  console.log("message : " + message + "   isThinking : " + isThinking);
+
   useEffect(() => {
     console.log("メッセージ受信:", message);
     if (!message) {
