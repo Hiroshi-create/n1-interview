@@ -132,13 +132,19 @@ export function Avatar(props) {
   );
 
   const { message, onMessagePlayed, chat, isThinking } = useChat();
-
   const [lipsync, setLipsync] = useState();
+
+  // アバター読み込み完了後にマイク許可を取得
+  useEffect(() => {
+    if (scene && micPermission === null) {
+      requestMicPermission();
+    }
+  }, [scene, micPermission, requestMicPermission]);
 
   console.log("message : " + message + "   isThinking : " + isThinking);
 
   useEffect(() => {
-    console.log("メッセージ受信 - lipsync :", message.lipsync);
+    console.log("メッセージ受信 - lipsync :", message?.lipsync);
     if (!message) {
       setAnimation(isThinking ? "Thinking" : "Idle");
       return;
