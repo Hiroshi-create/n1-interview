@@ -429,9 +429,9 @@ const templates = {
 }
 
 const phases = [
-  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 1 },
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 1 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 1 },
+  { template: "personal_attributes", text: "現在のフェーズ: プロフィール", questions: 2 },
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 2 },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 2 },
   { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 2 },
   { template: "thank_you", text: "現在のフェーズ: お礼", questions: 1 }
 ];

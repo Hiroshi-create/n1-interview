@@ -161,8 +161,12 @@ export function Avatar(props) {
       console.log("音声データサイズ:", message.audio.length, "バイト");
 
       try {
+        // AudioContextの初期化確認
+        if (audioContext?.state === 'suspended') {
+          await audioContext.resume();
+        }
+
         let hasPermission = micPermission;
-        
         // 許可されていない場合は許可を要求
         if (!hasPermission) {
           hasPermission = await requestMicPermission();
@@ -183,29 +187,50 @@ export function Avatar(props) {
 
         audio.oncanplay = () => {
           console.log("音声再生準備完了");
-          const playAudio = async () => {
-            try {
-              if (audioContext?.state === 'suspended') {
-                await audioContext.resume();
-              }
-              await audio.play();
-            } catch (error) {
+          if (hasInteracted) {
+            audio.play().catch(error => {
               if (error.name === 'NotAllowedError') {
-                // ユーザーインタラクションを待つ
                 const handleInteraction = async () => {
-                  await audio.play();
+                  try {
+                    await audio.play();
+                    console.log("音声再生開始");
+                  } catch (e) {
+                    console.error("再生エラー:", e);
+                  }
                   document.removeEventListener('touchstart', handleInteraction);
                   document.removeEventListener('click', handleInteraction);
                 };
-                document.addEventListener('touchstart', handleInteraction);
-                document.addEventListener('click', handleInteraction);
-              } else {
-                console.error("音声再生エラー:", error);
+                document.addEventListener('touchstart', handleInteraction, { once: true });
+                document.addEventListener('click', handleInteraction, { once: true });
               }
-            }
-          };
-          playAudio();
+            });
+          }
         };
+        // audio.oncanplay = () => {
+        //   console.log("音声再生準備完了");
+        //   const playAudio = async () => {
+        //     try {
+        //       if (audioContext?.state === 'suspended') {
+        //         await audioContext.resume();
+        //       }
+        //       await audio.play();
+        //     } catch (error) {
+        //       if (error.name === 'NotAllowedError') {
+        //         // ユーザーインタラクションを待つ
+        //         const handleInteraction = async () => {
+        //           await audio.play();
+        //           document.removeEventListener('touchstart', handleInteraction);
+        //           document.removeEventListener('click', handleInteraction);
+        //         };
+        //         document.addEventListener('touchstart', handleInteraction);
+        //         document.addEventListener('click', handleInteraction);
+        //       } else {
+        //         console.error("音声再生エラー:", error);
+        //       }
+        //     }
+        //   };
+        //   playAudio();
+        // };
 
         audio.onended = () => {
           console.log("音声再生終了");
@@ -301,18 +326,27 @@ export function Avatar(props) {
     }
 
     const appliedMorphTargets = [];
-    if (message && lipsync) {
+    if (message && lipsync && audio) {
       const currentAudioTime = audio.currentTime;
+      let appliedMorphTarget = false;
+  
       for (let i = 0; i < lipsync.mouthCues.length; i++) {
         const mouthCue = lipsync.mouthCues[i];
-        if (
-          currentAudioTime >= mouthCue.start &&
-          currentAudioTime <= mouthCue.end
-        ) {
-          appliedMorphTargets.push(corresponding[mouthCue.value]);
-          lerpMorphTarget(corresponding[mouthCue.value], 1, 0.2);
+        if (currentAudioTime >= mouthCue.start && currentAudioTime <= mouthCue.end) {
+          const morphTarget = corresponding[mouthCue.value];
+          if (morphTarget) {
+            lerpMorphTarget(morphTarget, 1, 0.2);
+            appliedMorphTarget = true;
+            console.log("Applying mouth shape:", mouthCue.value, "at time:", currentAudioTime);
+          }
           break;
         }
+      }
+  
+      if (!appliedMorphTarget) {
+        Object.values(corresponding).forEach(value => {
+          lerpMorphTarget(value, 0, 0.1);
+        });
       }
     }
 

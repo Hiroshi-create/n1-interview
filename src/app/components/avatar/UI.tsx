@@ -127,12 +127,22 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   }, [micPermission, requestMicPermission, themeId, isIOS]);
   // }, [sendAudioToWhisper, themeId, isIOS]);
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current) {
+  const stopRecording = async () => {
+    const mediaRecorder = mediaRecorderRef.current;
+    if (!mediaRecorder) {
+      console.error("MediaRecorderが初期化されていません");
+      return;
+    }
+  
+    try {
       setHasInteracted(true);
-      initializeAudioContext().catch(console.error);
-      mediaRecorderRef.current.stop();
+      // AudioContextの初期化を確実に行う
+      await initializeAudioContext();
+      mediaRecorder.stop();
       setIsProcessingAudio(true);
+    } catch (error) {
+      console.error("録音停止処理エラー:", error);
+      setIsProcessingAudio(false);
     }
   };
 
