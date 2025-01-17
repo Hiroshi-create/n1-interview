@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useChat } from "../users/Chat";
+import { useAppsContext } from "@/context/AppContext";
 import BallTriangle from 'react-loading-icons';
 
 interface UIProps {
@@ -10,6 +11,7 @@ interface UIProps {
 export const UI: React.FC<UIProps> = ({ hidden }) => {
   const input = useRef<HTMLInputElement>(null);
   const { chat, isLoading, cameraZoomed, setCameraZoomed, message, themeId } = useChat();
+  const { micPermission, requestMicPermission } = useAppsContext();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
@@ -66,57 +68,69 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       setIsProcessingAudio(false);
       setIsRecording(false);
     }
-  }, [chat, themeId]);
+  }, [chat, themeId, isIOS]);
+
+  const initializeMediaRecorder = async (stream: MediaStream) => {
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: isIOS ? 'audio/mp4' : 'audio/webm'
+    });
+    mediaRecorderRef.current = mediaRecorder;
+
+    chunksRef.current = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunksRef.current.push(event.data);
+        console.log("音声チャンクサイズ:", event.data.size);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(track => track.stop());
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/mp4' : 'audio/webm' });
+      console.log("総音声サイズ:", audioBlob.size);
+      await sendAudioToWhisper(audioBlob, themeId || '');
+    };
+
+    await new Promise<void>((resolve) => {
+      mediaRecorder.onstart = () => {
+        resolve();
+      };
+      mediaRecorder.start(1000);
+    });
+
+    setIsRecording(true);
+    console.log("録音が開始されました");
+  };
 
   const startRecording = useCallback(async () => {
     try {
-      // マイクアクセスの要求
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let hasPermission = micPermission;
       
-      // アクセスが許可された場合、MediaRecorderオブジェクトを作成
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: isIOS ? 'audio/mp4' : 'audio/webm'
-      });
-      mediaRecorderRef.current = mediaRecorder;
-  
-      chunksRef.current = [];
-  
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-          console.log("音声チャンクサイズ:", event.data.size);
+      // 許可されていない場合は許可を要求
+      if (!hasPermission) {
+        hasPermission = await requestMicPermission();
+        if (!hasPermission) {
+          console.error("マイクの使用が許可されませんでした");
+          return;
         }
-      };
-  
-      mediaRecorder.onstop = async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/mp4' : 'audio/webm' });
-        console.log("総音声サイズ:", audioBlob.size);
-        await sendAudioToWhisper(audioBlob, themeId || '');
-      };
-  
-      // 録音開始
-      await new Promise<void>((resolve) => {
-        mediaRecorder.onstart = () => {
-          resolve();
-        };
-        mediaRecorder.start(1000);
-      });
-  
-      setIsRecording(true);
-      console.log("録音が開始されました");
+      }
+
+      // 許可された後、ストリームを取得
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await initializeMediaRecorder(stream);
     } catch (error) {
       console.error("録音の開始中にエラーが発生しました:", error);
-      // ユーザーにエラーを通知する処理をここに追加することができます
     }
-  }, [sendAudioToWhisper, themeId, isIOS]);
-  
+  }, [micPermission, requestMicPermission, themeId, isIOS]);
+  // }, [sendAudioToWhisper, themeId, isIOS]);
 
   const stopRecording = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
-      setIsProcessingAudio(true);  // 録音停止時にも処理中フラグを立てる
+      setIsProcessingAudio(true);
     }
   };
 

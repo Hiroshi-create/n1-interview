@@ -24,6 +24,9 @@ type AppContextType = {
   setSelectedThemeRef: React.Dispatch<React.SetStateAction<DocumentReference | null>>;
   selectThemeName: string | null,
   setSelectThemeName: React.Dispatch<React.SetStateAction<string | null>>;
+  micPermission: boolean | null;
+  setMicPermission: React.Dispatch<React.SetStateAction<boolean | null>>;
+  requestMicPermission: () => Promise<boolean>;
   resetContext: () => void;
 }
 
@@ -41,15 +44,16 @@ const AppContext = createContext<AppContextType>({
   setSelectedThemeRef: () => {},
   selectThemeName: null,
   setSelectThemeName: () => {},
+  micPermission: null,
+  setMicPermission: () => {},
+  requestMicPermission: async () => false,
   resetContext: () => {},
 });
 
-// ページ遷移時に実行
 const saveLastVisitedUrl = (url: string) => {
   localStorage.setItem('lastVisitedUrl', url);
 };
 
-// ログイン後やリロード時に実行
 const getLastVisitedUrl = () => {
   return localStorage.getItem('lastVisitedUrl');
 };
@@ -62,7 +66,21 @@ export function AppProvider({ children }: AppProviderProps) {
   const [selectedInterviewRef, setSelectedInterviewRef] = useState<DocumentReference | null>(null);
   const [selectedThemeRef, setSelectedThemeRef] = useState<DocumentReference | null>(null);
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
+  const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const router = useRouter();
+
+  const requestMicPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setMicPermission(true);
+      return true;
+    } catch (error) {
+      console.error("マイク許可エラー:", error);
+      setMicPermission(false);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (newUser) => {
@@ -76,7 +94,6 @@ export function AppProvider({ children }: AppProviderProps) {
         if (lastVisitedUrl) {
           router.push(lastVisitedUrl);
         } else {
-          // ユーザーの種類を判定
           const userDoc = await getDoc(doc(db, "users", newUser.uid));
           const userData = userDoc.data();
           if (userData && userData.inOrganization) {
@@ -117,6 +134,9 @@ export function AppProvider({ children }: AppProviderProps) {
         setSelectedThemeRef, 
         selectThemeName, 
         setSelectThemeName,
+        micPermission,
+        setMicPermission,
+        requestMicPermission,
         resetContext
       }}
     >

@@ -4,6 +4,7 @@ import { button, useControls } from "leva";
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { useChat } from "../users/Chat";
+import { useAppsContext } from "@/context/AppContext";
 
 const facialExpressions = {
   default: {},
@@ -125,6 +126,7 @@ const corresponding = {
 let setupMode = false;
 
 export function Avatar(props) {
+  const { micPermission, requestMicPermission } = useAppsContext();
   const { nodes, materials, scene } = useGLTF(
     "/models/64f1a714fe61576b46f27ca2.glb"
   );
@@ -144,38 +146,59 @@ export function Avatar(props) {
     setAnimation(message.animation);
     setFacialExpression(message.facialExpression);
     setLipsync(message.lipsync);
-    if (!message.audio) {
-      console.error("音声データがありません");
-      return;
-    }
-    console.log("音声データサイズ:", message.audio.length, "バイト");
-    try {
-      const audio = new Audio("data:audio/mp3;base64," + message.audio);
-      
-      audio.onloadedmetadata = () => {
-        console.log("音声メタデータ読み込み完了:", {
-          duration: audio.duration,
-          readyState: audio.readyState
-        });
-      };
-      audio.oncanplay = () => {
-        console.log("音声再生準備完了");
-        audio.play().catch(error => {
-          console.error("音声再生開始エラー:", error);
-        });
-      };
-      audio.onended = () => {
-        console.log("音声再生終了");
-        onMessagePlayed();
-      };
-      audio.onerror = (event) => {
-        console.error("音声読み込みエラー:", event);
-      };
-      setAudio(audio);
-    } catch (error) {
-      console.error("音声オブジェクト作成エラー:", error);
-    }
-  }, [message, isThinking]);
+    
+    const initializeAudio = async () => {
+      if (!message.audio) {
+        console.error("音声データがありません");
+        return;
+      }
+      console.log("音声データサイズ:", message.audio.length, "バイト");
+
+      try {
+        let hasPermission = micPermission;
+        
+        // 許可されていない場合は許可を要求
+        if (!hasPermission) {
+          hasPermission = await requestMicPermission();
+          if (!hasPermission) {
+            console.error("オーディオの使用が許可されませんでした");
+            return;
+          }
+        }
+
+        const audio = new Audio("data:audio/mp3;base64," + message.audio);
+        
+        audio.onloadedmetadata = () => {
+          console.log("音声メタデータ読み込み完了:", {
+            duration: audio.duration,
+            readyState: audio.readyState
+          });
+        };
+
+        audio.oncanplay = () => {
+          console.log("音声再生準備完了");
+          audio.play().catch(error => {
+            console.error("音声再生開始エラー:", error);
+          });
+        };
+
+        audio.onended = () => {
+          console.log("音声再生終了");
+          onMessagePlayed();
+        };
+
+        audio.onerror = (event) => {
+          console.error("音声読み込みエラー:", event);
+        };
+
+        setAudio(audio);
+      } catch (error) {
+        console.error("音声オブジェクト作成エラー:", error);
+      }
+    };
+
+    initializeAudio();
+  }, [message, isThinking, micPermission, requestMicPermission]);
 
   const { animations } = useGLTF("/models/animations.glb");
 
