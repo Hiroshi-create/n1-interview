@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       contentType = 'audio/webm';
       console.log('WebMファイルとして処理します');
     } else if (header.startsWith('0000001c')) {
-      fileExtension = 'm4a';
+      fileExtension = 'mp4';
       contentType = 'audio/mp4';
       console.log('M4Aファイルとして処理します');
     } else {

@@ -36,7 +36,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     console.log("音声入力の時" + currentThemeId);
     setIsProcessingAudio(true);
     const formData = new FormData();
-    formData.append('file', audioBlob, `audio.${isIOS ? 'm4a' : 'webm'}`);
+    formData.append('file', audioBlob, `audio.${isIOS ? 'mp4' : 'webm'}`);
     formData.append('themeId', currentThemeId || '');
   
     try {
@@ -75,7 +75,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       
       // アクセスが許可された場合、MediaRecorderオブジェクトを作成
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: isIOS ? 'audio/m4a' : 'audio/webm'
+        mimeType: isIOS ? 'audio/mp4' : 'audio/webm'
       });
       mediaRecorderRef.current = mediaRecorder;
   
@@ -91,7 +91,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       mediaRecorder.onstop = async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
-        const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/m4a' : 'audio/webm' });
+        const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/mp4' : 'audio/webm' });
         console.log("総音声サイズ:", audioBlob.size);
         await sendAudioToWhisper(audioBlob, themeId || '');
       };
