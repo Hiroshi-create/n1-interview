@@ -138,7 +138,7 @@ export function Avatar(props) {
   console.log("message : " + message + "   isThinking : " + isThinking);
 
   useEffect(() => {
-    console.log("メッセージ受信:", message);
+    console.log("メッセージ受信 - lipsync :", message.lipsync);
     if (!message) {
       setAnimation(isThinking ? "Thinking" : "Idle");
       return;
