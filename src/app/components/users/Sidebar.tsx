@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { SlLogout } from "react-icons/sl";
 import { auth, db } from '../../../../firebase';
-import { collection, onSnapshot, query, getDoc, Timestamp, FieldValue, DocumentReference } from 'firebase/firestore';
+import { collection, onSnapshot, query, getDoc, Timestamp, FieldValue, DocumentReference, orderBy } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import { Interviews } from '@/stores/Interviews';
 
@@ -17,7 +17,7 @@ const Sidebar = () => {
         if(user && userId) {
             const fetchInterviews = async () => {
                 const interviewCollectionRef = collection(db, "users", userId, "answerInterviews");
-                const q = query(interviewCollectionRef);
+                const q = query(interviewCollectionRef, orderBy("createdAt", "desc"));
                 
                 const unsubscribe = onSnapshot(q, async (snapshot) => {
                     const interviewPromises = snapshot.docs.map(async (doc) => {
