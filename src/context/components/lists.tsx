@@ -81,3 +81,10 @@ export const analysisNav = [
     isActive: false,
   },
 ]
+
+// インタビューの動作確認用
+export const operation_check_phases = [
+  { template: "checking_the_audio", text: "現在のフェーズ: 音声が聴こえるかの確認", isChecked: false, type: "two_choices" },
+  { template: "checking_voice_input", text: "現在のフェーズ: 音声入力の動作確認", isChecked: false, type: "free_response" },
+  { template: "confirmation_complete", text: "現在のフェーズ: 確認完了", isChecked: false, type: "two_choices" },
+];

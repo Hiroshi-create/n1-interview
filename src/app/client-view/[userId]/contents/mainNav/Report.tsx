@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { db } from '../../../../../../firebase';
-import { collection, onSnapshot, query, getDoc, Timestamp, DocumentReference, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, getDoc, Timestamp, DocumentReference, doc, orderBy } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import { Theme } from '@/stores/Theme';
 import { useRouter } from 'next/navigation';
@@ -27,7 +27,7 @@ const Report = () => {
                             const organizationId = userData.organizationId;
                             if (organizationId) {
                                 const themeCollectionRef = collection(db, "clients", organizationId, "manageThemes");
-                                const q = query(themeCollectionRef);
+                                const q = query(themeCollectionRef, orderBy("createdAt", "desc"));
                                 
                                 const unsubscribe = onSnapshot(q, async (snapshot) => {
                                     const themePromises = snapshot.docs.map(async (doc) => {

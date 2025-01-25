@@ -8,4 +8,5 @@ export type Theme = {
     searchClientId: string;
     interviewsRequestedCount: number;
     collectInterviewsCount: number;
+    interviewDurationMin: number;
 }

@@ -4,6 +4,7 @@ import {
   Environment,
   Text,
 } from "@react-three/drei";
+import CameraControlsImpl from 'camera-controls';
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { useChat } from "../users/Chat";
@@ -20,7 +21,7 @@ const Dots = (props) => {
           }
           return loadingText + ".";
         });
-      }, 800);
+      }, 1000);
       return () => clearInterval(interval);
     } else {
       setLoadingText("");
@@ -54,13 +55,25 @@ export const Experience = () => {
   }, [cameraZoomed]);
   return (
     <>
-      <CameraControls ref={cameraControls} />
+      <CameraControls 
+        ref={cameraControls}
+        mouseButtons={{
+          left: CameraControlsImpl.ACTION.NONE,
+          middle: CameraControlsImpl.ACTION.NONE,
+          right: CameraControlsImpl.ACTION.NONE,
+          wheel: CameraControlsImpl.ACTION.NONE
+        }}
+        touches={{
+          one: CameraControlsImpl.ACTION.NONE,
+          two: CameraControlsImpl.ACTION.NONE,
+          three: CameraControlsImpl.ACTION.NONE
+        }}
+      />
       <Environment preset="sunset" />
-      {/* Wrapping Dots into Suspense to prevent Blink when Troika/Font is loaded */}
       <Suspense>
         <Dots position-y={1.75} position-x={-0.02} />
       </Suspense>
-      <Avatar />
+      <Avatar position={[0.35, 0, 0]} rotation={[0, -Math.PI / 12, 0]} />
       <ContactShadows opacity={0.7} />
     </>
   );

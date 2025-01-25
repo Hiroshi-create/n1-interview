@@ -7,4 +7,5 @@ export type Interviews = {
     questionCount: number;
     theme: string;
     reportCreated: boolean;
+    interviewDurationMin: number;
 }

@@ -87,41 +87,41 @@ const facialExpressions = {
   },
 };
 
-const corresponding = {
-  C: "viseme_PP",
-  O: "viseme_O",
-  I: "viseme_I",
-  U: "viseme_U",
-  E: "viseme_AA",
-};
 // const corresponding = {
-//   A: "viseme_PP",
+//   C: "viseme_PP",
+//   O: "viseme_O",
 //   I: "viseme_I",
 //   U: "viseme_U",
 //   E: "viseme_AA",
-//   O: "viseme_O",
-//   K: "viseme_kk",
-//   G: "viseme_kk",
-//   S: "viseme_SS",
-//   Z: "viseme_SS",
-//   T: "viseme_TH",
-//   D: "viseme_TH",
-//   N: "viseme_nn",
-//   H: "viseme_FF",
-//   B: "viseme_PP",
-//   P: "viseme_PP",
-//   M: "viseme_PP",
-//   Y: "viseme_I",
-//   R: "viseme_TH",
-//   W: "viseme_U",
-//   F: "viseme_FF",
-//   V: "viseme_FF",
-//   CH: "viseme_SS",
-//   SH: "viseme_SS",
-//   TS: "viseme_SS",
-//   J: "viseme_SS",
-//   X: "viseme_PP"
 // };
+const corresponding = {
+  A: "viseme_PP",
+  I: "viseme_I",
+  U: "viseme_U",
+  E: "viseme_AA",
+  O: "viseme_O",
+  K: "viseme_kk",
+  G: "viseme_kk",
+  S: "viseme_SS",
+  Z: "viseme_SS",
+  T: "viseme_TH",
+  D: "viseme_TH",
+  N: "viseme_nn",
+  H: "viseme_FF",
+  B: "viseme_PP",
+  P: "viseme_PP",
+  M: "viseme_PP",
+  Y: "viseme_I",
+  R: "viseme_TH",
+  W: "viseme_U",
+  F: "viseme_FF",
+  V: "viseme_FF",
+  CH: "viseme_SS",
+  SH: "viseme_SS",
+  TS: "viseme_SS",
+  J: "viseme_SS",
+  X: "viseme_PP"
+};
 
 let setupMode = false;
 
@@ -336,10 +336,10 @@ export function Avatar(props) {
             appliedMorphTarget = true;
             appliedMorphTargets.push(morphTarget);
             
-            // デバッグログ
-            if (process.env.NODE_ENV === 'development') {
-              console.log("Applying mouth shape:", mouthCue.value, "at time:", adjustedCurrentTime);
-            }
+            // // デバッグログ
+            // if (process.env.NODE_ENV === 'development') {
+            //   console.log("Applying mouth shape:", mouthCue.value, "at time:", adjustedCurrentTime);
+            // }
           }
           break;
         }
@@ -444,7 +444,11 @@ export function Avatar(props) {
   }, []);
 
   return (
-    <group {...props} dispose={null} ref={group}>
+    <group
+      {...props}
+      dispose={null}
+      ref={group}
+    >
       <primitive object={nodes.Hips} />
       <skinnedMesh
         name="Wolf3D_Body"

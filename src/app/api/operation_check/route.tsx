@@ -18,55 +18,41 @@ interface Message {
 }
 
 const templates = {
-  usage_situation: `
-  あなたは{theme}についてインタビューを行うインタビュアーです。
-  {theme}の利用状況や消費シーンについて詳しく探ります。
-  これまでの会話コンテキスト: {context}
-  質問生成の指針:
-  - {theme}をどのような場面で利用するか，具体的なエピソードなどを交えて
-  - 利用した時の満足と不満について，具体的なエピソードなどを交えて
-  - {theme}を利用する際の感情や期待を，具体的なエピソードなどを交えて
-  - {theme}を利用するにあたりこんなものがあれば，みたいな要望を，具体的なエピソードなどを交えて
-  - 各対話につき質問は１つに絞る
-  - なぜそう思ったのかを深掘りする
-  - 必要があれば，「それは他のお店でも満たしていないニーズでしょうか？」と確認する
+  checking_the_audio: `
+    あなたは音声インタビューシステムの動作確認を行うアシスタントです。
+    現在のフェーズ: 音声が聴こえるかの確認
+    指示:
+    1. ユーザーに音声が聞こえているか確認してください。
+    2. 音声が聞こえていることを確認できたら、次のフェーズに進む準備ができたか尋ねてください。
+    3. 各対話で1つの質問のみを行ってください。
+    4. ユーザーの回答に応じて適切にフォローアップしてください。
+    これまでの会話コンテキスト: {context}
   `,
-  purchase_intention: `
-  あなたは{theme}についてインタビューを行うインタビュアーです。
-  {theme}の選択意思決定プロセスについて深掘りします。
-  これまでの会話コンテキスト: {context}
-  質問生成の指針:
-  - 選択時に重視する要素（価格、品質、ブランドなど）を聞き，なぜそれを重視するのか深掘りする
-  - 選択のきっかけや情報源を具体的に聞く
-  - 選択後の満足度や不満を具体的に聞く
-  - 各対話につき質問は１つに絞る
-  - なぜそう思ったのかを深掘りする
-  - 必要があれば，「それは他のお店でも満たしていないニーズでしょうか？」と確認する
+  checking_voice_input: `
+    あなたは音声インタビューシステムの動作確認を行うアシスタントです。
+    現在のフェーズ: 音声入力の動作確認
+    指示:
+    1. ユーザーに音声入力ができているか確認してください。
+    2. ユーザーに簡単な質問をして、音声入力が正常に機能しているか確認してください。
+    3. 音声入力が正常に機能していることを確認できたら、本格的なインタビューの準備ができたか尋ねてください。
+    4. 各対話で1つの質問のみを行ってください。
+    5. ユーザーの回答に応じて適切にフォローアップしてください。
+    これまでの会話コンテキスト: {context}
   `,
-  competitor_analysis: `
-  あなたは{theme}についてインタビューを行うインタビュアーです。
-  競合製品やブランドに対する認識を調査します。
-  これまでの会話コンテキスト: {context}
-  質問生成の指針:
-  - 知っている競合ブランドやその特徴を，具体的なエピソードなどを交えて
-  - 競合サービスとの比較や選択理由を，具体的なエピソードなどを交えて
-  - 競合サービスに対する印象や期待を，具体的なエピソードなどを交えて
-  - 各対話につき質問は１つに絞る
-  - なぜそう思ったのかを深掘りする
+  confirmation_complete: `
+    音声インタビューシステムの動作確認が完了しました。ご協力ありがとうございました。
+    これからインタビューを開始します。リラックスして、質問にお答えください。
   `,
-  thank_you: `インタビューにご協力いただき、ありがとうございました。貴重なご意見を頂戴し、大変参考になりました。`
 };
-
-const phases = [
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 2 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 1 },
-  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 1 },
-  { template: "thank_you", text: "現在のフェーズ: お礼", questions: 1 }
-];
 
 export async function POST(request: Request) {
   try {
-    const { message: userMessage, interviewRefPath } = await request.json();
+    const { message: userMessage, interviewRefPath, phases }: {
+      message: string;
+      interviewRefPath: string;
+      phases: Phase[];
+    } = await request.json();
+
     const interviewRef = doc(db, interviewRefPath);
     if (!interviewRef) {
       console.error('インタビューが指定されていません');
@@ -74,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     let context = "";
-    let currentPhaseIndex = 0;
+    let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
 
     const themeDocSnap = await getDoc(interviewRef);
@@ -92,14 +78,11 @@ export async function POST(request: Request) {
     try {
       const botMessagesQuery = query(
         messageCollectionRef,
-        where("type", "==", "interview"),
+        where("type", "==", "operation_check"),
         where("sender", "==", "bot")
       );
       const snapshot = await getCountFromServer(botMessagesQuery);
       totalQuestionCount = snapshot.data().count;
-      currentPhaseIndex = phases.findIndex((phase, index) =>
-        totalQuestionCount < phases.slice(0, index + 1).reduce((sum, p) => sum + p.questions, 0)
-      );
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
@@ -136,34 +119,20 @@ export async function POST(request: Request) {
     if (currentPhaseIndex < phases.length) {
       const currentPhase = phases[currentPhaseIndex];
       const currentTemplate = currentPhase.template;
-      
-      if (currentTemplate === "thank_you") {
-        const response = await handleUserMessage(
-          userMessage,
-          "interview",
-          "interviewEnd",
-          interviewRef,
-          messageCollectionRef,
-          context,
-          totalQuestionCount,
-          currentPhaseIndex,
-          phases,
-          async (updatedContext, userMessage) => {
-            return templates.thank_you;
-          },
-          templates
-        );
+
+      if (currentTemplate === "confirmation_complete") {
+        const response = await handleInterviewEnd(messageCollectionRef, templates.confirmation_complete, "operation_check", "operationCheckComplete");
         return response;
       }
-    
+
       const prompt = templates[currentTemplate as keyof typeof templates]
         .replace("{theme}", theme)
         .replace("{context}", context);
-    
+
       const response = await handleUserMessage(
         userMessage,
-        "interview",
-        "interviewEnd",
+        "operation_check",
+        "operationCheckComplete",
         interviewRef,
         messageCollectionRef,
         context,
@@ -182,17 +151,26 @@ export async function POST(request: Request) {
         },
         templates
       );
-    
+
       const responseData = await response.json();
-      if ('currentPhaseIndex' in responseData) {
-        currentPhaseIndex = responseData.currentPhaseIndex;
+
+      // フェーズの更新処理
+      if (currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") {
+        phases[currentPhaseIndex].isChecked = true;
+        currentPhaseIndex++;
+      } else if (currentPhase.type === "free_response" && userMessage.trim() !== "") {
+        phases[currentPhaseIndex].isChecked = true;
+        currentPhaseIndex++;
       }
-      if ('totalQuestionCount' in responseData) {
-        totalQuestionCount = responseData.totalQuestionCount;
-      }
-      return NextResponse.json(responseData);
+
+      return NextResponse.json({
+        messages: responseData.messages,
+        currentPhaseIndex: currentPhaseIndex,
+        totalQuestionCount: totalQuestionCount,
+        phases: phases
+      });
     } else {
-      return await handleInterviewEnd(messageCollectionRef, templates.thank_you, "interview", "interviewEnd");
+      return await handleInterviewEnd(messageCollectionRef, templates.confirmation_complete, "operation_check", "operationCheckComplete");
     }
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);

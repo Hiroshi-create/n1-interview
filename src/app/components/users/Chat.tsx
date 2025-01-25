@@ -1,10 +1,20 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
 import { Message } from '@/stores/Message';
+import Bubble from '@/context/components/ui/bubble';
+import { useRouter } from 'next/navigation';
+import ConfirmationDialog from '@/context/components/ui/confirmationDialog';
+import TwoChoices from '@/context/components/ui/twoChoices';
+
+interface OperationCheckResponse {
+  messages: Message[];
+  phases: Phase[];
+  operationCheckComplete?: boolean;
+}
 
 type ChatContextType = {
     chat: (message: string) => Promise<void>;
@@ -12,6 +22,11 @@ type ChatContextType = {
     isLoading: boolean;
     cameraZoomed: boolean;
     setCameraZoomed: React.Dispatch<React.SetStateAction<boolean>>;
+    isPaused: boolean;
+    setIsPaused: React.Dispatch<React.SetStateAction<boolean>>;
+    isTimerStarted: boolean;
+    showTwoChoices: boolean;
+    setShowTwoChoices: React.Dispatch<React.SetStateAction<boolean>>;
     selectThemeName: string | undefined;
     loading: boolean;
     message: Message | null;
@@ -27,13 +42,43 @@ type ChatProviderProps = {
 };
 
 export const ChatProvider = ({ children }: ChatProviderProps) => {
-  const { selectedInterviewId, selectedInterviewRef, selectThemeName } = useAppsContext();
+  const {
+    selectedInterviewId,
+    isOperationCheck,
+    setIsOperationCheck,
+    selectedInterviewRef,
+    selectThemeName,
+    operationCheckPhases,
+    setOperationCheckPhases,
+  } = useAppsContext();
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [cameraZoomed, setCameraZoomed] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInterviewInitialized, setIsInterviewInitialized] = useState(false);
+  const [isTimerStarted, setIsTimerStarted] = useState(false);
+  const [showTwoChoices, setShowTwoChoices] = useState(false);
+
+  useEffect(() => {
+    if (isOperationCheck && !isInterviewInitialized && !isLoading && !isTimerStarted) {
+      const initializeInterview = async () => {
+        setIsLoading(true);
+        try {
+          await chat("インタビューを開始");
+          setIsInterviewInitialized(true);
+          setIsTimerStarted(true);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      initializeInterview();
+    }
+  }, [isOperationCheck, isInterviewInitialized, isLoading]);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -46,6 +91,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
             const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
             setMessages(newMessages);
             console.log('Messages:', JSON.stringify(newMessages, null, 2));
+            // メッセージが空で初期化されていない場合、初期メッセージを送信
+            if (newMessages.length === 0 && !isInitialized && !isOperationCheck && !isInterviewInitialized) {
+              chat("初期メッセージ");
+              setIsInitialized(true);
+            } 
           }, (error) => {
             console.error("メッセージの取得中にエラーが発生しました:", error);
           });
@@ -60,9 +110,16 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         unsubscribe();
       }
     };
-  }, [selectedInterviewId, selectedInterviewRef]);
+  }, [selectedInterviewId, selectedInterviewRef, isOperationCheck]);
 
-  const chat = async (messageText: string) => {
+  const chat = useCallback(async (messageText: string) => {
+    if (isLoading) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort(); // 既存のリクエストをキャンセル
+    }
+    abortControllerRef.current = new AbortController();
+
     setIsLoading(true);
     setLoading(true);
     setIsThinking(true);
@@ -72,44 +129,90 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         throw new Error('インタビューが選択されていません');
       }
 
-      const response = await fetch('/api/interview_server', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: messageText, interviewRefPath: selectedInterviewRef.path }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.interviewEnd) {
-        // インタビュー終了時にレポート生成APIを呼び出す
-        const reportResponse = await fetch('/api/report/individualReport', {
+      if (!isOperationCheck) {
+        console.log("--- 動作確認中です。 ---")
+        const response = await fetch('/api/operation_check', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
+          body: JSON.stringify({
+            message: messageText,
+            interviewRefPath: selectedInterviewRef.path,
+            phases: operationCheckPhases, // 現在のoperationCheckPhasesを送信
+          }),
         });
-
-        if (!reportResponse.ok) {
-          throw new Error('レポート生成に失敗しました');
-        }
-
-        const reportData = await reportResponse.json();
-        console.log('生成されたレポート:', reportData.report);
-        return;
-      }
       
-      if (data.messages && data.messages.length > 0) {
-        setMessage(data.messages[0]);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
+        }
+      
+        const data: OperationCheckResponse = await response.json();
+      
+        if (data.operationCheckComplete) {
+          setIsOperationCheck(true);
+          return;
+        }
+      
+        if (data.messages && data.messages.length > 0) {
+          setMessage(data.messages[0]);
+          setOperationCheckPhases(data.phases); // 返ってきたphasesで更新
+          
+          // 現在のフェーズのタイプに応じてshowTwoChoicesを設定
+          const currentPhase = data.phases.find(phase => !phase.isChecked);
+          if (currentPhase && currentPhase.type === "two_choices") {
+            setShowTwoChoices(true);
+          } else {
+            setShowTwoChoices(false);
+          }
+        } else {
+          throw new Error('サーバーからの応答が不正です');
+        }
       } else {
-        throw new Error('サーバーからの応答が不正です');
+        console.log("--- インタビューが始まりました。 ---")
+        const response = await fetch('/api/interview_server', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: messageText, interviewRefPath: selectedInterviewRef.path }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        console.log("data.interviewEnd : " + data.interviewEnd)
+        if (data.interviewEnd) {
+          console.log("レポート作成開始")
+          setIsTimerStarted(false);
+          // インタビュー終了時にレポート生成APIを呼び出す
+          const reportResponse = await fetch('/api/report/individualReport', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
+          });
+
+          if (!reportResponse.ok) {
+            throw new Error('レポート生成に失敗しました');
+          }
+
+          const reportData = await reportResponse.json();
+          console.log('生成されたレポート:', reportData.report);
+          return;
+        }
+        
+        if (data.messages && data.messages.length > 0) {
+          setMessage(data.messages[0]);
+        } else {
+          throw new Error('サーバーからの応答が不正です');
+        }
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -122,7 +225,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       setLoading(false);
       setIsThinking(false);
     }
-  };
+  }, [isLoading, selectedInterviewRef, isOperationCheck, operationCheckPhases]);
   
   const onMessagePlayed = useCallback(async () => {
     setMessage(null);
@@ -135,6 +238,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       isLoading,
       cameraZoomed,
       setCameraZoomed,
+      isPaused,
+      setIsPaused,
+      isTimerStarted,
+      showTwoChoices,
+      setShowTwoChoices,
       selectThemeName: selectThemeName ?? undefined,
       loading,
       message,
@@ -157,24 +265,27 @@ export const useChat = () => {
 
 const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = ({ message, style }) => {
   return (
-    <div className={`mb-2 ${message.sender === "user" ? "text-right" : "text-left"}`}>
-      <div 
-        className={`inline-block rounded px-4 py-2 ${
-          message.sender === "user" ? "bg-blue-500" :
-          message.type === "report" ? "bg-yellow-500" : "bg-green-500"
-        }`}
-        style={style}
+    <div className={`mb-4 flex ${message.sender === "user" ? "justify-start" : "justify-end"}`}>
+      <Bubble
+        direction={message.sender === "user" ? "bottom-l" : "bottom-r"}
+        backgroundColor={message.sender === "user" ? "rgb(34, 197, 94)" : "rgb(59, 130, 246)"}
+        textColor="white"
+        maxWidth="300px"
       >
-        <p className="text-white" style={style}>{message.text}</p>
-      </div>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+      </Bubble>
     </div>
   );
 };
 
 const Chat: React.FC = () => {
-  const { messages, isLoading, selectThemeName } = useChat();
+  const router = useRouter();
+  const { userId } = useAppsContext();
+  const { messages, isLoading, selectThemeName, chat, showTwoChoices, setShowTwoChoices } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -184,20 +295,7 @@ const Chat: React.FC = () => {
       const visibleRange = clientHeight;
 
       const newVisibleMessages = reversedMessages.map((message, index) => {
-        const elementTop = (index / reversedMessages.length) * scrollHeight;
-        const elementBottom = ((index + 1) / reversedMessages.length) * scrollHeight;
-        const visibilityStart = scrollTop;
-        const visibilityEnd = scrollTop + visibleRange;
-
-        let opacity = 1;
-        if (elementBottom < visibilityStart || elementTop > visibilityEnd) {
-          opacity = 0.1;
-        } else {
-          const normalizedPosition = (elementTop - visibilityStart) / visibleRange;
-          opacity = 1 - normalizedPosition * 0.7;
-        }
-
-        return { message, opacity: Math.max(0.3, Math.min(1, opacity)) };
+        return { message, opacity: Math.max(0.05, Math.min(1)) }; // 最小透明度を0.2に設定
       });
 
       setVisibleMessages(newVisibleMessages);
@@ -214,22 +312,113 @@ const Chat: React.FC = () => {
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (dialogRef.current) {
+      if (showConfirmation) {
+        dialogRef.current.showModal();
+      } else {
+        dialogRef.current.close();
+      }
+    }
+  }, [showConfirmation]);
+
+  const handleConfirmation = () => {
+    setShowConfirmation(!showConfirmation);
+  };
+
+  // ホームに戻る
+  const handleConfirmationResponse = (response: 'yes' | 'no') => {
+    if (response === 'yes') {
+      router.push(`/auto-interview/${userId}`);
+    }
+    setShowConfirmation(false);
+  };
+
+  // 2択の質問
+  const handleSelect = (option: string) => {
+    console.log(`Selected option: ${option}`);
+    const isChecked = option === "はい";
+    chat(isChecked ? "はい" : "いいえ");
+    setShowTwoChoices(false);
+  };
+
   return (
-    <div className="h-full flex flex-col p-4">
-      <h1 className="text-2xl text-white font-semibold mb-4">{selectThemeName}</h1>
+    <div className="h-full flex flex-col">
+      <div className="sticky top-0 bg-gray-600 bg-opacity-40 z-10 p-4 shadow-md flex items-center">
+        <button 
+          onClick={handleConfirmation}
+          className="mr-6 text-white hover:text-gray-200 hover:bg-gray-700 transition-all duration-200 rounded-full p-2"
+          aria-label="ホームに戻る"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+        </button>
+        <ConfirmationDialog
+          isOpen={showConfirmation}
+          onClose={handleConfirmationResponse}
+          title="確認"
+          message="ホームに戻りますか？"
+        />
+        
+        <h1 className="text-lg font-semibold text-white">{selectThemeName}</h1>
+      </div>
       <div 
+        className="flex-grow overflow-y-auto p-4 space-y-4 pb-[20vh]" 
         ref={scrollDiv} 
-        className="flex-grow overflow-y-auto mb-4 relative"
         onScroll={handleScroll}
       >
-        {isLoading && <LoadingIcons.SpinningCircles />}
-        {visibleMessages.map(({ message, opacity }, index) => (
-          <MessageBox 
-            key={index} 
-            message={message} 
-            style={{ opacity }}
+        <div className="space-y-16 min-h-full">
+          {isLoading && (
+            <div className="flex justify-center items-center py-4">
+              <LoadingIcons.Oval stroke="#000000" strokeOpacity={0.5} speed={0.75} />
+            </div>
+          )}
+          {reversedMessages.filter((message, index, array) => {
+            if (message.sender === "bot") {
+              return index !== array.findIndex(m => m.sender === "bot");
+            }
+            return true;
+          }).map((message, index) => (
+            <MessageBox
+              key={index}
+              message={message}
+              style={{
+                opacity: visibleMessages[index]?.opacity || 1,
+                transition: 'opacity 0.3s ease-in-out'
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div className="mb-auto mt-[10vh] mr-[10vw]">
+          {messages && 
+           messages.length > 0 && 
+           messages[messages.length - 1].sender === "bot" && (
+            <Bubble
+              isCreatePortal={true}
+              portalPosition={{ x: 0.28, y: -0.8 }}
+              direction="bottom-r"
+              backgroundColor="rgb(59, 130, 246)"
+              textColor="white"
+              maxWidth="560px"
+            >
+              <p className="text-lg leading-relaxed whitespace-pre-wrap break-words">
+                {messages[messages.length - 1].text}
+              </p>
+            </Bubble>
+          )}
+        </div>
+        {showTwoChoices && (
+          <TwoChoices
+            option1="はい"
+            option2="いいえ"
+            onSelect={handleSelect}
+            position={{ x: 0, y: 0 }}
           />
-        ))}
+        )}
       </div>
     </div>
   );

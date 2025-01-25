@@ -5,6 +5,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from "react
 import { auth, db } from "../../firebase";
 import { useRouter } from "next/navigation";
 import { doc, DocumentReference, getDoc } from "firebase/firestore";
+import { operation_check_phases } from "./components/lists";
 
 type AppProviderProps = {
   children: ReactNode;
@@ -24,6 +25,8 @@ type AppContextType = {
   setSelectedThemeRef: React.Dispatch<React.SetStateAction<DocumentReference | null>>;
   selectThemeName: string | null,
   setSelectThemeName: React.Dispatch<React.SetStateAction<string | null>>;
+  isOperationCheck: boolean;
+  setIsOperationCheck: React.Dispatch<React.SetStateAction<boolean>>;
   micPermission: boolean | null;
   setMicPermission: React.Dispatch<React.SetStateAction<boolean | null>>;
   requestMicPermission: () => Promise<boolean>;
@@ -31,6 +34,10 @@ type AppContextType = {
   setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
   audioContext: AudioContext | null;
   initializeAudioContext: () => Promise<void>;
+  operationCheckPhases: { template: string; text: string; isChecked: boolean; type: string }[];
+  setOperationCheckPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
+  resetOperationCheckPhases: () => void;
+  updateOperationCheckPhases: (index: number, isChecked: boolean) => void;
   resetContext: () => void;
 }
 
@@ -50,11 +57,17 @@ const AppContext = createContext<AppContextType>({
   setSelectThemeName: () => {},
   micPermission: null,
   setMicPermission: () => {},
+  isOperationCheck: true,
+  setIsOperationCheck: () => {},
   requestMicPermission: async () => false,
   hasInteracted: false,
   setHasInteracted: () => {},
   audioContext: null,
   initializeAudioContext: async () => {},
+  operationCheckPhases: [],
+  setOperationCheckPhases: () => {},
+  resetOperationCheckPhases: () => {},
+  updateOperationCheckPhases: () => {},
   resetContext: () => {},
 });
 
@@ -67,6 +80,7 @@ const getLastVisitedUrl = () => {
 };
 
 export function AppProvider({ children }: AppProviderProps) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
@@ -74,10 +88,23 @@ export function AppProvider({ children }: AppProviderProps) {
   const [selectedInterviewRef, setSelectedInterviewRef] = useState<DocumentReference | null>(null);
   const [selectedThemeRef, setSelectedThemeRef] = useState<DocumentReference | null>(null);
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
+  const [isOperationCheck, setIsOperationCheck] = useState<boolean>(true);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const router = useRouter();
+  const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
+
+  const resetOperationCheckPhases = () => {
+    setOperationCheckPhases(operationCheckPhases.map(phase => ({ ...phase, isChecked: false })));
+  };
+
+  const updateOperationCheckPhases = (index: number, isChecked: boolean) => {
+    setOperationCheckPhases(prevPhases => 
+      prevPhases.map((phase, i) => 
+        i === index ? { ...phase, isChecked } : phase
+      )
+    );
+  };
 
   const initializeAudioContext = async () => {
     if (!audioContext) {
@@ -116,6 +143,8 @@ export function AppProvider({ children }: AppProviderProps) {
       } else {
         const lastVisitedUrl = getLastVisitedUrl();
         if (lastVisitedUrl) {
+          resetOperationCheckPhases();
+          setIsOperationCheck(false);
           router.push(lastVisitedUrl);
         } else {
           const userDoc = await getDoc(doc(db, "users", newUser.uid));
@@ -158,6 +187,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setSelectedThemeRef, 
         selectThemeName, 
         setSelectThemeName,
+        isOperationCheck, 
+        setIsOperationCheck, 
         micPermission,
         setMicPermission,
         requestMicPermission,
@@ -165,6 +196,10 @@ export function AppProvider({ children }: AppProviderProps) {
         setHasInteracted,
         audioContext,
         initializeAudioContext,
+        operationCheckPhases,
+        setOperationCheckPhases,
+        resetOperationCheckPhases,
+        updateOperationCheckPhases,
         resetContext
       }}
     >

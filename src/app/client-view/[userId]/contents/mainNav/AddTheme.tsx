@@ -8,6 +8,7 @@ type FormData = {
   theme: string;
   isCustomer: boolean;
   isTest: boolean;
+  duration: string;
 };
 
 const AddTheme = () => {
@@ -27,6 +28,7 @@ const AddTheme = () => {
             isCustomer: data.isCustomer,
             isTest: data.isTest,
             userId: userId,
+            duration: parseInt(data.duration),
           }),
         });
 
@@ -67,6 +69,18 @@ const AddTheme = () => {
           </label>
           <span className="ml-2">顧客</span>
         </div>
+
+        <div className="flex items-center mb-2">
+          <label htmlFor="duration" className="mr-2">インタビュー時間:</label>
+          <select
+            {...register("duration", { required: "インタビュー時間は必須です" })}
+            className="p-2 rounded-md text-black"
+          >
+            <option value="30">30分</option>
+            <option value="60">60分</option>
+          </select>
+        </div>
+        {errors.duration && <span className='text-red-500 mb-2'>{errors.duration.message}</span>}
 
         <button
           type="submit"

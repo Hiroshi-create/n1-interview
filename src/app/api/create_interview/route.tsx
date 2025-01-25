@@ -9,9 +9,9 @@ import { ManageThemes } from '@/stores/ManageThemes';
 
 export async function POST(request: Request) {
   try {
-    const { theme, isCustomer, isTest, userId } = await request.json();
+    const { theme, isCustomer, isTest, userId, duration } = await request.json();
 
-    if (!theme || !userId) {
+    if (!theme || !userId || !duration) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
     }
 
@@ -38,11 +38,11 @@ export async function POST(request: Request) {
       searchClientId: organizationId,
       interviewsRequestedCount: intervieweeIds.length,
       collectInterviewsCount: 0,
+      interviewDurationMin: duration,
     };
 
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);
-
 
     const interviewsCollection = collection(newThemeRef, 'interviews');
     const promises = intervieweeIds.map(async (intervieweeId) => {
@@ -55,6 +55,7 @@ export async function POST(request: Request) {
         questionCount: 0,
         theme: theme,
         reportCreated: false,
+        interviewDurationMin: duration,
       };
       await setDoc(interviewDocRef, interviewData);
 
