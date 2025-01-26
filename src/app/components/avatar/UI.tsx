@@ -4,6 +4,7 @@ import { useAppsContext } from "@/context/AppContext";
 import BallTriangle from 'react-loading-icons';
 import Timer from "@/context/components/ui/timer";
 import { getDoc } from "firebase/firestore";
+import { FaMicrophoneAlt } from "react-icons/fa";
 
 interface UIProps {
   hidden?: boolean;
@@ -173,9 +174,9 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     }
   };
 
-  if (hidden) {
-    return null;
-  }
+  // if (hidden) {
+  //   return null;
+  // }
 
   return (
     <>
@@ -193,42 +194,54 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
           </div>
         </div>
   
-        <div className="flex items-center gap-2 pointer-events-auto max-w-screen-sm w-full mx-auto">
-          <input
-            className="w-full placeholder:text-gray-800 placeholder:italic p-4 rounded-md bg-opacity-50 bg-white backdrop-blur-md"
-            placeholder="Type a message..."
-            ref={input}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (e.key === "Enter") {
-                sendMessage();
-              }
-            }}
-          />
-          <div className="flex-shrink-0 flex gap-2">
-            <button
-              disabled={isLoading || !!message}
-              onClick={sendMessage}
-              className={`w-24 bg-pink-500 hover:bg-pink-600 text-white p-4 font-semibold uppercase rounded-md ${
-                isLoading || !!message ? "cursor-not-allowed opacity-30" : ""
-              }`}
+        <div className="flex flex-col items-center gap-2 pointer-events-auto w-full mx-auto">
+          {!hidden && (
+            <div className="flex items-center gap-2 max-w-screen-sm w-full">
+              <input
+                className="w-full placeholder:text-gray-800 placeholder:italic p-4 rounded-md bg-opacity-50 bg-white backdrop-blur-md"
+                placeholder="Type a message..."
+                ref={input}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === "Enter") {
+                    sendMessage();
+                  }
+                }}
+              />
+              <button
+                disabled={isLoading || !!message}
+                onClick={sendMessage}
+                className={`w-24 bg-pink-500 hover:bg-pink-600 text-white p-4 font-semibold uppercase rounded-md ${
+                  isLoading || !!message ? "cursor-not-allowed opacity-30" : ""
+                }`}
+              >
+                送信
+              </button>
+            </div>
+          )}
+          
+          <div className="fixed inset-0 z-10 pointer-events-none">
+            <div 
+              className="absolute pointer-events-auto"
+              style={{
+                left: '50%',
+                bottom: '5%',
+                transform: `translate(${-0.68 * 100}%, ${0 * 100}%)`,
+              }}
             >
-              送信
-            </button>
-            <button
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isLoading || isProcessingAudio || !!message}
-              className={`w-24 bg-blue-500 hover:bg-blue-600 text-white p-4 font-semibold uppercase rounded-md ${
-                isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-30" : ""
-              }`}
-            >
-              {isRecording || isProcessingAudio ? (
-                <div className="flex items-center justify-center w-full h-full">
-                  <BallTriangle.Bars width="20" height="20" />
-                </div>
-              ) : (
-                "音声"
-              )}
-            </button>
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isLoading || isProcessingAudio || !!message}
+                className={`w-48 h-32 bg-blue-500 hover:bg-blue-600 text-white rounded-3xl flex items-center justify-center ${
+                  isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-30" : ""
+                }`}
+              >
+                {isRecording || isProcessingAudio ? (
+                  <BallTriangle.Bars width="80" height="80" />
+                ) : (
+                  <FaMicrophoneAlt size={80} />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

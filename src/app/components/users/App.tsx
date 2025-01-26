@@ -14,7 +14,7 @@ const App: React.FC = () => {
         <Experience />
       </Canvas>
       <div style={{ position: 'relative', zIndex: 1 }}>
-        <UI />
+        <UI hidden={true} />
       </div>
     </>
   );

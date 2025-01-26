@@ -5,7 +5,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from "react
 import { auth, db } from "../../firebase";
 import { useRouter } from "next/navigation";
 import { doc, DocumentReference, getDoc } from "firebase/firestore";
-import { operation_check_phases } from "./components/lists";
+import { interview_phases, operation_check_phases } from "./components/lists";
 
 type AppProviderProps = {
   children: ReactNode;
@@ -38,6 +38,13 @@ type AppContextType = {
   setOperationCheckPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
   resetOperationCheckPhases: () => void;
   updateOperationCheckPhases: (index: number, isChecked: boolean) => void;
+
+  // 仮
+  interviewPhases: { template: string; text: string; isChecked: boolean; type: string }[];
+  setInterviewPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
+  resetInterviewPhases: () => void;
+  updateInterviewPhases: (index: number, isChecked: boolean) => void;
+
   resetContext: () => void;
 }
 
@@ -68,6 +75,13 @@ const AppContext = createContext<AppContextType>({
   setOperationCheckPhases: () => {},
   resetOperationCheckPhases: () => {},
   updateOperationCheckPhases: () => {},
+
+  // 仮
+  interviewPhases: [],
+  setInterviewPhases: () => {},
+  resetInterviewPhases: () => {},
+  updateInterviewPhases: () => {},
+
   resetContext: () => {},
 });
 
@@ -93,6 +107,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
+  const [interviewPhases, setInterviewPhases] = useState(interview_phases);  // 仮
 
   const resetOperationCheckPhases = () => {
     setOperationCheckPhases(operationCheckPhases.map(phase => ({ ...phase, isChecked: false })));
@@ -100,6 +115,18 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const updateOperationCheckPhases = (index: number, isChecked: boolean) => {
     setOperationCheckPhases(prevPhases => 
+      prevPhases.map((phase, i) => 
+        i === index ? { ...phase, isChecked } : phase
+      )
+    );
+  };
+
+  const resetInterviewPhases = () => {  // 仮
+    setInterviewPhases(interviewPhases.map(phase => ({ ...phase, isChecked: false })));
+  };
+
+  const updateInterviewPhases = (index: number, isChecked: boolean) => {  // 仮
+    setInterviewPhases(prevPhases => 
       prevPhases.map((phase, i) => 
         i === index ? { ...phase, isChecked } : phase
       )
@@ -144,6 +171,7 @@ export function AppProvider({ children }: AppProviderProps) {
         const lastVisitedUrl = getLastVisitedUrl();
         if (lastVisitedUrl) {
           resetOperationCheckPhases();
+          resetInterviewPhases();  // 仮
           setIsOperationCheck(false);
           router.push(lastVisitedUrl);
         } else {
@@ -200,6 +228,13 @@ export function AppProvider({ children }: AppProviderProps) {
         setOperationCheckPhases,
         resetOperationCheckPhases,
         updateOperationCheckPhases,
+
+        // 仮
+        interviewPhases,
+        setInterviewPhases,
+        resetInterviewPhases,
+        updateInterviewPhases,
+
         resetContext
       }}
     >

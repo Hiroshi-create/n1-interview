@@ -1,10 +1,11 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { addDoc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc, CollectionReference, deleteDoc } from 'firebase/firestore';
-import { db } from '../../../../firebase';
+import { addDoc, serverTimestamp, CollectionReference, updateDoc, setDoc, doc } from 'firebase/firestore';
 import { protos, SpeechClient } from '@google-cloud/speech';
 import axios from 'axios';
 import { kv } from '@vercel/kv';
+import { cleanOperationMessages } from './cleanOperationMessages';
+import { v4 as uuidv4 } from 'uuid';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
 
@@ -374,111 +375,83 @@ export const audioFileToBase64 = async (fileName: string): Promise<string> => {
 };
 
 export const handleUserMessage = async (
-    userMessage: string,
-    messageType: string,
-    endType: string,
-    interviewRef: any,
-    messageCollectionRef: CollectionReference,
-    context: string,
-    totalQuestionCount: number,
-    currentPhaseIndex: number,
-    phases: any[],
-    generateBotResponse: (context: string, userMessage: string) => Promise<string | null>,
-    templates: { [key: string]: string },
-  ): Promise<NextResponse> => {
-    try {
-        // messageTypeが"interview"の場合、operation_checkのメッセージを削除
-        if (messageType === "interview") {
-            const operationCheckQuery = query(messageCollectionRef, where("type", "==", "operation_check"));
-            const operationCheckSnapshot = await getDocs(operationCheckQuery);
-            const deletePromises = operationCheckSnapshot.docs.map(doc => deleteDoc(doc.ref));
-            await Promise.all(deletePromises);
-        }
-        
-        // ユーザーメッセージの保存
-        await addDoc(messageCollectionRef, {
-            text: userMessage,
-            sender: "user",
-            createdAt: serverTimestamp(),
-            type: messageType,
-        });
-  
-        context += "\nUser: " + userMessage;
-  
-        if (currentPhaseIndex < phases.length) {
-            const currentPhase = phases[currentPhaseIndex];
-            const currentTemplate = currentPhase.template;
+  userMessage: string,
+  messageType: string,
+  endType: string,
+  interviewRef: any,
+  messageCollectionRef: CollectionReference,
+  context: string,
+  totalQuestionCount: number,
+  currentPhaseIndex: number,
+  phases: any[],
+  generateBotResponse: (context: string, userMessage: string) => Promise<string | null>,
+  templates: { [key: string]: string },
+): Promise<NextResponse> => {
+  try {
+    if (messageType === "interview") {
+      await cleanOperationMessages(messageCollectionRef);
+    }
+    
+    const userMessageId = uuidv4();
+    await setDoc(doc(messageCollectionRef, userMessageId), {
+      text: userMessage,
+      sender: "user",
+      createdAt: serverTimestamp(),
+      type: messageType,
+      messageId: userMessageId
+    });
 
-            const lastPhase = phases[phases.length - 1];
+    context += "\nUser: " + userMessage;
 
-            if (currentTemplate === lastPhase.template) {
-                const lastTemplateText = templates[lastPhase.template as keyof typeof templates];
-                return await handleInterviewEnd(messageCollectionRef, lastTemplateText, messageType, endType);
-            }
-    
-            // if (currentTemplate === "thank_you") {
-            //   return await handleInterviewEnd(messageCollectionRef, templatesLastString, messageType, endType);
-            // }
-    
-            const botResponseText = await generateBotResponse(context, userMessage);
-    
-            if (botResponseText) {
-            const fileName = `message_${totalQuestionCount}.mp3`;
-            await generateAudio(botResponseText, fileName);
-            await lipSyncMessage(totalQuestionCount);
-    
-            const botMessage: Message = {
-                text: botResponseText,
-                audio: await audioFileToBase64(fileName),
-                lipsync: await readJsonTranscript(totalQuestionCount),
-                facialExpression: 'smile',
-                animation: 'Talking_1',
-            };
-    
-            await addDoc(messageCollectionRef, {
-                text: botResponseText,
-                sender: "bot",
-                createdAt: serverTimestamp(),
-                type: messageType,
-            });
-    
-            totalQuestionCount++;
-            if (totalQuestionCount >= phases.slice(0, currentPhaseIndex + 1).reduce((sum, p) => sum + p.questions, 0)) {
-                currentPhaseIndex++;
-            }
-    
-            return NextResponse.json({ messages: [botMessage], currentPhaseIndex, totalQuestionCount });
-        } else {
-            throw new Error('AI応答の生成に失敗しました');
-        }
+    if (currentPhaseIndex < phases.length) {
+      const currentPhase = phases[currentPhaseIndex];
+      const currentTemplate = currentPhase.template;
+      const lastPhase = phases[phases.length - 1];
+      
+      let botResponseText: string | null;
+      
+      if (currentTemplate === lastPhase.template) {
+        botResponseText = templates[lastPhase.template as keyof typeof templates];
       } else {
-        const lastPhase = phases[phases.length - 1];
-        const lastTemplateText = templates[lastPhase.template as keyof typeof templates];
-        return await handleInterviewEnd(messageCollectionRef, lastTemplateText, messageType, endType);
-        // return await handleInterviewEnd(messageCollectionRef, templatesLastString, messageType, endType);
+        botResponseText = await generateBotResponse(context, userMessage);
       }
-    } catch (error) {
-      console.error('メッセージ処理中にエラーが発生しました:', error);
-      return NextResponse.json({ error: 'メッセージの処理に失敗しました' }, { status: 500 });
-    }
-};
 
-export const handleInterviewEnd = async (
-    messageCollectionRef: CollectionReference,
-    endMessage: string,
-    messageType: string,
-    endType: string,
-  ): Promise<NextResponse> => {
-    try {
-      await addDoc(messageCollectionRef, {
-        text: endMessage,
-        sender: "bot",
-        createdAt: serverTimestamp(),
-        type: messageType,
-      });
-      return NextResponse.json({ [endType]: true, messages: [{ text: endMessage }] });
-    } catch (error) {
-      console.error('終了メッセージの保存中にエラーが発生しました:', error);
-      return NextResponse.json({ error: '終了メッセージの保存に失敗しました' }, { status: 500 });
+      if (botResponseText) {
+        const fileName = `message_${totalQuestionCount}.mp3`;
+        await generateAudio(botResponseText, fileName);
+        await lipSyncMessage(totalQuestionCount);
+
+        const botMessage: Message = {
+          text: botResponseText,
+          audio: await audioFileToBase64(fileName),
+          lipsync: await readJsonTranscript(totalQuestionCount),
+          facialExpression: 'smile',
+          animation: 'Talking_1',
+        };
+
+        const botMessageId = uuidv4();
+        await setDoc(doc(messageCollectionRef, botMessageId), {
+          text: botResponseText,
+          sender: "bot",
+          createdAt: serverTimestamp(),
+          type: messageType,
+          messageId: botMessageId
+        });
+
+        totalQuestionCount++;
+        if (totalQuestionCount >= phases.slice(0, currentPhaseIndex + 1).reduce((sum, p) => sum + p.questions, 0)) {
+          currentPhaseIndex++;
+        }
+
+        return NextResponse.json({ messages: [botMessage], currentPhaseIndex, totalQuestionCount });
+      } else {
+        throw new Error('AI応答の生成に失敗しました');
+      }
+    } else {
+      throw new Error('全てのフェーズが完了しました');
     }
+  } catch (error) {
+    console.error('メッセージ処理中にエラーが発生しました:', error);
+    return NextResponse.json({ error: 'メッセージの処理に失敗しました' }, { status: 500 });
+  }
 };

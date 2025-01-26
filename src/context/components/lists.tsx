@@ -85,6 +85,20 @@ export const analysisNav = [
 // インタビューの動作確認用
 export const operation_check_phases = [
   { template: "checking_the_audio", text: "現在のフェーズ: 音声が聴こえるかの確認", isChecked: false, type: "two_choices" },
-  { template: "checking_voice_input", text: "現在のフェーズ: 音声入力の動作確認", isChecked: false, type: "free_response" },
-  { template: "confirmation_complete", text: "現在のフェーズ: 確認完了", isChecked: false, type: "two_choices" },
+  { template: "checking_voice_input", text: "現在のフェーズ: 音声入力の動作確認(1)", isChecked: false, type: "free_response" },
+  { template: "checking_voice_input", text: "現在のフェーズ: 音声入力の動作確認(2)", isChecked: false, type: "free_response" },
+  { template: "confirmation_complete", text: "現在のフェーズ: 確認完了", isChecked: false, type: "one_choice" },
+];
+
+export const interview_phases = [
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "two_choices" },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "two_choices" },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
+  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "two_choices" },
+  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
+  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
+  { template: "thank_you", text: "現在のフェーズ: お礼", isChecked: false, type: "free_response" },
 ];

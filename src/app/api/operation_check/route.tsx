@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { Theme } from '@/stores/Theme';
-import { handleUserMessage, handleInterviewEnd, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
+import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -63,6 +63,15 @@ export async function POST(request: Request) {
     let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
 
+    // フェーズが全て完了しているかチェック
+    if (currentPhaseIndex >= phases.length) {
+      console.log("全てのフェーズが完了しました");
+      return NextResponse.json({ 
+        message: "インタビューが完了しました。ありがとうございました。",
+        isOperationCheckComplete: true 
+      });
+    }
+
     const themeDocSnap = await getDoc(interviewRef);
     if (!themeDocSnap.exists()) {
       console.error('指定されたテーマIDのドキュメントが存在しません');
@@ -116,62 +125,64 @@ export async function POST(request: Request) {
       }
     }
 
-    if (currentPhaseIndex < phases.length) {
-      const currentPhase = phases[currentPhaseIndex];
-      const currentTemplate = currentPhase.template;
-
-      if (currentTemplate === "confirmation_complete") {
-        const response = await handleInterviewEnd(messageCollectionRef, templates.confirmation_complete, "operation_check", "operationCheckComplete");
-        return response;
-      }
-
-      const prompt = templates[currentTemplate as keyof typeof templates]
-        .replace("{theme}", theme)
-        .replace("{context}", context);
-
-      const response = await handleUserMessage(
-        userMessage,
-        "operation_check",
-        "operationCheckComplete",
-        interviewRef,
-        messageCollectionRef,
-        context,
-        totalQuestionCount,
-        currentPhaseIndex,
-        phases,
-        async (updatedContext, userMessage) => {
-          const gptResponse = await openai.chat.completions.create({
-            messages: [
-              { role: "system", content: prompt },
-              { role: "user", content: userMessage }
-            ],
-            model: "gpt-3.5-turbo"
-          });
-          return gptResponse.choices[0].message.content ?? null;
-        },
-        templates
-      );
-
-      const responseData = await response.json();
-
-      // フェーズの更新処理
-      if (currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") {
-        phases[currentPhaseIndex].isChecked = true;
-        currentPhaseIndex++;
-      } else if (currentPhase.type === "free_response" && userMessage.trim() !== "") {
-        phases[currentPhaseIndex].isChecked = true;
-        currentPhaseIndex++;
-      }
-
-      return NextResponse.json({
-        messages: responseData.messages,
-        currentPhaseIndex: currentPhaseIndex,
-        totalQuestionCount: totalQuestionCount,
-        phases: phases
-      });
-    } else {
-      return await handleInterviewEnd(messageCollectionRef, templates.confirmation_complete, "operation_check", "operationCheckComplete");
+    
+    let currentPhase = phases[currentPhaseIndex];
+    if (currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") {
+      phases[currentPhaseIndex].isChecked = true;
+      currentPhaseIndex++;
+    } else if (currentPhase.type === "free_response" && userMessage.trim() !== "") {
+      phases[currentPhaseIndex].isChecked = true;
+      currentPhaseIndex++;
     }
+
+    // 次のフェーズが存在するかチェック
+    if (currentPhaseIndex >= phases.length) {
+      console.log("全てのフェーズが完了しました");
+      return NextResponse.json({ 
+        message: "インタビューが完了しました。ありがとうございました。",
+        isOperationCheckComplete: true 
+      });
+    }
+
+    currentPhase = phases[currentPhaseIndex];
+    console.log("何個目の質問か(サーバーサイド) : " + currentPhaseIndex);
+
+    const currentTemplate = currentPhase.template;
+    const prompt = templates[currentTemplate as keyof typeof templates]
+      .replace("{theme}", theme)
+      .replace("{context}", context);
+
+    const response = await handleUserMessage(
+      userMessage,
+      "operation_check",
+      "operationCheckComplete",
+      interviewRef,
+      messageCollectionRef,
+      context,
+      totalQuestionCount,
+      currentPhaseIndex,
+      phases,
+      async (updatedContext, userMessage) => {
+        const gptResponse = await openai.chat.completions.create({
+          messages: [
+            { role: "system", content: prompt },
+            { role: "user", content: userMessage }
+          ],
+          model: "gpt-3.5-turbo"
+        });
+        return gptResponse.choices[0].message.content ?? null;
+      },
+      templates
+    );
+
+    const responseData = await response.json();
+
+    return NextResponse.json({
+      messages: responseData.messages,
+      currentPhaseIndex: currentPhaseIndex,
+      totalQuestionCount: totalQuestionCount,
+      phases: phases
+    });
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);
     return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });

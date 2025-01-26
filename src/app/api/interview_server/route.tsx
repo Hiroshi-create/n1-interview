@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { Theme } from '@/stores/Theme';
-import { handleUserMessage, handleInterviewEnd, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
+import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -57,16 +57,14 @@ const templates = {
   thank_you: `インタビューにご協力いただき、ありがとうございました。貴重なご意見を頂戴し、大変参考になりました。`
 };
 
-const phases = [
-  { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", questions: 2 },
-  { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", questions: 1 },
-  { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", questions: 1 },
-  { template: "thank_you", text: "現在のフェーズ: お礼", questions: 1 }
-];
-
 export async function POST(request: Request) {
   try {
-    const { message: userMessage, interviewRefPath } = await request.json();
+    const { message: userMessage, interviewRefPath, phases }: {
+      message: string;
+      interviewRefPath: string;
+      phases: Phase[];
+    } = await request.json();
+
     const interviewRef = doc(db, interviewRefPath);
     if (!interviewRef) {
       console.error('インタビューが指定されていません');
@@ -74,8 +72,17 @@ export async function POST(request: Request) {
     }
 
     let context = "";
-    let currentPhaseIndex = 0;
+    let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
+
+    // フェーズが全て完了しているかチェック
+    if (currentPhaseIndex >= phases.length) {
+      console.log("全てのフェーズが完了しました");
+      return NextResponse.json({ 
+        message: "インタビューが完了しました。ありがとうございました。",
+        isInterviewComplete: true 
+      });
+    }
 
     const themeDocSnap = await getDoc(interviewRef);
     if (!themeDocSnap.exists()) {
@@ -97,9 +104,6 @@ export async function POST(request: Request) {
       );
       const snapshot = await getCountFromServer(botMessagesQuery);
       totalQuestionCount = snapshot.data().count;
-      currentPhaseIndex = phases.findIndex((phase, index) =>
-        totalQuestionCount < phases.slice(0, index + 1).reduce((sum, p) => sum + p.questions, 0)
-      );
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
@@ -133,67 +137,64 @@ export async function POST(request: Request) {
       }
     }
 
-    if (currentPhaseIndex < phases.length) {
-      const currentPhase = phases[currentPhaseIndex];
-      const currentTemplate = currentPhase.template;
-      
-      if (currentTemplate === "thank_you") {
-        const response = await handleUserMessage(
-          userMessage,
-          "interview",
-          "interviewEnd",
-          interviewRef,
-          messageCollectionRef,
-          context,
-          totalQuestionCount,
-          currentPhaseIndex,
-          phases,
-          async (updatedContext, userMessage) => {
-            return templates.thank_you;
-          },
-          templates
-        );
-        return response;
-      }
-    
-      const prompt = templates[currentTemplate as keyof typeof templates]
-        .replace("{theme}", theme)
-        .replace("{context}", context);
-    
-      const response = await handleUserMessage(
-        userMessage,
-        "interview",
-        "interviewEnd",
-        interviewRef,
-        messageCollectionRef,
-        context,
-        totalQuestionCount,
-        currentPhaseIndex,
-        phases,
-        async (updatedContext, userMessage) => {
-          const gptResponse = await openai.chat.completions.create({
-            messages: [
-              { role: "system", content: prompt },
-              { role: "user", content: userMessage }
-            ],
-            model: "gpt-3.5-turbo"
-          });
-          return gptResponse.choices[0].message.content ?? null;
-        },
-        templates
-      );
-    
-      const responseData = await response.json();
-      if ('currentPhaseIndex' in responseData) {
-        currentPhaseIndex = responseData.currentPhaseIndex;
-      }
-      if ('totalQuestionCount' in responseData) {
-        totalQuestionCount = responseData.totalQuestionCount;
-      }
-      return NextResponse.json(responseData);
-    } else {
-      return await handleInterviewEnd(messageCollectionRef, templates.thank_you, "interview", "interviewEnd");
+    let currentPhase = phases[currentPhaseIndex];
+    if ((currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") ||
+        (currentPhase.type === "free_response" && userMessage.trim() !== "")) {
+      phases[currentPhaseIndex].isChecked = true;
+      currentPhaseIndex++;
     }
+
+    // 次のフェーズが存在するかチェック
+    if (currentPhaseIndex >= phases.length) {
+      console.log("全てのフェーズが完了しました");
+      return NextResponse.json({ 
+        message: "インタビューが完了しました。ありがとうございました。",
+        isInterviewComplete: true 
+      });
+    }
+
+    currentPhase = phases[currentPhaseIndex];
+    console.log("何個目の質問か(サーバーサイド) : " + currentPhaseIndex);
+
+    const currentTemplate = currentPhase.template;
+    const prompt = templates[currentTemplate as keyof typeof templates]
+      .replace("{theme}", theme)
+      .replace("{context}", context);
+
+    const response = await handleUserMessage(
+      userMessage,
+      "interview",
+      "interviewEnd",
+      interviewRef,
+      messageCollectionRef,
+      context,
+      totalQuestionCount,
+      currentPhaseIndex,
+      phases,
+      async (updatedContext, userMessage) => {
+        if (currentTemplate === "thank_you") {
+          return templates.thank_you;
+        }
+        const gptResponse = await openai.chat.completions.create({
+          messages: [
+            { role: "system", content: prompt },
+            { role: "user", content: userMessage }
+          ],
+          model: "gpt-3.5-turbo"
+        });
+        return gptResponse.choices[0].message.content ?? null;
+      },
+      templates
+    );
+
+    const responseData = await response.json();
+
+    return NextResponse.json({
+      messages: responseData.messages,
+      currentPhaseIndex: currentPhaseIndex,
+      totalQuestionCount: totalQuestionCount,
+      phases: phases
+    });
   } catch (error) {
     console.error('予期せぬエラーが発生しました:', error);
     return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });

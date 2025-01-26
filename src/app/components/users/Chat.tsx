@@ -8,12 +8,19 @@ import { Message } from '@/stores/Message';
 import Bubble from '@/context/components/ui/bubble';
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from '@/context/components/ui/confirmationDialog';
-import TwoChoices from '@/context/components/ui/twoChoices';
+import SingleSelect from '@/context/components/ui/singleSelect';
+import { interview_phases } from '@/context/components/lists';
 
 interface OperationCheckResponse {
   messages: Message[];
   phases: Phase[];
-  operationCheckComplete?: boolean;
+  isOperationCheckComplete?: boolean;
+}
+
+interface InterviewResponse {
+  messages: Message[];
+  phases: Phase[];
+  isInterviewComplete?: boolean;
 }
 
 type ChatContextType = {
@@ -25,14 +32,16 @@ type ChatContextType = {
     isPaused: boolean;
     setIsPaused: React.Dispatch<React.SetStateAction<boolean>>;
     isTimerStarted: boolean;
-    showTwoChoices: boolean;
-    setShowTwoChoices: React.Dispatch<React.SetStateAction<boolean>>;
+    showSingleSelect: boolean;
+    setShowSingleSelect: React.Dispatch<React.SetStateAction<boolean>>;
     selectThemeName: string | undefined;
     loading: boolean;
     message: Message | null;
+    options: string[];
     onMessagePlayed: () => void;
     themeId: string | undefined;
     isThinking: boolean;
+    operationCheckComplete: boolean;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -50,6 +59,10 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     selectThemeName,
     operationCheckPhases,
     setOperationCheckPhases,
+
+    // 仮
+    interviewPhases,
+    setInterviewPhases,
   } = useAppsContext();
   const abortControllerRef = useRef<AbortController | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -62,7 +75,9 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInterviewInitialized, setIsInterviewInitialized] = useState(false);
   const [isTimerStarted, setIsTimerStarted] = useState(false);
-  const [showTwoChoices, setShowTwoChoices] = useState(false);
+  const [options, setOptions] = useState<string[]>([]);
+  const [showSingleSelect, setShowSingleSelect] = useState(false);
+  const [operationCheckComplete, setOperationCheckComplete] = useState(false);
 
   useEffect(() => {
     if (isOperationCheck && !isInterviewInitialized && !isLoading && !isTimerStarted) {
@@ -110,7 +125,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         unsubscribe();
       }
     };
-  }, [selectedInterviewId, selectedInterviewRef, isOperationCheck]);
+  }, [selectedInterviewId, selectedInterviewRef, isOperationCheck, isInitialized, isInterviewInitialized]);
 
   const chat = useCallback(async (messageText: string) => {
     if (isLoading) return;
@@ -139,7 +154,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           body: JSON.stringify({
             message: messageText,
             interviewRefPath: selectedInterviewRef.path,
-            phases: operationCheckPhases, // 現在のoperationCheckPhasesを送信
+            phases: operationCheckPhases,
           }),
         });
       
@@ -150,21 +165,26 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       
         const data: OperationCheckResponse = await response.json();
       
-        if (data.operationCheckComplete) {
-          setIsOperationCheck(true);
+        if (data.isOperationCheckComplete) {
+          setOperationCheckComplete(true);
+          setShowSingleSelect(true);
           return;
         }
       
         if (data.messages && data.messages.length > 0) {
           setMessage(data.messages[0]);
-          setOperationCheckPhases(data.phases); // 返ってきたphasesで更新
+          setOperationCheckPhases(data.phases);
+          console.log("更新後、何個目の質問か(クライアントサイド) : " + operationCheckPhases.findIndex(phase => !phase.isChecked));
           
           // 現在のフェーズのタイプに応じてshowTwoChoicesを設定
           const currentPhase = data.phases.find(phase => !phase.isChecked);
-          if (currentPhase && currentPhase.type === "two_choices") {
-            setShowTwoChoices(true);
+          console.log("何個目の質問か(クライアントサイド) : " + currentPhase?.text)
+          if (currentPhase && (currentPhase.type === "two_choices" || currentPhase.type === "one_choice")) {
+            const options = currentPhase.type === "two_choices" ? ["はい", "いいえ"] : ["開始"];
+            setOptions(options);
+            setShowSingleSelect(true);
           } else {
-            setShowTwoChoices(false);
+            setShowSingleSelect(false);
           }
         } else {
           throw new Error('サーバーからの応答が不正です');
@@ -176,7 +196,11 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ message: messageText, interviewRefPath: selectedInterviewRef.path }),
+          body: JSON.stringify({
+            message: messageText,
+            interviewRefPath: selectedInterviewRef.path,
+            phases: interviewPhases
+          }),
         });
         
         if (!response.ok) {
@@ -184,10 +208,10 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
         }
         
-        const data = await response.json();
+        const data: InterviewResponse = await response.json();
         
-        console.log("data.interviewEnd : " + data.interviewEnd)
-        if (data.interviewEnd) {
+        console.log("data.isInterviewComplete : " + data.isInterviewComplete)
+        if (data.isInterviewComplete) {
           console.log("レポート作成開始")
           setIsTimerStarted(false);
           // インタビュー終了時にレポート生成APIを呼び出す
@@ -208,8 +232,26 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           return;
         }
         
+        // if (data.messages && data.messages.length > 0) {
+        //   setMessage(data.messages[0]);
+        // } else {
+        //   throw new Error('サーバーからの応答が不正です');
+        // }
         if (data.messages && data.messages.length > 0) {
           setMessage(data.messages[0]);
+          setInterviewPhases(data.phases);
+          console.log("更新後、何個目の質問か(クライアントサイド) : " + interviewPhases.findIndex(phase => !phase.isChecked));
+          
+          // 現在のフェーズのタイプに応じてshowTwoChoicesを設定
+          const currentPhase = data.phases.find(phase => !phase.isChecked);
+          console.log("何個目の質問か(クライアントサイド) : " + currentPhase?.text)
+          if (currentPhase && (currentPhase.type === "two_choices" || currentPhase.type === "one_choice")) {
+            const options = currentPhase.type === "two_choices" ? ["はい", "いいえ"] : ["開始"];
+            setOptions(options);
+            setShowSingleSelect(true);
+          } else {
+            setShowSingleSelect(false);
+          }
         } else {
           throw new Error('サーバーからの応答が不正です');
         }
@@ -225,7 +267,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       setLoading(false);
       setIsThinking(false);
     }
-  }, [isLoading, selectedInterviewRef, isOperationCheck, operationCheckPhases]);
+  }, [isLoading, selectedInterviewRef, isOperationCheck, operationCheckPhases, interviewPhases]);
   
   const onMessagePlayed = useCallback(async () => {
     setMessage(null);
@@ -241,14 +283,16 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       isPaused,
       setIsPaused,
       isTimerStarted,
-      showTwoChoices,
-      setShowTwoChoices,
+      showSingleSelect,
+      setShowSingleSelect,
       selectThemeName: selectThemeName ?? undefined,
       loading,
       message,
+      options,
       onMessagePlayed,
       themeId: selectedInterviewId ?? undefined,
       isThinking,
+      operationCheckComplete,
     }}>
       {children}
     </ChatContext.Provider>
@@ -280,12 +324,13 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
 
 const Chat: React.FC = () => {
   const router = useRouter();
-  const { userId } = useAppsContext();
-  const { messages, isLoading, selectThemeName, chat, showTwoChoices, setShowTwoChoices } = useChat();
+  const { userId, selectedInterviewRef, setIsOperationCheck } = useAppsContext();
+  const { messages, isLoading, selectThemeName, chat, showSingleSelect, setShowSingleSelect, options } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -334,12 +379,15 @@ const Chat: React.FC = () => {
     setShowConfirmation(false);
   };
 
-  // 2択の質問
+  // 選択ボタン
   const handleSelect = (option: string) => {
     console.log(`Selected option: ${option}`);
-    const isChecked = option === "はい";
-    chat(isChecked ? "はい" : "いいえ");
-    setShowTwoChoices(false);
+    if (option === "はい" || option === "いいえ") {
+      chat(option);
+    } else if (option === "開始") {
+      setIsOperationCheck(true);
+    }
+    setShowSingleSelect(false);
   };
 
   return (
@@ -359,6 +407,9 @@ const Chat: React.FC = () => {
           onClose={handleConfirmationResponse}
           title="確認"
           message="ホームに戻りますか？"
+          isLoading={isDeleting}
+          yesText={isDeleting ? "処理中..." : "はい"}
+          noText="いいえ"
         />
         
         <h1 className="text-lg font-semibold text-white">{selectThemeName}</h1>
@@ -411,12 +462,13 @@ const Chat: React.FC = () => {
             </Bubble>
           )}
         </div>
-        {showTwoChoices && (
-          <TwoChoices
-            option1="はい"
-            option2="いいえ"
-            onSelect={handleSelect}
-            position={{ x: 0, y: 0 }}
+        {showSingleSelect && (
+          <SingleSelect
+            options={["開始"]}
+            onSelect={(option) => handleSelect(option)}
+            backgroundColor="#f0f0f0"
+            textColor="#333333"
+            position={{ x: -0.1, y: 1.5}}
           />
         )}
       </div>

@@ -7,7 +7,15 @@ import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
 
 const DescriptionDetail = () => {
-  const { userId, selectThemeName, selectedThemeId, selectedInterviewId, resetOperationCheckPhases } = useAppsContext();
+  const {
+    userId,
+    selectThemeName,
+    selectedThemeId,
+    selectedInterviewId,
+    selectedInterviewRef,
+    resetOperationCheckPhases,
+    resetInterviewPhases  // 仮
+  } = useAppsContext();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -23,11 +31,43 @@ const DescriptionDetail = () => {
     }
   }, [showConfirmation]);
 
-  const handleStartClick = () => {
+  const handleStartClick = async () => {
     resetOperationCheckPhases();
+    resetInterviewPhases();  // 仮
     setIsLoading(true);
-    router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);
+    
+    try {
+      if (!selectedInterviewRef) {
+        throw new Error('インタビューが選択されていません');
+      }
+  
+      const response = await fetch('/api/clean_operation_messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ interviewRefPath: selectedInterviewRef.path }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('operation_checkメッセージの削除に失敗しました');
+      }
+  
+      const result = await response.json();
+      console.log(result.message);
+  
+      // メッセージ削除成功後にインタビューページに遷移
+      router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);
+    } catch (error) {
+      console.error('エラー:', error);
+      // エラーが発生した場合でもユーザーに通知した上でインタビューページに遷移
+      alert('メッセージの削除中にエラーが発生しましたが、インタビューを開始します。');
+      router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);
+    } finally {
+      setIsLoading(false);
+    }
   };
+  
 
   const handleConfirmation = () => {
     setShowConfirmation(true);
