@@ -71,43 +71,46 @@ const ThemeDetailPage = () => {
 
     if (!theme) {
         return (
-            <div>
-                <LoadingIcons.SpinningCircles />
-                テーマを読み込んでいます...
+            <div className="flex flex-col items-center justify-center h-64">
+                <LoadingIcons.SpinningCircles className="w-12 h-12 text-primary" />
+                <p className="mt-4 text-lg">テーマを読み込んでいます...</p>
             </div>
         );
     }
 
     return (
-        <div>
-            <div className="flex items-center gap-2 border-b border-neutral-700 px-4 py-3">
+        <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 border-b border-gray-300 px-4 py-3">
                 <h1 className="text-xl font-semibold">
                     <span
-                        className="cursor-pointer hover:underline"
+                        className="cursor-pointer hover:text-primary transition-colors duration-300"
                         onClick={() => router.push(`/client-view/${params.userId}/${tab}`)}
                     >
                         {tab}
                     </span>
-                    &nbsp; ＞ &nbsp;{theme.theme}
+                    &nbsp;＞&nbsp;
+                    <span className="text-text">{theme.theme}</span>
                 </h1>
             </div>
-            <div className="flex-1 overflow-auto p-4">
-                <ul>
-                    {individualReports.map((individualReport, index) => (
-                        <li 
-                            key={individualReport.individualReportId}
-                            className='cursor-pointer border-b p-4 text-slate-100 hover:bg-slate-700 duration-150'
-                            onClick={() => selectIndividualReport(
-                                individualReport.individualReportId,
-                                theme.themeId,
-                                index
-                            )}
-                        >
-                            {individualReport.individualReportId}
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            <main className="container mx-auto py-8 px-4 flex-grow">
+                <div className='flex-grow'>
+                    <ul className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-300 mt-8 mb-4">
+                        {individualReports.map((individualReport, index) => (
+                            <li 
+                                key={individualReport.individualReportId}
+                                className='cursor-pointer border-b border-gray-300 p-4 hover:bg-gray-100 transition-colors duration-300'
+                                onClick={() => selectIndividualReport(
+                                    individualReport.individualReportId,
+                                    theme.themeId,
+                                    index
+                                )}
+                            >
+                                <span className="text-gray-800">{individualReport.individualReportId}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </main>
         </div>
     );
 };

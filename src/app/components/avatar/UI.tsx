@@ -36,8 +36,8 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   }, [selectedInterviewRef]);
 
   const input = useRef<HTMLInputElement>(null);
-  const { chat, isLoading, isPaused, setIsPaused, isTimerStarted, message, themeId } = useChat();
-  const { micPermission, requestMicPermission, setHasInteracted, initializeAudioContext } = useAppsContext();
+  const { chat, isLoading, isPaused, setIsPaused, showSingleSelect, isTimerStarted, message, themeId } = useChat();
+  const { micPermission, requestMicPermission, setHasInteracted, initializeAudioContext, interviewPhases, updateInterviewPhases } = useAppsContext();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
@@ -174,10 +174,6 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     }
   };
 
-  // if (hidden) {
-  //   return null;
-  // }
-
   return (
     <>
       <div className="fixed top-0 left-0 right-0 bottom-0 z-10 flex justify-between p-4 flex-col pointer-events-none">
@@ -189,6 +185,16 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
                 initialTime={initialTime} 
                 isPaused={isPaused}
                 onTogglePause={togglePause}
+                onTimerEnd={() => {
+                  console.log('タイマーが終了しました');
+                  // ここに終了時の処理を追加
+                }}
+                timeLeftTrigger={30}
+                onTimeLeft={() => {
+                  const totalPhases = interviewPhases.length;
+                  const updates = Array.from({ length: totalPhases - 1 }, (_, i) => ({ index: i, isChecked: true }));
+                  updateInterviewPhases(updates);
+                }}
               />
             </div>
           </div>
@@ -219,7 +225,9 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
             </div>
           )}
           
-          <div className="fixed inset-0 z-10 pointer-events-none">
+
+          {!showSingleSelect && (
+            <div className="fixed inset-0 z-10 pointer-events-none">
             <div 
               className="absolute pointer-events-auto"
               style={{
@@ -231,18 +239,19 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={isLoading || isProcessingAudio || !!message}
-                className={`w-48 h-32 bg-blue-500 hover:bg-blue-600 text-white rounded-3xl flex items-center justify-center ${
-                  isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-30" : ""
+                className={`w-48 h-32 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-3xl flex items-center justify-center shadow-md transition-all duration-300 ${
+                  isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-50" : ""
                 }`}
               >
                 {isRecording || isProcessingAudio ? (
-                  <BallTriangle.Bars width="80" height="80" />
+                  <BallTriangle.Bars width="72" height="72" color="#4B5563" />
                 ) : (
-                  <FaMicrophoneAlt size={80} />
+                  <FaMicrophoneAlt size={72} />
                 )}
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
     </>

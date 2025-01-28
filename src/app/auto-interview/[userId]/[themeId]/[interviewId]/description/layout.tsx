@@ -8,8 +8,8 @@ export default function DescriptionDetailLayout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarInset className="flex-1 w-full bg-[#202124] text-white overflow-auto">
-        {children}
+    <SidebarInset className="flex-1 w-full bg-background text-text overflow-auto">
+      {children}
     </SidebarInset>
   )
 }

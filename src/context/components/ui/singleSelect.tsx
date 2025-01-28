@@ -100,7 +100,15 @@ const SingleSelect: React.FC<SingleSelectProps> = ({
               padding: '1rem',
             }}
           >
-            <div className="flex flex-nowrap justify-start" style={{ gap: '1rem' }}>
+            <div 
+              className="flex flex-nowrap justify-center" 
+              style={{ 
+                gap: '1rem',
+                width: `${options.length * 160}px`,
+                maxWidth: '80vw',
+                margin: '0 auto'
+              }}
+            >
               {options.slice().reverse().map((option, index) => (
                 <Button 
                   key={index} 

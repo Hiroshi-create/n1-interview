@@ -97,19 +97,19 @@ const Report = () => {
 
     return (
         <div className='flex-grow'>
-            <ul>
+            <ul className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-300 mt-4">
                 {themes.map((theme) => (
                     <li 
                         key={theme.themeId}
-                        className='cursor-pointer border-b p-4 text-slate-100 hover:bg-slate-700 duration-150'
+                        className='cursor-pointer border-b border-gray-300 p-4 hover:bg-gray-100 transition-colors duration-300'
                         onClick={() => selectTheme(theme.themeId, theme.theme)}
                     >
-                        {theme.theme}
+                        <span style={{ color: '#121212' }}>{theme.theme}</span>
                     </li>
                 ))}
             </ul>
         </div>
-    )
+    );
 }
 
 function isValidThemeData(data: unknown): data is Theme {

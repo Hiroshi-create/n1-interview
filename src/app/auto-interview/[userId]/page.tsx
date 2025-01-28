@@ -2,10 +2,9 @@
 
 import React, { useEffect } from 'react'
 import { usePathname } from 'next/navigation';
+import InterviewHome from '@/app/components/users/InterviewHome';
 
 const AutoInterview = () => {
-  
-  // 遷移先のURLをローカルストレージに保存
   const pathname = usePathname();
   useEffect(() => {
     const saveLastVisitedUrl = (url: string) => {
@@ -17,8 +16,9 @@ const AutoInterview = () => {
   }, [pathname]);
 
   return (
-    <div className="flex h-screen justify-center items-center">
-      interviewのホーム
+    <div className="h-full flex flex-col p-4">
+      <h1 className="text-secondary">interviewのホーム</h1>
+      <InterviewHome />
     </div>
   )
 }

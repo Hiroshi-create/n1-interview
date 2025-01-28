@@ -7,6 +7,9 @@ interface TimerProps {
   isPaused: boolean;
   isStarted: boolean;
   onTogglePause: () => void;
+  onTimerEnd: () => void;
+  timeLeftTrigger: number;
+  onTimeLeft: () => void;
 }
 
 const TimerWrapper = styled.div`
@@ -100,22 +103,43 @@ const PauseIcon = styled.div`
   z-index: 2;
 `;
 
-const Timer: React.FC<TimerProps> = ({ initialTime, isPaused, isStarted, onTogglePause }) => {
+const Timer: React.FC<TimerProps> = ({
+  initialTime,
+  isPaused,
+  isStarted,
+  onTogglePause,
+  onTimerEnd,
+  timeLeftTrigger,
+  onTimeLeft,
+}) => {
   const [time, setTime] = useState(initialTime);
+  const [timeLeftWarningTriggered, setTimeLeftWarningTriggered] = useState(false);
 
   useEffect(() => {
     setTime(initialTime);
+    setTimeLeftWarningTriggered(false);
   }, [initialTime]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isStarted && !isPaused && time > 0) {
       timer = setInterval(() => {
-        setTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
+        setTime((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(timer);
+            onTimerEnd();
+            return 0;
+          }
+          if (prevTime === timeLeftTrigger && !timeLeftWarningTriggered) {
+            onTimeLeft();
+            setTimeLeftWarningTriggered(true);
+          }
+          return prevTime - 1;
+        });
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isPaused, time, isStarted]);
+  }, [isPaused, time, isStarted, onTimerEnd, onTimeLeft, timeLeftWarningTriggered, timeLeftTrigger]);
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);

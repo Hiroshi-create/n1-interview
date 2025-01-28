@@ -14,10 +14,18 @@ export default function AutoInterviewLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full bg-background">
         {!isInterviewPage && <Sidebar />}
-        <SidebarInset className={`flex-1 w-full bg-[#202124] text-white overflow-auto ${isInterviewPage ? 'ml-0' : ''}`}>
-          {children}
+        <SidebarInset className={`flex-1 w-full bg-background overflow-auto ${isInterviewPage ? 'ml-0' : 'py-8 text-text'}`}>
+          {isInterviewPage ? (
+            children
+          ) : (
+            <main className="container mx-auto py-8 px-4">
+              <div className="bg-white shadow-md rounded-lg p-6">
+                {children}
+              </div>
+            </main>
+          )}
         </SidebarInset>
       </div>
     </SidebarProvider>

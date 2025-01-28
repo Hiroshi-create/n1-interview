@@ -442,7 +442,7 @@ const Chat: React.FC = () => {
           ))}
         </div>
       </div>
-
+  
       <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none">
         <div className="mb-auto mt-[10vh] mr-[10vw]">
           {messages && 
@@ -462,15 +462,19 @@ const Chat: React.FC = () => {
             </Bubble>
           )}
         </div>
-        {showSingleSelect && (
-          <SingleSelect
-            options={["開始"]}
-            onSelect={(option) => handleSelect(option)}
-            backgroundColor="#f0f0f0"
-            textColor="#333333"
-            position={{ x: -0.1, y: 1.5}}
-          />
-        )}
+      </div>
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+        <div className="pointer-events-auto">
+          {showSingleSelect && (
+            <SingleSelect
+              options={options}
+              onSelect={(option) => handleSelect(option)}
+              backgroundColor="#f0f0f0"
+              textColor="#333333"
+              position={{ x: -0.1, y: 1.6 }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

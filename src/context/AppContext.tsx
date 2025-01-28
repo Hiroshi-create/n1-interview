@@ -43,7 +43,7 @@ type AppContextType = {
   interviewPhases: { template: string; text: string; isChecked: boolean; type: string }[];
   setInterviewPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
   resetInterviewPhases: () => void;
-  updateInterviewPhases: (index: number, isChecked: boolean) => void;
+  updateInterviewPhases: (updates: {index: number; isChecked: boolean;}[]) => void
 
   resetContext: () => void;
 }
@@ -113,7 +113,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setOperationCheckPhases(operationCheckPhases.map(phase => ({ ...phase, isChecked: false })));
   };
 
-  const updateOperationCheckPhases = (index: number, isChecked: boolean) => {
+  const updateOperationCheckPhases = (index: number, isChecked: boolean) => {  // 使われていない？
     setOperationCheckPhases(prevPhases => 
       prevPhases.map((phase, i) => 
         i === index ? { ...phase, isChecked } : phase
@@ -125,11 +125,12 @@ export function AppProvider({ children }: AppProviderProps) {
     setInterviewPhases(interviewPhases.map(phase => ({ ...phase, isChecked: false })));
   };
 
-  const updateInterviewPhases = (index: number, isChecked: boolean) => {  // 仮
+  const updateInterviewPhases = (updates: { index: number; isChecked: boolean }[]) => {  // 仮
     setInterviewPhases(prevPhases => 
-      prevPhases.map((phase, i) => 
-        i === index ? { ...phase, isChecked } : phase
-      )
+      prevPhases.map((phase, i) => {
+        const update = updates.find(u => u.index === i);
+        return update ? { ...phase, isChecked: update.isChecked } : phase;
+      })
     );
   };
 

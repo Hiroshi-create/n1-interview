@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body>
+      <body className="bg-background text-text">
         <AppProvider>{children}</AppProvider>
       </body>
     </html>

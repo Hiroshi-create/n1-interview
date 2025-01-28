@@ -5,8 +5,10 @@ import { useAppsContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
+import { getDoc } from 'firebase/firestore';
 
 const DescriptionDetail = () => {
+  const router = useRouter();
   const {
     userId,
     selectThemeName,
@@ -16,10 +18,40 @@ const DescriptionDetail = () => {
     resetOperationCheckPhases,
     resetInterviewPhases  // 仮
   } = useAppsContext();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
+  const [checkedItems1, setCheckedItems1] = useState<{ [key: string]: boolean }>({});
+  const [checkedItems2, setCheckedItems2] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    const fetchInterviewDuration = async () => {
+      if (selectedInterviewRef) {
+        try {
+          const docSnap = await getDoc(selectedInterviewRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data && typeof data.interviewDurationMin === 'number') {
+              setInterviewDuration(data.interviewDurationMin);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching interview duration:', error);
+        }
+      }
+    };
+
+    fetchInterviewDuration();
+  }, [selectedInterviewRef]);
+
+  const handleCheckboxChange1 = (id: string) => {
+    setCheckedItems1(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+  
+  const handleCheckboxChange2 = (id: string) => {
+    setCheckedItems2(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   useEffect(() => {
     if (dialogRef.current) {
@@ -95,8 +127,14 @@ const DescriptionDetail = () => {
 
   return (
     <div className="h-full flex flex-col p-4">
-      <h1 className="text-2xl text-white font-semibold mb-4">{selectThemeName}</h1>
-      <InterviewDescription />
+      <h1 className="text-3xl text-text font-semibold mb-4">テーマ：{selectThemeName}</h1>
+      <InterviewDescription
+        interviewDuration={interviewDuration}
+        checkedItems1={checkedItems1}
+        checkedItems2={checkedItems2}
+        onCheckboxChange1={handleCheckboxChange1}
+        onCheckboxChange2={handleCheckboxChange2}
+      />
       {isLoading ? (
         <div className="mt-4 flex justify-center">
           <LoadingIcons.SpinningCircles />
@@ -104,9 +142,12 @@ const DescriptionDetail = () => {
       ) : (
         <button 
           onClick={handleConfirmation} 
-          className="mt-4 p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300"
+          disabled={!checkedItems1['agreement1'] || !checkedItems2['agreement2']}
+          className={`mt-4 p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300 ${
+            !checkedItems1['agreement1'] || !checkedItems2['agreement2'] ? "cursor-not-allowed opacity-50" : ""
+          }`}
         >
-          開始
+          動作確認に進む
         </button>
       )}
 
@@ -135,7 +176,7 @@ const DescriptionDetail = () => {
         </div>
       </dialog>
     </div>
-  )
+  );
 }
 
 export default DescriptionDetail
