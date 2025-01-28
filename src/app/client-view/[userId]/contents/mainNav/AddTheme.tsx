@@ -48,8 +48,10 @@ const AddTheme = () => {
       <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col'>
         <input
           {...register("theme", { required: "テーマは必須です" })}
+          id="theme"
+          type="text"
           placeholder="新しいテーマを入力"
-          className='p-2 mb-2 rounded-md text-black'
+          className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-300 ease-in-out"
         />
         {errors.theme && <span className='text-red-500 mb-2'>{errors.theme.message}</span>}
 
@@ -74,7 +76,7 @@ const AddTheme = () => {
           <label htmlFor="duration" className="mr-2">インタビュー時間:</label>
           <select
             {...register("duration", { required: "インタビュー時間は必須です" })}
-            className="p-2 rounded-md text-black"
+            className="p-2 rounded-md text-black border border-gray-300"
           >
             <option value="30">30分</option>
             <option value="60">60分</option>

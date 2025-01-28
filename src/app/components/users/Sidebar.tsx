@@ -20,6 +20,7 @@ import { SlLogout } from "react-icons/sl"
 import { Interviews } from '@/stores/Interviews'
 import { collection, DocumentReference, FieldValue, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
+import { MdClose } from "react-icons/md";
 
 interface InterviewNav {
   interview: Interviews;
@@ -27,9 +28,20 @@ interface InterviewNav {
   isActive: boolean;
 }
 
-export function Sidebar({ ...props }: React.HTMLAttributes<HTMLDivElement>) {
+interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  toggleMenu: () => void;
+}
+
+export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
   const router = useRouter()
-  const { user, userId, setSelectedThemeId, setIsOperationCheck, setSelectedInterviewId, setSelectedInterviewRef, setSelectThemeName } = useAppsContext();
+  const {
+    user,
+    userId,
+    setSelectedThemeId,
+    setSelectedInterviewId,
+    setSelectedInterviewRef,
+    setSelectThemeName
+  } = useAppsContext();
 
   const getHref = (href: string) => {
     return userId ? href.replace('[userId]', userId) : '#';
@@ -115,19 +127,25 @@ export function Sidebar({ ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div className='bg-slate-900 h-full overflow-y-auto flex flex-col border-r border-slate-700 shadow-lg'>
       <div className='flex-grow' {...props}>
-        <SidebarHeader className="h-16 border-b border-slate-700 flex items-center justify-center">
-            <div className="px-4">
-              <Image
-                src="/logo/logo_yoko.svg"
-                alt="感性分析 Logo"
-                width={120}
-                height={40}
-                className="select-none cursor-pointer"
-                draggable="false"
-                style={{ userSelect: 'none' }}
-                onClick={handleLogoClick}
-              />
-            </div>
+        <SidebarHeader className="h-14 border-b border-slate-700 flex flex-row items-center justify-start">
+          <button 
+            onClick={toggleMenu}
+            className="px-4 text-slate-300 hover:text-slate-100 transition-colors duration-200"
+          >
+            <MdClose size={24} />
+          </button>
+          <div className="flex-grow flex justify-center">
+            <Image
+              src="/logo/logo_yoko.svg"
+              alt="感性分析 Logo"
+              width={120}
+              height={40}
+              className="select-none cursor-pointer"
+              draggable="false"
+              style={{ userSelect: 'none' }}
+              onClick={handleLogoClick}
+            />
+          </div>
         </SidebarHeader>
         <SidebarContent className="px-3 py-4">
           <SidebarGroup className="mb-4">

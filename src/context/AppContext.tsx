@@ -32,6 +32,8 @@ type AppContextType = {
   requestMicPermission: () => Promise<boolean>;
   hasInteracted: boolean;
   setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
+  isMenuOpen: boolean;
+  setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   audioContext: AudioContext | null;
   initializeAudioContext: () => Promise<void>;
   operationCheckPhases: { template: string; text: string; isChecked: boolean; type: string }[];
@@ -69,6 +71,8 @@ const AppContext = createContext<AppContextType>({
   requestMicPermission: async () => false,
   hasInteracted: false,
   setHasInteracted: () => {},
+  isMenuOpen: true,
+  setIsMenuOpen: () => {},
   audioContext: null,
   initializeAudioContext: async () => {},
   operationCheckPhases: [],
@@ -105,6 +109,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isOperationCheck, setIsOperationCheck] = useState<boolean>(true);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(true);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
   const [interviewPhases, setInterviewPhases] = useState(interview_phases);  // 仮
@@ -223,6 +228,8 @@ export function AppProvider({ children }: AppProviderProps) {
         requestMicPermission,
         hasInteracted,
         setHasInteracted,
+        isMenuOpen,
+        setIsMenuOpen,
         audioContext,
         initializeAudioContext,
         operationCheckPhases,

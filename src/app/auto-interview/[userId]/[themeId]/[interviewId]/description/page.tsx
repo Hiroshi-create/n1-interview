@@ -15,6 +15,7 @@ const DescriptionDetail = () => {
     selectedThemeId,
     selectedInterviewId,
     selectedInterviewRef,
+    setIsMenuOpen,
     resetOperationCheckPhases,
     resetInterviewPhases  // 仮
   } = useAppsContext();
@@ -102,6 +103,7 @@ const DescriptionDetail = () => {
   
 
   const handleConfirmation = () => {
+    setIsMenuOpen(false);
     setShowConfirmation(true);
   };
 
