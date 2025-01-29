@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from '../../../../firebase';
 import { collection } from 'firebase/firestore';
 import { cleanOperationMessages } from "../components/cleanOperationMessages";
+
 export async function POST(req: NextRequest) {
   try {
     const { interviewRefPath } = await req.json();

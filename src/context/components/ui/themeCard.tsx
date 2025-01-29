@@ -1,14 +1,14 @@
 import { FieldValue, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
-import { FiClock } from 'react-icons/fi';
+import { Clock } from 'lucide-react';
 
 interface CardProps {
   title: string;
   createdAt: Timestamp | FieldValue;
   onClick?: () => void;
   href?: string;
-  deadline: Timestamp;
+  deadline: Timestamp | FieldValue;
   organizationName: string;
 }
 
@@ -34,9 +34,14 @@ const ThemeCard: React.FC<CardProps> = ({
 
   useEffect(() => {
     const calculateTimeLeft = () => {
+      if (!(deadline instanceof Timestamp)) {
+        setTimeLeft('締切日時不明');
+        return;
+      }
+
       const now = Timestamp.now();
       const difference = deadline.toMillis() - now.toMillis();
-      
+
       if (difference > 0) {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
         const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
@@ -60,7 +65,7 @@ const ThemeCard: React.FC<CardProps> = ({
     return () => clearInterval(timer);
   }, [deadline]);
 
-  const formatCreatedAt = (timestamp: Timestamp | FieldValue) => {
+  const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
     if (timestamp instanceof Timestamp) {
       return timestamp.toDate().toLocaleDateString('ja-JP');
     }
@@ -79,11 +84,11 @@ const ThemeCard: React.FC<CardProps> = ({
         <h2 className="text-2xl font-bold text-gray-800 mb-2 line-clamp-2">{title}</h2>
       </div>
       <div className="mt-auto">
-        <p className="text-sm text-gray-500 mb-4">作成日: {formatCreatedAt(createdAt)}</p>
+        <p className="text-sm text-gray-500 mb-4">作成日: {formatTimestamp(createdAt)}</p>
         <div className="pt-4 border-t border-gray-200">
           <div className="flex justify-between items-center">
             <div className="flex items-center text-sm font-medium text-red-500">
-              <FiClock className="mr-1" />
+              <Clock className="mr-1" />
               {timeLeft}
             </div>
             <div className="text-sm font-semibold text-blue-600 group-hover:text-blue-800 transition-colors duration-200">

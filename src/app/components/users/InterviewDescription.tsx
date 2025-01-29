@@ -4,7 +4,7 @@ import Image from 'next/image';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { FaCheckSquare, FaExclamationTriangle, FaMicrophoneAlt } from "react-icons/fa";
+import { SquareCheck, AlertTriangle } from 'lucide-react';
 import LoadingIcons from 'react-loading-icons';
 
 interface LinkTextProps {
@@ -79,7 +79,7 @@ const InterviewDescription: React.FC<{
 3. もう一度、画面中央下の波形ボタンを"一度だけ"クリック。
 これによって、AIが新たに回答の内容を理解した質問を聞きます。
           `,
-          icon: FaMicrophoneAlt
+          icon: AlertTriangle
         },
         {
           title: "選択回答",
@@ -88,7 +88,7 @@ const InterviewDescription: React.FC<{
 2. 回答となるボタンをクリックします。
 これによって、AIが新たに回答の内容を理解した質問を聞きます。
           `,
-          icon: FaCheckSquare
+          icon: SquareCheck
         },
     ];
 
@@ -306,7 +306,7 @@ const InterviewDescription: React.FC<{
                         if (children === '❗️要配慮個人情報の取得') {
                         return (
                             <strong className="text-black font-bold text-lg flex items-center mb-2">
-                            <FaExclamationTriangle className="text-red-600 mr-2" size={20} />
+                            <AlertTriangle className="text-red-600 mr-2" size={20} />
                             要配慮個人情報の取得
                             </strong>
                         );

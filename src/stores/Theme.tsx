@@ -1,11 +1,11 @@
-import { Timestamp } from "firebase/firestore";
+import { FieldValue, Timestamp } from "firebase/firestore";
 
 export type Theme = {
     themeId: string;
     theme: string;
     createUserId: string;
-    createdAt: Timestamp;
-    deadline: Timestamp;
+    createdAt: Timestamp | FieldValue;
+    deadline: Timestamp | FieldValue;
     clientId: string;
     interviewsRequestedCount: number;
     collectInterviewsCount: number;

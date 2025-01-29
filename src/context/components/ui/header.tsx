@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/context/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAppsContext } from "@/context/AppContext";
-import { HiMenu } from "react-icons/hi";
+import { Menu } from 'lucide-react';
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "./button";
@@ -36,7 +36,7 @@ const Header = React.forwardRef<
             onClick={toggleMenu}
             className="px-2 text-slate-600 hover:text-slate-800 transition-colors duration-200"
           >
-            <HiMenu size={24} />
+            <Menu size={24} />
           </button>
           <Image
             src="/logo/logo_yoko.svg"

@@ -42,17 +42,22 @@ export async function POST(request: Request) {
       interviewDurationMin: duration,
       isPublic: isPublic !== undefined ? isPublic : true,
     };
-
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);
+
 
     const interviewsCollection = collection(newThemeRef, 'interviews');
     const promises = intervieweeIds.map(async (intervieweeId) => {
       const interviewId = uuidv4();
+      const answerInterviewId = uuidv4();
+      const manageThemeId = uuidv4();
+
       const interviewDocRef = doc(interviewsCollection, interviewId);
       const interviewData: Interviews = {
         interviewId: interviewId,
         intervieweeId: intervieweeId,
+        manageThemeId: manageThemeId,
+        answerInterviewId: answerInterviewId,
         createdAt: serverTimestamp(),
         questionCount: 0,
         reportCreated: false,
@@ -62,8 +67,8 @@ export async function POST(request: Request) {
       await setDoc(interviewDocRef, interviewData);
 
       // users コレクションの intervieweeId に answerInterviews サブコレクションを作成
-      const userAnswerInterviewsCollection = collection(doc(db, "users", intervieweeId), "answerInterviews");
-      const answerInterviewDocRef = doc(userAnswerInterviewsCollection);
+      const userAnswerInterviewsCollection = collection(db, "users", intervieweeId, "answerInterviews");
+      const answerInterviewDocRef = doc(userAnswerInterviewsCollection, answerInterviewId);
       const answerInterviewData: AnswerInterviews = {
         createdAt: serverTimestamp(),
         interviewReference: interviewDocRef,
@@ -71,8 +76,8 @@ export async function POST(request: Request) {
       await setDoc(answerInterviewDocRef, answerInterviewData);
 
       // clients コレクションの organizationId に manageThemes サブコレクションを作成
-      const clientManageThemesCollection = collection(doc(db, "clients", organizationId), "manageThemes");
-      const manageThemeDocRef = doc(clientManageThemesCollection);
+      const clientManageThemesCollection = collection(db, "clients", organizationId, "manageThemes");
+      const manageThemeDocRef = doc(clientManageThemesCollection, manageThemeId);
       const manageThemeData: ManageThemes = {
         createdAt: serverTimestamp(),
         themeReference: newThemeRef,

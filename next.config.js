@@ -14,6 +14,10 @@ const nextConfig = {
       };
     }
 
+    module.exports = {
+      transpilePackages: ['@algolia/autocomplete-js', '@algolia/autocomplete-theme-classic']
+    }
+
     // config.module.rules.push({
     //   test: /\.(mp3|wav)$/,
     //   use: {

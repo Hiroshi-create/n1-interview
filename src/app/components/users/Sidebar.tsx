@@ -16,11 +16,10 @@ import {
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { auth, db } from "../../../../firebase"
-import { SlLogout } from "react-icons/sl"
+import { X, LogOut } from 'lucide-react';
 import { Interviews } from '@/stores/Interviews'
 import { collection, DocumentReference, FieldValue, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
-import { MdClose } from "react-icons/md";
 import { Theme } from '@/stores/Theme'
 import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck'
 
@@ -85,6 +84,8 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                           interview: {
                             interviewId: doc.id,
                             intervieweeId: interviewData.intervieweeId,
+                            answerInterviewId: interviewData.answerInterviewId,
+                            manageThemeId: interviewData.manageThemeId,
                             createdAt: interviewData.createdAt,
                             questionCount: interviewData.questionCount,
                             themeId: interviewData.themeId,
@@ -157,7 +158,7 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
             onClick={toggleMenu}
             className="px-4 text-slate-300 hover:text-slate-100 transition-colors duration-200"
           >
-            <MdClose size={24} />
+            <X size={24} />
           </button>
           <div className="flex-grow flex justify-center">
             <Image
@@ -207,7 +208,7 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
         onClick={() => handleLogout()}
         className='mx-3 mb-4 text-base flex items-center justify-center space-x-2 cursor-pointer p-3 text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-md transition-all duration-200 ease-in-out'
       >
-        <SlLogout className="h-5 w-5" />
+        <LogOut className="h-5 w-5" />
         <span className="font-medium">ログアウト</span>
       </div>
     </div>

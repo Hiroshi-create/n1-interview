@@ -8,6 +8,8 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         data !== null &&
         'interviewId' in data &&
         'intervieweeId' in data &&
+        'answerInterviewId' in data &&
+        'manageThemeId' in data &&
         'createdAt' in data &&
         'questionCount' in data &&
         'reportCreated' in data &&
@@ -15,6 +17,8 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         'themeId' in data &&
         typeof (data as any).interviewId === 'string' &&
         typeof (data as any).intervieweeId === 'string' &&
+        typeof (data as any).answerInterviewId === 'string' &&
+        typeof (data as any).manageThemeId === 'string' &&
         ((data as any).createdAt instanceof Timestamp || (data as any).createdAt instanceof FieldValue) &&
         typeof (data as any).questionCount === 'number' &&
         typeof (data as any).reportCreated === 'boolean' &&

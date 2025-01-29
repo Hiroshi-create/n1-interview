@@ -3,8 +3,7 @@
 import { useAppsContext } from '@/context/AppContext';
 import ThemeCard from '@/context/components/ui/themeCard';
 import React, { useEffect, useState } from 'react';
-import { FaSearch } from 'react-icons/fa';
-import { collection, DocumentReference, FieldValue, getDoc, doc as firebaseDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, DocumentReference, getDoc, doc as firebaseDoc, onSnapshot, orderBy, query, Timestamp, DocumentData, FieldValue } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
@@ -27,7 +26,6 @@ const InterviewHome: React.FC = () => {
     setSelectedInterviewRef,
     setSelectThemeName
   } = useAppsContext();
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [interviewsNav, setInterviewsNav] = useState<InterviewNav[]>([]);
   const [interviewRefs, setInterviewRefs] = useState<{[key: string]: DocumentReference}>({});
@@ -37,7 +35,6 @@ const InterviewHome: React.FC = () => {
       const fetchInterviews = async () => {
         const interviewCollectionRef = collection(db, "users", userId, "answerInterviews");
         const q = query(interviewCollectionRef, orderBy("createdAt", "desc"));
-
         const unsubscribe = onSnapshot(q, async (snapshot) => {
           const interviewPromises = snapshot.docs.map(async (doc) => {
             const interviewRef = doc.data().interviewReference as DocumentReference;
@@ -46,13 +43,10 @@ const InterviewHome: React.FC = () => {
               if (interviewDoc.exists()) {
                 const interviewData = interviewDoc.data();
                 if (isValidInterviewData(interviewData)) {
-                  
-                  // テーマデータの取得
                   const parentDocRef = interviewRef.parent.parent;
                   if (parentDocRef) {
                     const themeDoc = await getDoc(parentDocRef);
                     const themeId = themeDoc.id;
-                  
                     if (themeDoc.exists()) {
                       const themeData = themeDoc.data();
                       if (isValidThemeData(themeData)) {
@@ -65,6 +59,8 @@ const InterviewHome: React.FC = () => {
                               interview: {
                                 interviewId: doc.id,
                                 intervieweeId: interviewData.intervieweeId,
+                                answerInterviewId: interviewData.answerInterviewId,
+                                manageThemeId: interviewData.manageThemeId,
                                 createdAt: interviewData.createdAt,
                                 questionCount: interviewData.questionCount,
                                 themeId: interviewData.themeId,
@@ -97,11 +93,9 @@ const InterviewHome: React.FC = () => {
             }
             return null;
           });
-
           const interviewResults = await Promise.all(interviewPromises);
           const validInterviews = interviewResults.filter((interview): interview is InterviewNav => interview !== null);
           setInterviewsNav(validInterviews);
-
           const newInterviewRefs = snapshot.docs.reduce((acc, doc) => {
             const interviewRef = doc.data().interviewReference as DocumentReference;
             if (interviewRef) {
@@ -111,10 +105,8 @@ const InterviewHome: React.FC = () => {
           }, {} as {[key: string]: DocumentReference});
           setInterviewRefs(newInterviewRefs);
         });
-
         return () => unsubscribe();
       };
-
       fetchInterviews();
     }
   }, [user, userId]);
@@ -126,34 +118,126 @@ const InterviewHome: React.FC = () => {
     setSelectedInterviewRef(interviewRefs[interviewId]);
     setSelectedThemeId(interviewNav.theme.themeId);
     setSelectThemeName(interviewNav.theme.theme);
-  }
+  };
 
   const getHref = (href: string) => {
     return userId ? href.replace('[userId]', userId) : '#';
-  }
+  };
+
+  const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
+      if (timestamp instanceof Timestamp) {
+        return timestamp.toDate().toLocaleDateString('ja-JP');
+      }
+      return '日付不明';
+    };
+
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/search_themes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          initialQuery: searchTerm,
+          userId: userId,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `サーバーエラー: ${response.status}`);
+      }
+  
+      const data = await response.json();
+  
+      if (Array.isArray(data.interviewNav) && data.interviewNav.length > 0) {
+        const validInterviews: InterviewNav[] = data.interviewNav.map((validInterview: any) => {
+          return {
+            interview: {
+              interviewId: validInterview.interview.interviewId,
+              intervieweeId: validInterview.interview.intervieweeId,
+              answerInterviewId: validInterview.interview.answerInterviewId,
+              manageThemeId: validInterview.interview.manageThemeId,
+              createdAt: Timestamp.fromDate(new Date(validInterview.interview.createdAt)),
+              questionCount: validInterview.interview.questionCount,
+              reportCreated: validInterview.interview.reportCreated,
+              interviewDurationMin: validInterview.interview.interviewDurationMin,
+              themeId: validInterview.interview.themeId
+            } as Interviews,
+            theme: {
+              themeId: validInterview.theme.themeId,
+              theme: validInterview.theme.theme,
+              createUserId: validInterview.theme.createUserId,
+              createdAt: Timestamp.fromDate(new Date(validInterview.theme.createdAt)),
+              deadline: Timestamp.fromDate(new Date(validInterview.theme.deadline)),
+              clientId: validInterview.theme.clientId,
+              interviewsRequestedCount: validInterview.theme.interviewsRequestedCount,
+              collectInterviewsCount: validInterview.theme.collectInterviewsCount,
+              interviewDurationMin: validInterview.theme.interviewDurationMin,
+              isPublic: validInterview.theme.isPublic
+            } as Theme,
+            organizationName: validInterview.organizationName,
+            href: validInterview.href,
+            isActive: validInterview.isActive
+          } as InterviewNav;
+        });
+        console.log(`インタビューの作成日: " + ${formatTimestamp(validInterviews[0].interview.createdAt)}`);
+        console.log(`テーマの作成日: " + ${formatTimestamp(validInterviews[0].theme.createdAt)}`);
+        console.log(`テーマの締切日: " + ${formatTimestamp(validInterviews[0].theme.deadline)}`);
+        setInterviewsNav(validInterviews);
+        
+        if (data.interviewRefs && typeof data.interviewRefs === 'object') {
+          const convertedRefs: {[key: string]: DocumentReference<DocumentData, DocumentData>} = {};
+          Object.entries(data.interviewRefs).forEach(([key, path]) => {
+            if (typeof path === 'string') {
+              convertedRefs[key] = firebaseDoc(db, path) as DocumentReference<DocumentData, DocumentData>;
+            }
+          });
+          setInterviewRefs(convertedRefs);
+        } else {
+          console.log("interviewRefsが見つからないか、正しい形式ではありません");
+          setInterviewRefs({});
+        }
+      } else {
+        console.log("検索結果が見つかりませんでした");
+        setInterviewsNav([]);
+        setInterviewRefs({});
+      }
+    } catch (error) {
+      console.error('検索エラー:', error);
+      setInterviewsNav([]);
+      setInterviewRefs({});
+    }
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+    <div>
+      <form onSubmit={handleSearch} className="mb-8">
         <div className="relative">
           <input
             type="text"
-            placeholder="検索..."
-            className="w-full p-3 pl-10 rounded-lg border border-secondary"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="テーマを検索..."
+            className="w-full p-3 pl-10 rounded-lg border border-secondary"
           />
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary" />
+          <button 
+            type="submit" 
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all"
+          >
+            検索
+          </button>
         </div>
-      </div>
-
+      </form>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {interviewsNav.map((interviewNav) => (
           <ThemeCard 
             key={interviewNav.interview.interviewId}
             title={interviewNav.theme.theme}
             href={getHref(interviewNav.href)}
-            createdAt={interviewNav.interview.createdAt}
+            createdAt={interviewNav.theme.createdAt}
             onClick={() => {
               selectInterview(interviewNav);
             }}
@@ -164,6 +248,6 @@ const InterviewHome: React.FC = () => {
       </div>
     </div>
   );
-}
+};
 
 export default InterviewHome;
