@@ -33,7 +33,7 @@ h5 { font-size: 1.25rem; }
 h6 { font-size: 1rem; }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-text);
   text-decoration: none;
   transition: var(--transition);
 }
@@ -44,7 +44,7 @@ a:hover {
 
 .btn {
   display: inline-block;
-  background-color: var(--color-primary);
+  background-color: var(--color-secondary);
   color: var(--color-background);
   padding: 0.75rem 1.5rem;
   border-radius: 0.25rem;
@@ -151,4 +151,28 @@ input:checked + .slider:before {
 
 .slider.round:before {
     border-radius: 50%;
+}
+
+.hover-underline-animation {
+  display: inline-block;
+  position: relative;
+  color: var(--color-text);
+}
+
+.hover-underline-animation::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: -4px;
+  left: 0;
+  background-color: var(--color-text);
+  transform-origin: bottom right;
+  transition: transform 0.25s ease-out;
+}
+
+.hover-underline-animation:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
 }

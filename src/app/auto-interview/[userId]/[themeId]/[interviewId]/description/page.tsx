@@ -128,7 +128,7 @@ const DescriptionDetail = () => {
   };
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col p-4 mb-8">
       <h1 className="text-3xl text-text font-semibold mb-4">テーマ：{selectThemeName}</h1>
       <InterviewDescription
         interviewDuration={interviewDuration}

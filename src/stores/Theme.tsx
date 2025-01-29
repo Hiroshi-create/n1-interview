@@ -5,8 +5,10 @@ export type Theme = {
     theme: string;
     createUserId: string;
     createdAt: Timestamp;
-    searchClientId: string;
+    deadline: Timestamp;
+    clientId: string;
     interviewsRequestedCount: number;
     collectInterviewsCount: number;
     interviewDurationMin: number;
+    isPublic: boolean;
 }

@@ -12,6 +12,7 @@ type AppProviderProps = {
 }
 
 type AppContextType = {
+  handleLogout: () => Promise<void>;
   user: User | null;
   userId: string | null,
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
@@ -51,6 +52,7 @@ type AppContextType = {
 }
 
 const AppContext = createContext<AppContextType>({
+  handleLogout: async () => {},
   user: null,
   userId: null,
   setUser: () => {},
@@ -114,6 +116,16 @@ export function AppProvider({ children }: AppProviderProps) {
   const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
   const [interviewPhases, setInterviewPhases] = useState(interview_phases);  // 仮
 
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      resetContext();
+      router.push("/home/");
+    } catch (error) {
+      console.error("ログアウトエラー:", error);
+    }
+  };
+
   const resetOperationCheckPhases = () => {
     setOperationCheckPhases(operationCheckPhases.map(phase => ({ ...phase, isChecked: false })));
   };
@@ -170,11 +182,16 @@ export function AppProvider({ children }: AppProviderProps) {
     const unsubscribe = onAuthStateChanged(auth, async (newUser) => {
       setUser(newUser);
       setUserId(newUser ? newUser.uid : null);
+      const lastVisitedUrl = getLastVisitedUrl();
+
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/terms/')) {
+        return;
+      }
   
       if (!newUser) {
         router.push("/home/");
       } else {
-        const lastVisitedUrl = getLastVisitedUrl();
         if (lastVisitedUrl) {
           resetOperationCheckPhases();
           resetInterviewPhases();  // 仮
@@ -208,6 +225,7 @@ export function AppProvider({ children }: AppProviderProps) {
   return (
     <AppContext.Provider
       value={{ 
+        handleLogout,
         user, 
         userId, 
         setUser, 

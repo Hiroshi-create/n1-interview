@@ -1,3 +1,5 @@
+import PrivacyPolicy from "@/app/terms/contents/PrivacyPolicy";
+import TermsOfService from "@/app/terms/contents/TermsOfService";
 import { Database, FileCode2, Files, Plus, Server, Users } from "lucide-react";
 
 
@@ -81,6 +83,19 @@ export const analysisNav = [
     isActive: false,
   },
 ]
+
+export const termsTabConfig = [
+  {
+    key: 'PrivacyPolicy',
+    title: 'プライバシーポリシー',
+    component: PrivacyPolicy,
+  },
+  {
+    key: 'TermsOfService',
+    title: '利用規約',
+    component: TermsOfService,
+  }
+];
 
 // インタビューの動作確認用
 export const operation_check_phases = [

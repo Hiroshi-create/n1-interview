@@ -21,9 +21,12 @@ import { Interviews } from '@/stores/Interviews'
 import { collection, DocumentReference, FieldValue, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import { MdClose } from "react-icons/md";
+import { Theme } from '@/stores/Theme'
+import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck'
 
 interface InterviewNav {
   interview: Interviews;
+  theme: Theme;
   href: string;
   isActive: boolean;
 }
@@ -66,22 +69,46 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
             if (interviewRef) {
               const interviewDoc = await getDoc(interviewRef);
               if (interviewDoc.exists()) {
-                const data = interviewDoc.data();
-                if (isValidInterviewData(data)) {
-                  const pathSegments = interviewRef.path.split('/');
-                  const themeId = pathSegments[pathSegments.length - 3];
-                  return {
-                    interview: {
-                      interviewId: doc.id,
-                      intervieweeId: data.intervieweeId,
-                      createdAt: data.createdAt,
-                      questionCount: data.questionCount,
-                      theme: data.theme,
-                      reportCreated: data.reportCreated,
-                    } as Interviews,
-                    href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
-                    isActive: false,
-                  } as InterviewNav;
+                const interviewData = interviewDoc.data();
+                if (isValidInterviewData(interviewData)) {
+                  // テーマデータの取得
+                  const parentDocRef = interviewRef.parent.parent;
+                  
+                  if (parentDocRef) {
+                    const themeDoc = await getDoc(parentDocRef);
+                    const themeId = themeDoc.id;
+                  
+                    if (themeDoc.exists()) {
+                      const themeData = themeDoc.data();
+                      if (isValidThemeData(themeData)) {
+                        return {
+                          interview: {
+                            interviewId: doc.id,
+                            intervieweeId: interviewData.intervieweeId,
+                            createdAt: interviewData.createdAt,
+                            questionCount: interviewData.questionCount,
+                            themeId: interviewData.themeId,
+                            reportCreated: interviewData.reportCreated,
+                            interviewDurationMin: interviewData.interviewDurationMin,
+                          } as Interviews,
+                          theme: {
+                            themeId: themeId,
+                            theme: themeData.theme,
+                            createUserId: themeData.createUserId,
+                            createdAt: themeData.createdAt,
+                            deadline: themeData.deadline,
+                            clientId: themeData.clientId,
+                            interviewsRequestedCount: themeData.interviewsRequestedCount,
+                            collectInterviewsCount: themeData.collectInterviewsCount,
+                            interviewDurationMin: themeData.interviewDurationMin,
+                            isPublic: themeData.isPublic,
+                          } as Theme,
+                          href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
+                          isActive: false,
+                        } as InterviewNav;
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -109,15 +136,13 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     }
   }, [user, userId]);
 
-  const selectInterview = (interviewId: string, theme: string) => {
-    const pathSegments = interviewRefs[interviewId].path.split('/');
-    const themeId = pathSegments[pathSegments.length - 3];
+  const selectInterview = (interviewNav: InterviewNav) => {
+    const interviewId = interviewNav.interview.interviewId;
+    console.log("サイドバーのinterviewId : " + interviewId)
     setSelectedInterviewId(interviewId);
-    console.log("Type of interviewRef:", typeof interviewRefs[interviewId]);
-    console.log("interviewRef:", interviewRefs[interviewId]);
     setSelectedInterviewRef(interviewRefs[interviewId]);
-    setSelectedThemeId(themeId);
-    setSelectThemeName(theme);
+    setSelectedThemeId(interviewNav.theme.themeId);
+    setSelectThemeName(interviewNav.theme.theme);
   }
 
   const handleLogout = () => {
@@ -158,10 +183,10 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                   <Link
                     href={getHref(interviewNav.href)}
                     className="w-full transition-all duration-200 ease-in-out hover:bg-slate-700 rounded-md p-2 flex items-center space-x-3"
-                    onClick={() => selectInterview(interviewNav.interview.interviewId, interviewNav.interview.theme)}
+                    onClick={() => selectInterview(interviewNav)}
                   >
                     <div className="flex items-center space-x-2 px-2">
-                    <span className="text-slate-300 text-base font-medium">{interviewNav.interview.theme}</span>
+                    <span className="text-slate-300 text-base font-medium">{interviewNav.theme.theme}</span>
                     </div>
                   </Link>
                   </SidebarMenuButton>
@@ -186,23 +211,6 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
         <span className="font-medium">ログアウト</span>
       </div>
     </div>
-  );
-}
-
-function isValidInterviewData(data: unknown): data is Interviews {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'intervieweeId' in data &&
-    'createdAt' in data &&
-    'questionCount' in data &&
-    'theme' in data &&
-    'reportCreated' in data &&
-    typeof (data as any).intervieweeId === 'string' &&
-    (data as any).createdAt instanceof Timestamp || (data as any).createdAt instanceof FieldValue &&
-    typeof (data as any).questionCount === 'number' &&
-    typeof (data as any).theme === 'string' &&
-    typeof (data as any).reportCreated === 'boolean'
   );
 }
 

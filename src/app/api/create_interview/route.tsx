@@ -9,9 +9,9 @@ import { ManageThemes } from '@/stores/ManageThemes';
 
 export async function POST(request: Request) {
   try {
-    const { theme, isCustomer, isTest, userId, duration } = await request.json();
+    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline } = await request.json();
 
-    if (!theme || !userId || !duration) {
+    if (!theme || !userId || !duration || !deadline) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
     }
 
@@ -35,10 +35,12 @@ export async function POST(request: Request) {
       theme: theme,
       createUserId: userId,
       createdAt: Timestamp.now(),
-      searchClientId: organizationId,
+      deadline: Timestamp.fromDate(new Date(deadline)),
+      clientId: organizationId,
       interviewsRequestedCount: intervieweeIds.length,
       collectInterviewsCount: 0,
       interviewDurationMin: duration,
+      isPublic: isPublic !== undefined ? isPublic : true,
     };
 
     const newThemeRef = doc(db, "themes", newThemeId);
@@ -53,9 +55,9 @@ export async function POST(request: Request) {
         intervieweeId: intervieweeId,
         createdAt: serverTimestamp(),
         questionCount: 0,
-        theme: theme,
         reportCreated: false,
         interviewDurationMin: duration,
+        themeId: newThemeId,
       };
       await setDoc(interviewDocRef, interviewData);
 

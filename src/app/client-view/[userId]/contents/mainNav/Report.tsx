@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, getDoc, Timestamp, DocumentReference, do
 import { useAppsContext } from '@/context/AppContext';
 import { Theme } from '@/stores/Theme';
 import { useRouter } from 'next/navigation';
+import { isValidThemeData } from '@/context/components/isValidDataCheck';
 
 const Report = () => {
     const { user, userId, setSelectedThemeId, setSelectedThemeRef, setSelectThemeName } = useAppsContext();
@@ -38,13 +39,16 @@ const Report = () => {
                                                 const data = themeDoc.data();
                                                 if (isValidThemeData(data)) {
                                                     return {
-                                                        themeId: data.themeId,
+                                                        themeId: doc.id,
                                                         theme: data.theme,
                                                         createUserId: data.createUserId,
                                                         createdAt: data.createdAt,
-                                                        searchClientId: data.searchClientId,
+                                                        deadline: data.deadline,
+                                                        clientId: data.clientId,
                                                         interviewsRequestedCount: data.interviewsRequestedCount,
                                                         collectInterviewsCount: data.collectInterviewsCount,
+                                                        interviewDurationMin: data.interviewDurationMin,
+                                                        isPublic: data.isPublic,
                                                     } as Theme;
                                                 }
                                             }
@@ -109,27 +113,6 @@ const Report = () => {
                 ))}
             </ul>
         </div>
-    );
-}
-
-function isValidThemeData(data: unknown): data is Theme {
-    return (
-        typeof data === 'object' &&
-        data !== null &&
-        'themeId' in data &&
-        'theme' in data &&
-        'createUserId' in data &&
-        'createdAt' in data &&
-        'searchClientId' in data &&
-        'interviewsRequestedCount' in data &&
-        'collectInterviewsCount' in data &&
-        typeof (data as any).themeId === 'string' &&
-        typeof (data as any).theme === 'string' &&
-        typeof (data as any).createUserId === 'string' &&
-        (data as any).createdAt instanceof Timestamp &&
-        typeof (data as any).searchClientId === 'string' &&
-        typeof (data as any).interviewsRequestedCount === 'number' &&
-        typeof (data as any).collectInterviewsCount === 'number'
     );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAppsContext } from '@/context/AppContext';
 
@@ -9,15 +9,24 @@ type FormData = {
   isCustomer: boolean;
   isTest: boolean;
   duration: string;
+  isPublic: boolean;
+  deadlineDate: string;
+  deadlineTime: string;
 };
 
 const AddTheme = () => {
   const { userId } = useAppsContext();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: {
+      deadlineTime: '00:00'
+    }
+  });
+  const [isPublic, setIsPublic] = useState(true);
 
   const onSubmit = async (data: FormData) => {
     if (data.theme && userId) {
       try {
+        const deadline = new Date(`${data.deadlineDate}T${data.deadlineTime}:00`);
         const response = await fetch('/api/create_interview', {
           method: 'POST',
           headers: {
@@ -29,6 +38,8 @@ const AddTheme = () => {
             isTest: data.isTest,
             userId: userId,
             duration: parseInt(data.duration),
+            isPublic: isPublic,
+            deadline: deadline.toISOString(),
           }),
         });
 
@@ -37,6 +48,7 @@ const AddTheme = () => {
         }
 
         reset();
+        setIsPublic(false);
       } catch (error) {
         console.error("テーマの追加中にエラーが発生しました:", error);
       }
@@ -83,6 +95,34 @@ const AddTheme = () => {
           </select>
         </div>
         {errors.duration && <span className='text-red-500 mb-2'>{errors.duration.message}</span>}
+
+        <div className="flex items-center mb-2">
+          <label htmlFor="deadlineDate" className="mr-2">募集締切日:</label>
+          <input
+            {...register("deadlineDate", { required: "募集締切日は必須です" })}
+            type="date"
+            className="p-2 rounded-md text-black border border-gray-300 mr-2"
+          />
+          <input
+            {...register("deadlineTime")}
+            type="time"
+            className="p-2 rounded-md text-black border border-gray-300"
+          />
+        </div>
+        {errors.deadlineDate && <span className='text-red-500 mb-2'>{errors.deadlineDate.message}</span>}
+
+        <div className="flex items-center mb-4">
+          <span className="mr-2">非公開</span>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={() => setIsPublic(!isPublic)}
+            />
+            <span className="slider round"></span>
+          </label>
+          <span className="ml-2">公開</span>
+        </div>
 
         <button
           type="submit"

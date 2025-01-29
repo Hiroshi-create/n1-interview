@@ -6,6 +6,7 @@ import InterviewHome from '@/app/components/users/InterviewHome';
 
 const AutoInterview = () => {
   const pathname = usePathname();
+  
   useEffect(() => {
     const saveLastVisitedUrl = (url: string) => {
       localStorage.setItem('lastVisitedUrl', url);
@@ -17,7 +18,6 @@ const AutoInterview = () => {
 
   return (
     <div className="h-full flex flex-col p-4">
-      <h1 className="text-secondary">interviewのホーム</h1>
       <InterviewHome />
     </div>
   )

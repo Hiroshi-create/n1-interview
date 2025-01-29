@@ -7,6 +7,11 @@ import remarkGfm from 'remark-gfm';
 import { FaCheckSquare, FaExclamationTriangle, FaMicrophoneAlt } from "react-icons/fa";
 import LoadingIcons from 'react-loading-icons';
 
+interface LinkTextProps {
+    children: React.ReactNode;
+    href: string;
+}
+
 const InterviewDescription: React.FC<{
     interviewDuration: number | null;
     checkedItems1: { [key: string]: boolean };
@@ -112,11 +117,28 @@ const InterviewDescription: React.FC<{
 当社は、本サービスを実施した結果、回答者様の要配慮個人情報（個人情報保護法第2項第3項に定める個人情報をいい、具体的には、ご本人の人種、信条、社会的身分、病歴、犯罪の経歴、犯罪により害を被った事実その他ご本人に対する不当な差別、偏見その他の不利益が生じないようにその取り扱いに特に配慮を要するものとして個人情報保護法施行令で定める記述等が含まれる個人情報を指します。）を取り扱う場合がございます。なお、当社は回答者さまから取得した要配慮個人情報を含む個人情報を当社のプライバシーポリシーに従い、適切かつ安全に管理します。
 `;
 
+    const LinkText: React.FC<LinkTextProps> = ({ children, href }) => (
+        <span 
+            className="text-blue-600 hover:underline cursor-pointer"
+            onClick={() => window.open(href, '_blank')}
+        >
+            {children}
+        </span>
+    );
+
     const checkBoxs = [
         {
-          id: "agreement1",
-          description: "本サービスご利用に関する利用規約およびプライバシーポリシーに同意します。",
-        },
+            id: "agreement1",
+            description: (
+              <>
+                本サービスご利用に関する
+                <LinkText href="/terms/TermsOfService">利用規約</LinkText>
+                および
+                <LinkText href="/terms/PrivacyPolicy">プライバシーポリシー</LinkText>
+                に同意します。
+              </>
+            ),
+          },
         {
           id: "agreement2",
           description: "上記、「要配慮個人情報の取得」について熟読し、十分に理解しましたので、同意します。",
