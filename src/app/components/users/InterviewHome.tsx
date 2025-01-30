@@ -8,14 +8,7 @@ import { db } from '../../../../firebase';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
 import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck';
-
-interface InterviewNav {
-  interview: Interviews;
-  theme: Theme;
-  organizationName: string;
-  href: string;
-  isActive: boolean;
-}
+import { InterviewNav } from '@/context/interface/InterviewNav';
 
 const InterviewHome: React.FC = () => {
   const {
@@ -78,6 +71,7 @@ const InterviewHome: React.FC = () => {
                                 collectInterviewsCount: themeData.collectInterviewsCount,
                                 interviewDurationMin: themeData.interviewDurationMin,
                                 isPublic: themeData.isPublic,
+                                maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
                               } as Theme,
                               organizationName: organizationName,
                               href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
@@ -118,10 +112,6 @@ const InterviewHome: React.FC = () => {
     setSelectedInterviewRef(interviewRefs[interviewId]);
     setSelectedThemeId(interviewNav.theme.themeId);
     setSelectThemeName(interviewNav.theme.theme);
-  };
-
-  const getHref = (href: string) => {
-    return userId ? href.replace('[userId]', userId) : '#';
   };
 
   const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
@@ -176,7 +166,8 @@ const InterviewHome: React.FC = () => {
               interviewsRequestedCount: validInterview.theme.interviewsRequestedCount,
               collectInterviewsCount: validInterview.theme.collectInterviewsCount,
               interviewDurationMin: validInterview.theme.interviewDurationMin,
-              isPublic: validInterview.theme.isPublic
+              isPublic: validInterview.theme.isPublic,
+              maximumNumberOfInterviews: validInterview.theme.maximumNumberOfInterviews,
             } as Theme,
             organizationName: validInterview.organizationName,
             href: validInterview.href,
@@ -235,14 +226,10 @@ const InterviewHome: React.FC = () => {
         {interviewsNav.map((interviewNav) => (
           <ThemeCard 
             key={interviewNav.interview.interviewId}
-            title={interviewNav.theme.theme}
-            href={getHref(interviewNav.href)}
-            createdAt={interviewNav.theme.createdAt}
+            interviewNav={interviewNav}
             onClick={() => {
               selectInterview(interviewNav);
             }}
-            deadline={interviewNav.theme.deadline}
-            organizationName={interviewNav.organizationName}
           />
         ))}
       </div>

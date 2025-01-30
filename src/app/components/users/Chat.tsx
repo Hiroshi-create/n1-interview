@@ -9,7 +9,7 @@ import Bubble from '@/context/components/ui/bubble';
 import { useRouter } from 'next/navigation';
 import ConfirmationDialog from '@/context/components/ui/confirmationDialog';
 import SingleSelect from '@/context/components/ui/singleSelect';
-import { interview_phases } from '@/context/components/lists';
+import { Phase } from '@/context/interface/Phase';
 
 interface OperationCheckResponse {
   messages: Message[];

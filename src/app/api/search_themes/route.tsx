@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import algoliasearch from 'algoliasearch/lite';
 import { Theme } from '@/stores/Theme';
 import { Interviews } from "@/stores/Interviews";
-import { collection, getDocs, query, where, doc as firebaseDoc, getDoc, Timestamp, DocumentReference, DocumentData, FieldValue } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc as firebaseDoc,
+  getDoc,
+  Timestamp,
+  DocumentReference,
+} from "firebase/firestore";
 import { db } from "../../../../firebase";
 
 // Algolia検索クライアントの初期化
@@ -19,13 +28,6 @@ interface InterviewNav {
 }
 
 const searchClient = algoliasearch(appId, apiKey);
-
-const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
-    if (timestamp instanceof Timestamp) {
-      return timestamp.toDate().toLocaleDateString('ja-JP');
-    }
-    return '日付不明';
-};
 
 export async function POST(req: NextRequest) {
     let interviewRefs: {[key: string]: string} = {};
@@ -104,6 +106,7 @@ export async function POST(req: NextRequest) {
               collectInterviewsCount: answerTheme.collectInterviewsCount,
               interviewDurationMin: answerTheme.interviewDurationMin,
               isPublic: answerTheme.isPublic,
+              maximumNumberOfInterviews: answerTheme.maximumNumberOfInterviews,
             },
             organizationName: organizationName,
             href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,

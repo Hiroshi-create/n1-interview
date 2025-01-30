@@ -40,6 +40,7 @@ export function isValidThemeData(data: unknown): data is Theme {
         'collectInterviewsCount' in data &&
         'interviewDurationMin' in data &&
         'isPublic' in data &&
+        'maximumNumberOfInterviews' in data &&
         typeof (data as any).themeId === 'string' &&
         typeof (data as any).theme === 'string' &&
         typeof (data as any).createUserId === 'string' &&
@@ -48,6 +49,7 @@ export function isValidThemeData(data: unknown): data is Theme {
         typeof (data as any).interviewsRequestedCount === 'number' &&
         typeof (data as any).collectInterviewsCount === 'number' &&
         typeof (data as any).interviewDurationMin === 'number' &&
-        typeof (data as any).isPublic === 'boolean'
+        typeof (data as any).isPublic === 'boolean' &&
+        typeof (data as any).maximumNumberOfInterviews === 'number'
     );
 }

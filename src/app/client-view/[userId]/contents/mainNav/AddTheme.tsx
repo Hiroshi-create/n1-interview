@@ -12,13 +12,15 @@ type FormData = {
   isPublic: boolean;
   deadlineDate: string;
   deadlineTime: string;
+  maximumNumberOfInterviews: number;
 };
 
 const AddTheme = () => {
   const { userId } = useAppsContext();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
-      deadlineTime: '00:00'
+      deadlineTime: '00:00',
+      maximumNumberOfInterviews: 50
     }
   });
   const [isPublic, setIsPublic] = useState(true);
@@ -40,6 +42,7 @@ const AddTheme = () => {
             duration: parseInt(data.duration),
             isPublic: isPublic,
             deadline: deadline.toISOString(),
+            maximumNumberOfInterviews: data.maximumNumberOfInterviews
           }),
         });
 
@@ -48,7 +51,7 @@ const AddTheme = () => {
         }
 
         reset();
-        setIsPublic(false);
+        setIsPublic(true);
       } catch (error) {
         console.error("テーマの追加中にエラーが発生しました:", error);
       }
@@ -110,6 +113,21 @@ const AddTheme = () => {
           />
         </div>
         {errors.deadlineDate && <span className='text-red-500 mb-2'>{errors.deadlineDate.message}</span>}
+
+        <div className="flex items-center mb-2">
+          <label htmlFor="maximumNumberOfInterviews" className="mr-2">最大インタビュー数:</label>
+          <input
+            {...register("maximumNumberOfInterviews", { 
+              required: "最大インタビュー数は必須です",
+              min: { value: 1, message: "1以上の数値を入力してください" }
+            })}
+            type="number"
+            max="1000"
+            min="1"
+            className="p-2 rounded-md text-black border border-gray-300 w-20"
+          />
+        </div>
+        {errors.maximumNumberOfInterviews && <span className='text-red-500 mb-2'>{errors.maximumNumberOfInterviews.message}</span>}
 
         <div className="flex items-center mb-4">
           <span className="mr-2">非公開</span>

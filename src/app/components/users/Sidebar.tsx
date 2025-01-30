@@ -18,17 +18,11 @@ import { useAppsContext } from "@/context/AppContext"
 import { auth, db } from "../../../../firebase"
 import { X, LogOut } from 'lucide-react';
 import { Interviews } from '@/stores/Interviews'
-import { collection, DocumentReference, FieldValue, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
+import { collection, DocumentReference, FieldValue, doc as firebaseDoc, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import { Theme } from '@/stores/Theme'
 import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck'
-
-interface InterviewNav {
-  interview: Interviews;
-  theme: Theme;
-  href: string;
-  isActive: boolean;
-}
+import { InterviewNav } from '@/context/interface/InterviewNav'
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   toggleMenu: () => void;
@@ -80,6 +74,15 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                     if (themeDoc.exists()) {
                       const themeData = themeDoc.data();
                       if (isValidThemeData(themeData)) {
+                        let organizationName = "";
+                        const clientDocRef = firebaseDoc(db, "clients", themeData.clientId);
+                        if (clientDocRef) {
+                          const clientDoc = await getDoc(clientDocRef);
+                          if (clientDoc.exists()) {
+                            organizationName = clientDoc.data().organizationName;
+                          }
+                        }
+
                         return {
                           interview: {
                             interviewId: doc.id,
@@ -103,7 +106,9 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                             collectInterviewsCount: themeData.collectInterviewsCount,
                             interviewDurationMin: themeData.interviewDurationMin,
                             isPublic: themeData.isPublic,
+                            maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
                           } as Theme,
+                          organizationName: organizationName,
                           href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
                           isActive: false,
                         } as InterviewNav;

@@ -1,4 +1,4 @@
-interface Phase {
+export interface Phase {
   template: string;
   text: string;
   isChecked: boolean;

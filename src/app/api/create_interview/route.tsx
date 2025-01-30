@@ -9,9 +9,9 @@ import { ManageThemes } from '@/stores/ManageThemes';
 
 export async function POST(request: Request) {
   try {
-    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline } = await request.json();
+    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline, maximumNumberOfInterviews } = await request.json();
 
-    if (!theme || !userId || !duration || !deadline) {
+    if (!theme || !userId || !duration || !deadline || !maximumNumberOfInterviews) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
     }
 
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       collectInterviewsCount: 0,
       interviewDurationMin: duration,
       isPublic: isPublic !== undefined ? isPublic : true,
+      maximumNumberOfInterviews: maximumNumberOfInterviews,
     };
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);

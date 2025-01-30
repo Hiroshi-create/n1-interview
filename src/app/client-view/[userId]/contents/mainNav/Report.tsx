@@ -49,6 +49,7 @@ const Report = () => {
                                                         collectInterviewsCount: data.collectInterviewsCount,
                                                         interviewDurationMin: data.interviewDurationMin,
                                                         isPublic: data.isPublic,
+                                                        maximumNumberOfInterviews: data.maximumNumberOfInterviews,
                                                     } as Theme;
                                                 }
                                             }

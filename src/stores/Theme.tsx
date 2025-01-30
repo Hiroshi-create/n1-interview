@@ -11,4 +11,5 @@ export type Theme = {
     collectInterviewsCount: number;
     interviewDurationMin: number;
     isPublic: boolean;
+    maximumNumberOfInterviews: number;
 }
