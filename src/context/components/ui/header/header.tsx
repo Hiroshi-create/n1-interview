@@ -70,15 +70,15 @@ const Header = React.forwardRef<
         }
       ]
     },
-    {
-      items: [
-        { 
-          icon: LogOut,
-          title: "Sign Out", 
-          onClick: handleLogout,
-        }
-      ]
-    }
+    // {
+    //   items: [
+    //     { 
+    //       icon: LogOut,
+    //       title: "Sign Out", 
+    //       onClick: handleLogout,
+    //     }
+    //   ]
+    // }
   ];
 
   const toggleMenu = () => {

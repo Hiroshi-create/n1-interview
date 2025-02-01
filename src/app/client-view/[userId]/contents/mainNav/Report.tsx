@@ -10,7 +10,13 @@ import { isValidThemeData } from '@/context/components/isValidDataCheck';
 
 const Report = () => {
     const router = useRouter();
-    const { user, userId, setSelectedThemeId, setSelectedThemeRef, setSelectThemeName } = useAppsContext();
+    const {
+        user,
+        userId,
+        setSelectedThemeId,
+        setSelectedThemeRef,
+        setSelectThemeName
+    } = useAppsContext();
 
     const [themes, setThemes] = useState<Theme[]>([]);
     const [themeRefs, setThemeRefs] = useState<{[key: string]: DocumentReference}>({});
@@ -39,7 +45,7 @@ const Report = () => {
                                                 const data = themeDoc.data();
                                                 if (isValidThemeData(data)) {
                                                     return {
-                                                        themeId: doc.id,
+                                                        themeId: data.themeId,
                                                         theme: data.theme,
                                                         createUserId: data.createUserId,
                                                         createdAt: data.createdAt,
@@ -92,11 +98,8 @@ const Report = () => {
 
     const selectTheme = (themeId: string, theme: string) => {
         setSelectedThemeId(themeId);
-        console.log("Type of themeRef:", typeof themeRefs[themeId]);
-        console.log("themeRef:", themeRefs[themeId]);
         setSelectedThemeRef(themeRefs[themeId]);
         setSelectThemeName(theme);
-
         router.push(`/client-view/${userId}/Report/${themeId}`);
     }
 

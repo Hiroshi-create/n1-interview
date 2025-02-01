@@ -115,6 +115,7 @@ export default function UserProfile() {
                                     <AvatarFallback>{organizationName?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div>
+                                    <p className="text-sm text-muted-foreground mt-2">組織</p>
                                     <h2 className="text-xl font-semibold">{organizationName}</h2>
                                 </div>
                             </>
@@ -158,7 +159,7 @@ export default function UserProfile() {
                                                 <AvatarFallback>{name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col items-start">
-                                                <p className="text-sm font-semibold text-gray-800">{name}</p>
+                                                <p className="text-sm font-semibold text-gray-800 text-left">{name}</p>
                                                 <p className="text-xs text-muted-foreground">{userData?.email}</p>
                                             </div>
                                         </>
