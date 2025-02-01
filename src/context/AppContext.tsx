@@ -52,6 +52,9 @@ type AppContextType = {
   resetInterviewPhases: () => void;
   updateInterviewPhases: (updates: {index: number; isChecked: boolean;}[]) => void;
 
+  isUserAccount: boolean | null;
+  setIsUserAccount: React.Dispatch<React.SetStateAction<boolean | null>>;
+
   resetContext: () => void;
 }
 
@@ -95,6 +98,9 @@ const AppContext = createContext<AppContextType>({
   setInterviewPhases: () => {},
   resetInterviewPhases: () => {},
   updateInterviewPhases: () => {},
+
+  isUserAccount: null,
+  setIsUserAccount: () => {},
 
   resetContext: () => {},
 });
@@ -207,6 +213,11 @@ export function AppProvider({ children }: AppProviderProps) {
           resetOperationCheckPhases();
           resetInterviewPhases();  // 仮
           setIsOperationCheck(false);
+          if (currentPath.startsWith('/auto-interview/')) {
+            setIsUserAccount(true);
+          } else if (currentPath.startsWith('/client-view/')) {
+            setIsUserAccount(false);
+          }
           router.push(lastVisitedUrl);
         } else {
           const userDoc = await getDoc(doc(db, "users", newUser.uid));
@@ -276,7 +287,10 @@ export function AppProvider({ children }: AppProviderProps) {
         resetInterviewPhases,
         updateInterviewPhases,
 
-        resetContext
+        isUserAccount,
+        setIsUserAccount,
+
+        resetContext,
       }}
     >
       {children}

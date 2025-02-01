@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../../../firebase'
+import { useAppsContext } from '@/context/AppContext'
 
 type Inputs = {
     email: string
@@ -15,6 +16,7 @@ type Inputs = {
 const Login = () => {
 
     const router = useRouter();
+    const { setIsUserAccount } = useAppsContext();
 
     const {
         register,
@@ -25,7 +27,8 @@ const Login = () => {
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
         await signInWithEmailAndPassword(auth, data.email, data.password).then(
             (userCredential) => {
-                const user = userCredential.user
+                const user = userCredential.user;
+                setIsUserAccount(true);
                 router.push(`/auto-interview/${user.uid}`)
             }
         ).catch((error) => {

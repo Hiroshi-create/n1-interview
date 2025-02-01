@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../../../firebase'
+import { useAppsContext } from '@/context/AppContext'
 
 type Inputs = {
     email: string
@@ -15,6 +16,7 @@ type Inputs = {
 const Login = () => {
 
     const router = useRouter();
+    const { setIsUserAccount } = useAppsContext();
 
     const {
         register,
@@ -38,6 +40,7 @@ const Login = () => {
             if (response.ok) {
                 const { organizationId } = await response.json();
                 if (organizationId) {
+                    setIsUserAccount(false);
                     router.push(`/client-view/${organizationId}/Report`);
                 } else {
                     alert("組織に所属していません。");

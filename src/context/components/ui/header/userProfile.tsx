@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation"
 
 export default function UserProfile() {
     const router = useRouter();
-    const { handleLogout, user, userId } = useAppsContext();
+    const { handleLogout, user, userId, isUserAccount, setIsUserAccount } = useAppsContext();
     const [userData, setUserData] = useState<User | null>(null);
     const [organizationName, setOrganizationName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -67,8 +67,20 @@ export default function UserProfile() {
         );
     }
 
+    if (isUserAccount === null) {
+        return <></>;
+    }
+
     const changeOrganization = () => {
-        router.push(`/client-view/${userId}/Report`);
+        if (isUserAccount) {
+            setIsUserAccount(false);
+            router.push(`/client-view/${userId}/Report`);
+        } else if (!isUserAccount) {
+            setIsUserAccount(true);
+            router.push(`/auto-interview/${userId}`)
+        } else {
+            alert("アカウントの登録またはログインはしていますか？");
+        }
     }
 
     const name = userData?.userNickname || "ユーザー";
@@ -84,17 +96,31 @@ export default function UserProfile() {
             <DropdownMenuContent className="w-80 p-0" align="end">
                 {/* ユーザー情報セクション */}
                 <div className="flex items-center justify-between p-6 border-b">
-                    <div className="flex items-center space-x-4">
-                        <Avatar className="h-12 w-12">
-                            <AvatarImage src={avatarUrl} alt={name} />
-                            <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <h2 className="text-xl font-semibold">Hi, {name} ! </h2>
-                            <p className="text-sm text-muted-foreground">{userData?.email}</p>
-                        </div>
+                    <div className="flex items-center space-x-4 mr-4">
+                        {isUserAccount ? (
+                            <>
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={avatarUrl} alt={name} />
+                                    <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h2 className="text-xl font-semibold">Hi, {name} ! </h2>
+                                    <p className="text-sm text-muted-foreground">{userData?.email}</p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src="/placeholder.svg" alt="組織アカウント" />
+                                    <AvatarFallback>{organizationName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h2 className="text-xl font-semibold">{organizationName}</h2>
+                                </div>
+                            </>
+                        )}
                     </div>
-                    <Button
+                    {/* <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 hover:bg-gray-100 rounded-full"
@@ -103,7 +129,7 @@ export default function UserProfile() {
                         }}
                     >
                         <ChevronDown className="h-5 w-5" />
-                    </Button>
+                    </Button> */}
                 </div>
 
                 {/* 組織アカウント情報 */}
@@ -115,13 +141,28 @@ export default function UserProfile() {
                                     className="w-full flex items-center gap-4 p-4 hover:bg-gray-100 transition-colors duration-200"
                                     onClick={changeOrganization}
                                 >
-                                    <Avatar className="h-10 w-10">
-                                        <AvatarImage src="/placeholder.svg" alt="組織アカウント" />
-                                        <AvatarFallback>{organizationName.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col items-start">
-                                        <p className="text-sm font-semibold text-gray-800">{organizationName}</p>
-                                    </div>
+                                    {isUserAccount ? (
+                                        <>
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src="/placeholder.svg" alt="組織アカウント" />
+                                                <AvatarFallback>{organizationName.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col items-start">
+                                                <p className="text-sm font-semibold text-gray-800">{organizationName}</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={avatarUrl} alt={name} />
+                                                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col items-start">
+                                                <p className="text-sm font-semibold text-gray-800">{name}</p>
+                                                <p className="text-xs text-muted-foreground">{userData?.email}</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -130,16 +171,16 @@ export default function UserProfile() {
                 )}
 
                 {/* アカウント操作メニュー */}
-                <div className="px-2 py-1">
+                <div className="px-2 pt-2 pb-1">
                     {/* <DropdownMenuItem className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-md transition-colors duration-200">
                         <Plus className="h-5 w-5 text-gray-600" />
                         <span className="text-sm font-medium">別のアカウントを追加</span>
                     </DropdownMenuItem> */}
                     <DropdownMenuItem
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-md transition-colors duration-200"
+                        className="flex items-center gap-3 px-8 py-3 hover:bg-gray-100 rounded-md transition-colors duration-200"
                         onSelect={handleLogout}
                     >
-                        <LogOut className="h-5 w-5 text-gray-600" />
+                        <LogOut className="h-5 w-5 mr-2 text-gray-600" />
                         <span className="text-sm font-medium">サインアウト</span>
                     </DropdownMenuItem>
                 </div>

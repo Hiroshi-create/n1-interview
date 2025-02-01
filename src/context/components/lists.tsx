@@ -44,13 +44,13 @@ export const organizationTypes = [
 
 export const mainNav = [
   {
-    title: "インタビューを追加",
+    title: "インタビューを作成",
     icon: Plus,
     href: "/client-view/[userId]/AddTheme",
     isActive: false,
   },
   {
-    title: "Report",
+    title: "レポート",
     icon: Files,
     href: "/client-view/[userId]/Report",
     isActive: true,
@@ -109,15 +109,3 @@ export const interview_phases = [
   { template: "interview_prompt", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "free_response" },
   { template: "thank_you", text: "現在のフェーズ: お礼", isChecked: false, type: "interview_complete" },
 ];
-// export const interview_phases = [
-//   { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "free_response" },
-//   // { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
-//   // { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
-//   // { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "two_choices" },
-//   // { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
-//   // { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
-//   // { template: "usage_situation", text: "現在のフェーズ: 利用状況の把握", isChecked: false, type: "two_choices" },
-//   // { template: "purchase_intention", text: "現在のフェーズ: 購入意思の把握", isChecked: false, type: "free_response" },
-//   // { template: "competitor_analysis", text: "現在のフェーズ: 競合調査", isChecked: false, type: "two_choices" },
-//   { template: "thank_you", text: "現在のフェーズ: お礼", isChecked: false, type: "interview_complete" },
-// ];

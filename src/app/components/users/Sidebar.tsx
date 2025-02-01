@@ -205,18 +205,6 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
         </SidebarContent>
         <SidebarRail />
       </div>
-      {user && (
-        <div className='mx-3 mb-2 p-3 text-slate-300 text-sm font-medium bg-slate-800 rounded-md'>
-        <span className="block truncate">{user.email}</span>
-        </div>
-      )}
-      <div
-        onClick={() => handleLogout()}
-        className='mx-3 mb-4 text-base flex items-center justify-center space-x-2 cursor-pointer p-3 text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-md transition-all duration-200 ease-in-out'
-      >
-        <LogOut className="h-5 w-5" />
-        <span className="font-medium">ログアウト</span>
-      </div>
     </div>
   );
 }
