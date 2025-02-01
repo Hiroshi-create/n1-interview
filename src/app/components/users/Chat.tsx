@@ -331,7 +331,8 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
         textColor="white"
         maxWidth="300px"
       >
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+        {/* <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p> */}
+        {message.text}
       </Bubble>
     </div>
   );
@@ -468,10 +469,11 @@ const Chat: React.FC = () => {
               backgroundColor="rgb(59, 130, 246)"
               textColor="white"
               maxWidth="560px"
+              maxHeight="520px"
             >
-              <p className="text-lg leading-relaxed whitespace-pre-wrap break-words">
+              {/* <p className="text-lg leading-relaxed whitespace-pre-wrap break-words"> */}
                 {messages[messages.length - 1].text}
-              </p>
+              {/* </p> */}
             </Bubble>
           )}
         </div>

@@ -2,13 +2,15 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import ReactMarkdown from 'react-markdown';
 
 type BubbleProps = {
-  children: React.ReactNode;
+  children: string;
   backgroundColor?: string;
   textColor?: string;
   direction?: 'left' | 'right' | 'top' | 'bottom-r' | 'bottom-l';
   maxWidth?: string;
+  maxHeight?: string;
   isCreatePortal?: boolean;
   portalPosition?: { x: number; y: number };
 };
@@ -19,6 +21,7 @@ const Bubble: React.FC<BubbleProps> = ({
   textColor = 'black',
   direction = 'left',
   maxWidth = '300px',
+  maxHeight,
   isCreatePortal = false,
   portalPosition = { x: 0, y: 0 },
 }) => {
@@ -29,8 +32,12 @@ const Bubble: React.FC<BubbleProps> = ({
   useEffect(() => {
     const checkOverflowAndResize = () => {
       if (contentRef.current) {
-        const isContentOverflowing = contentRef.current.scrollWidth > contentRef.current.clientWidth;
-        setIsOverflowing(isContentOverflowing);
+        const isContentOverflowing = contentRef.current.scrollWidth > contentRef.current.clientWidth ||
+                                     (maxHeight && contentRef.current.scrollHeight > contentRef.current.clientHeight);
+        if (typeof isContentOverflowing === 'boolean') {
+          setIsOverflowing(isContentOverflowing);
+        }
+
         if (isCreatePortal && isContentOverflowing) {
           setContentWidth(`${contentRef.current.scrollWidth}px`);
         } else {
@@ -44,7 +51,7 @@ const Bubble: React.FC<BubbleProps> = ({
     return () => {
       window.removeEventListener('resize', checkOverflowAndResize);
     };
-  }, [children, maxWidth, isCreatePortal]);
+  }, [children, maxWidth, maxHeight, isCreatePortal]);
 
   const getTriangleStyle = (): React.CSSProperties => {
     const baseStyle: React.CSSProperties = {
@@ -86,19 +93,19 @@ const Bubble: React.FC<BubbleProps> = ({
       case 'bottom-r':
         return {
           ...baseStyle,
-          bottom: '-15px',
+          bottom: '-6px',
           left: '75%',
           transform: 'translateX(-50%)',
-          borderWidth: '25px 0px 0 40px',
+          borderWidth: '15px 0px 0 40px',
           borderColor: `${backgroundColor} transparent transparent transparent`,
         };
       case 'bottom-l':
         return {
           ...baseStyle,
-          bottom: '-15px',
+          bottom: '-6px',
           left: '25%',
           transform: 'translateX(-50%)',
-          borderWidth: '25px 40px 0 0px',
+          borderWidth: '15px 40px 0 0px',
           borderColor: `${backgroundColor} transparent transparent transparent`,
         };
     }
@@ -109,6 +116,7 @@ const Bubble: React.FC<BubbleProps> = ({
     color: textColor,
     zIndex: 1,
     maxWidth,
+    maxHeight: maxHeight || 'none',
     width: contentWidth,
     overflowY: isOverflowing ? 'auto' : 'visible',
     overflowWrap: 'break-word',
@@ -137,7 +145,7 @@ const Bubble: React.FC<BubbleProps> = ({
           style={contentStyle}
           ref={contentRef}
         >
-          {children}
+          <ReactMarkdown>{children}</ReactMarkdown>
         </div>
         <div style={{ ...getTriangleStyle(), zIndex: 1 }} />
       </div>
