@@ -11,6 +11,7 @@ interface ConfirmationDialogProps {
   yesText?: string;
   noText?: string;
   isLoading?: boolean;
+  singleButton?: boolean;
 }
 
 const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
@@ -20,7 +21,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   message,
   yesText = 'はい',
   noText = 'いいえ',
-  isLoading = false
+  isLoading = false,
+  singleButton = false  // デフォルト値を設定
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusableElement = useRef<HTMLButtonElement>(null);
@@ -75,17 +77,19 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       >
         <h2 className="text-2xl font-bold mb-4 text-gray-800">{title}</h2>
         <p className="text-lg mb-6 text-gray-600">{message}</p>
-        <div className="flex justify-between space-x-4">
+        <div className={`flex justify-between ${singleButton ? '' : 'space-x-4'}`}>
+          {!singleButton && (
+            <button 
+              ref={firstFocusableElement}
+              onClick={() => onClose('no')} 
+              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors duration-300"
+              disabled={isLoading}
+            >
+              {noText}
+            </button>
+          )}
           <button 
-            ref={firstFocusableElement}
-            onClick={() => onClose('no')} 
-            className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors duration-300"
-            disabled={isLoading}
-          >
-            {noText}
-          </button>
-          <button 
-            ref={lastFocusableElement}
+            ref={singleButton ? firstFocusableElement : lastFocusableElement}
             onClick={() => onClose('yes')} 
             className={`flex-1 px-4 py-2 ${isLoading ? 'bg-green-300' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition-colors duration-300 flex items-center justify-center`}
             disabled={isLoading}

@@ -331,7 +331,6 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
         textColor="white"
         maxWidth="300px"
       >
-        {/* <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.text}</p> */}
         {message.text}
       </Bubble>
     </div>
@@ -340,7 +339,7 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
 
 const Chat: React.FC = () => {
   const router = useRouter();
-  const { userId, setIsOperationCheck } = useAppsContext();
+  const { userId, setIsOperationCheck, isInterviewCollected } = useAppsContext();
   const { messages, isLoading, selectThemeName, chat, showSingleSelect, setShowSingleSelect, options } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
@@ -389,7 +388,7 @@ const Chat: React.FC = () => {
 
   // ホームに戻る
   const handleConfirmationResponse = (response: 'yes' | 'no') => {
-    if (response === 'yes') {
+    if (response === 'yes' && isInterviewCollected) {
       router.push(`/auto-interview/${userId}`);
     }
     setShowConfirmation(false);
@@ -421,10 +420,11 @@ const Chat: React.FC = () => {
           isOpen={showConfirmation}
           onClose={handleConfirmationResponse}
           title="確認"
-          message="ホームに戻りますか？"
+          message={isInterviewCollected ? "ホームに戻りますか？" : "インタビューがまだ途中です😭"}
           isLoading={isDeleting}
-          yesText={isDeleting ? "処理中..." : "はい"}
+          yesText={isInterviewCollected ? (isDeleting ? "処理中..." : "はい") : "インタビューに戻る"}
           noText="いいえ"
+          singleButton={!isInterviewCollected}
         />
         <h1 className="text-lg font-semibold text-white mt-4">{selectThemeName}</h1>
       </div>
@@ -471,9 +471,7 @@ const Chat: React.FC = () => {
               maxWidth="560px"
               maxHeight="520px"
             >
-              {/* <p className="text-lg leading-relaxed whitespace-pre-wrap break-words"> */}
-                {messages[messages.length - 1].text}
-              {/* </p> */}
+              {messages[messages.length - 1].text}
             </Bubble>
           )}
         </div>
