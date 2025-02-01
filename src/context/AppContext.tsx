@@ -33,6 +33,8 @@ type AppContextType = {
   requestMicPermission: () => Promise<boolean>;
   hasInteracted: boolean;
   setHasInteracted: React.Dispatch<React.SetStateAction<boolean>>;
+  isInterviewCollected: boolean;
+  setIsInterviewCollected: React.Dispatch<React.SetStateAction<boolean>>;
   isMenuOpen: boolean;
   setIsMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   audioContext: AudioContext | null;
@@ -41,12 +43,14 @@ type AppContextType = {
   setOperationCheckPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
   resetOperationCheckPhases: () => void;
   updateOperationCheckPhases: (index: number, isChecked: boolean) => void;
+  remainingTimeGetter: (() => number | null) | null;
+  setRemainingTimeGetter: React.Dispatch<React.SetStateAction<(() => number | null) | null>>;
 
   // 仮
   interviewPhases: { template: string; text: string; isChecked: boolean; type: string }[];
   setInterviewPhases: React.Dispatch<React.SetStateAction<{ template: string; text: string; isChecked: boolean; type: string }[]>>;
   resetInterviewPhases: () => void;
-  updateInterviewPhases: (updates: {index: number; isChecked: boolean;}[]) => void
+  updateInterviewPhases: (updates: {index: number; isChecked: boolean;}[]) => void;
 
   resetContext: () => void;
 }
@@ -73,6 +77,8 @@ const AppContext = createContext<AppContextType>({
   requestMicPermission: async () => false,
   hasInteracted: false,
   setHasInteracted: () => {},
+  isInterviewCollected: false,
+  setIsInterviewCollected: () => {},
   isMenuOpen: true,
   setIsMenuOpen: () => {},
   audioContext: null,
@@ -81,6 +87,8 @@ const AppContext = createContext<AppContextType>({
   setOperationCheckPhases: () => {},
   resetOperationCheckPhases: () => {},
   updateOperationCheckPhases: () => {},
+  remainingTimeGetter: null,
+  setRemainingTimeGetter: () => {},
 
   // 仮
   interviewPhases: [],
@@ -111,10 +119,13 @@ export function AppProvider({ children }: AppProviderProps) {
   const [isOperationCheck, setIsOperationCheck] = useState<boolean>(true);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  const [isInterviewCollected, setIsInterviewCollected] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(true);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
+  const [remainingTimeGetter, setRemainingTimeGetter] = useState<(() => number | null) | null>(null);
   const [interviewPhases, setInterviewPhases] = useState(interview_phases);  // 仮
+  const [isUserAccount, setIsUserAccount] = useState<boolean | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -246,6 +257,8 @@ export function AppProvider({ children }: AppProviderProps) {
         requestMicPermission,
         hasInteracted,
         setHasInteracted,
+        isInterviewCollected,
+        setIsInterviewCollected,
         isMenuOpen,
         setIsMenuOpen,
         audioContext,
@@ -254,6 +267,8 @@ export function AppProvider({ children }: AppProviderProps) {
         setOperationCheckPhases,
         resetOperationCheckPhases,
         updateOperationCheckPhases,
+        remainingTimeGetter,
+        setRemainingTimeGetter,
 
         // 仮
         interviewPhases,

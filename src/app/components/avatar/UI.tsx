@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useChat } from "../users/Chat";
 import { useAppsContext } from "@/context/AppContext";
 import BallTriangle from 'react-loading-icons';
-import Timer from "@/context/components/ui/timer";
+import Timer, { TimerHandle } from "@/context/components/ui/timer";
 import { getDoc } from "firebase/firestore";
 import { FaMicrophoneAlt } from "react-icons/fa";
 
@@ -37,7 +37,14 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
 
   const input = useRef<HTMLInputElement>(null);
   const { chat, isLoading, isPaused, setIsPaused, showSingleSelect, isTimerStarted, message, themeId } = useChat();
-  const { micPermission, requestMicPermission, setHasInteracted, initializeAudioContext, interviewPhases, updateInterviewPhases } = useAppsContext();
+  const {
+    micPermission,
+    requestMicPermission,
+    setHasInteracted,
+    initializeAudioContext,
+    setRemainingTimeGetter,
+    isInterviewCollected,
+  } = useAppsContext();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
@@ -174,6 +181,18 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     }
   };
 
+  const timerRef = useRef<TimerHandle>(null);
+  const getRemainingTime = useCallback(() => {
+    if (timerRef.current) {
+      return timerRef.current.getRemainingTime();
+    }
+    return null;
+  }, []);
+  
+  useEffect(() => {
+    setRemainingTimeGetter(() => getRemainingTime);
+  }, [getRemainingTime, setRemainingTimeGetter]);
+
   return (
     <>
       <div className="fixed top-0 left-0 right-0 bottom-0 z-10 flex justify-between p-4 flex-col pointer-events-none">
@@ -181,20 +200,15 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
           <div className="flex items-center">
             <div className="w-40 h-40 flex items-center justify-center pointer-events-auto">
               <Timer 
+                ref={timerRef}
                 isStarted={isTimerStarted} 
                 initialTime={initialTime} 
                 isPaused={isPaused}
                 onTogglePause={togglePause}
                 onTimerEnd={() => {
                   console.log('タイマーが終了しました');
-                  // ここに終了時の処理を追加
                 }}
-                timeLeftTrigger={30}
-                onTimeLeft={() => {
-                  const totalPhases = interviewPhases.length;
-                  const updates = Array.from({ length: totalPhases - 1 }, (_, i) => ({ index: i, isChecked: true }));
-                  updateInterviewPhases(updates);
-                }}
+                timeLeftWarning={90}
               />
             </div>
           </div>
@@ -226,31 +240,31 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
           )}
           
 
-          {!showSingleSelect && (
+          {!showSingleSelect && !isInterviewCollected && (
             <div className="fixed inset-0 z-10 pointer-events-none">
-            <div 
-              className="absolute pointer-events-auto"
-              style={{
-                left: '50%',
-                bottom: '5%',
-                transform: `translate(${-0.68 * 100}%, ${0 * 100}%)`,
-              }}
-            >
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isLoading || isProcessingAudio || !!message}
-                className={`w-48 h-32 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-3xl flex items-center justify-center shadow-md transition-all duration-300 ${
-                  isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-50" : ""
-                }`}
+              <div 
+                className="absolute pointer-events-auto"
+                style={{
+                  left: '50%',
+                  bottom: '5%',
+                  transform: `translate(${-0.68 * 100}%, ${0 * 100}%)`,
+                }}
               >
-                {isRecording || isProcessingAudio ? (
-                  <BallTriangle.Bars width="72" height="72" color="#4B5563" />
-                ) : (
-                  <FaMicrophoneAlt size={72} />
-                )}
-              </button>
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isLoading || isProcessingAudio || !!message}
+                  className={`w-48 h-32 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-3xl flex items-center justify-center shadow-md transition-all duration-300 ${
+                    isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-50" : ""
+                  }`}
+                >
+                  {isRecording || isProcessingAudio ? (
+                    <BallTriangle.Bars width="72" height="72" color="#4B5563" />
+                  ) : (
+                    <FaMicrophoneAlt size={72} />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>

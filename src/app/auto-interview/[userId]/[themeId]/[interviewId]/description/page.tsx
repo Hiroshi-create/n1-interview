@@ -7,6 +7,11 @@ import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
 import { getDoc } from 'firebase/firestore';
 
+interface InitializeInterviewResponse {
+  message: string;
+  interviewCollected: boolean;
+}
+
 const DescriptionDetail = () => {
   const router = useRouter();
   const {
@@ -16,6 +21,7 @@ const DescriptionDetail = () => {
     selectedInterviewId,
     selectedInterviewRef,
     setIsMenuOpen,
+    setIsInterviewCollected,
     resetOperationCheckPhases,
     resetInterviewPhases  // 仮
   } = useAppsContext();
@@ -74,7 +80,7 @@ const DescriptionDetail = () => {
         throw new Error('インタビューが選択されていません');
       }
   
-      const response = await fetch('/api/clean_operation_messages', {
+      const response = await fetch('/api/initialize_interview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,8 +92,14 @@ const DescriptionDetail = () => {
         throw new Error('operation_checkメッセージの削除に失敗しました');
       }
   
-      const result = await response.json();
+      const result = await response.json() as InitializeInterviewResponse;
       console.log(result.message);
+      
+      if (typeof result.interviewCollected === 'boolean') {
+        setIsInterviewCollected(result.interviewCollected);
+      } else {
+        console.error('interviewCollected is not a boolean');
+      }
   
       // メッセージ削除成功後にインタビューページに遷移
       router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);

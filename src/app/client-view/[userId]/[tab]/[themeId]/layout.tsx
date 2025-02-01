@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarInset } from '@/context/components/ui/sidebar'
+import { SidebarInset } from '@/context/components/ui/sidebar/sidebar'
 
 export default function ThemeDetailLayout({
   children,

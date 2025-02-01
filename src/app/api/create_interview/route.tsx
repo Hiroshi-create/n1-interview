@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         createdAt: serverTimestamp(),
         questionCount: 0,
         reportCreated: false,
+        interviewCollected: false,
         interviewDurationMin: duration,
         themeId: newThemeId,
       };

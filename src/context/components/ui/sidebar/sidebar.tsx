@@ -6,17 +6,17 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeft } from 'lucide-react'
 
 import { cn } from "@/context/lib/utils"
-import { Button } from "./button"
-import { Input } from "./input"
-import { Separator } from "./separator"
-import { Sheet, SheetContent } from "./sheet"
-import { Skeleton } from "./skeleton"
+import { Button } from "../button"
+import { Input } from "../input"
+import { Separator } from "../separator"
+import { Sheet, SheetContent } from "../sheet"
+import { Skeleton } from "../skeleton"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./tooltip"
+} from "../tooltip"
 import { useIsMobile } from "@/context/hooks/useIsMobile"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"

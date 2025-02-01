@@ -58,6 +58,7 @@ const InterviewHome: React.FC = () => {
                                 questionCount: interviewData.questionCount,
                                 themeId: interviewData.themeId,
                                 reportCreated: interviewData.reportCreated,
+                                interviewCollected: interviewData.interviewCollected,
                                 interviewDurationMin: interviewData.interviewDurationMin,
                               } as Interviews,
                               theme: {
@@ -153,6 +154,7 @@ const InterviewHome: React.FC = () => {
               createdAt: Timestamp.fromDate(new Date(validInterview.interview.createdAt)),
               questionCount: validInterview.interview.questionCount,
               reportCreated: validInterview.interview.reportCreated,
+              interviewCollected: validInterview.interview.interviewCollected,
               interviewDurationMin: validInterview.interview.interviewDurationMin,
               themeId: validInterview.interview.themeId
             } as Interviews,

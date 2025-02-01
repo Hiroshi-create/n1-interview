@@ -9,8 +9,8 @@ import { useRouter } from 'next/navigation';
 import { isValidThemeData } from '@/context/components/isValidDataCheck';
 
 const Report = () => {
-    const { user, userId, setSelectedThemeId, setSelectedThemeRef, setSelectThemeName } = useAppsContext();
     const router = useRouter();
+    const { user, userId, setSelectedThemeId, setSelectedThemeRef, setSelectThemeName } = useAppsContext();
 
     const [themes, setThemes] = useState<Theme[]>([]);
     const [themeRefs, setThemeRefs] = useState<{[key: string]: DocumentReference}>({});

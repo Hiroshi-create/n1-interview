@@ -15,7 +15,9 @@
     "@ffmpeg/core": "^0.12.8",
     "@ffmpeg/ffmpeg": "^0.12.13",
     "@google-cloud/speech": "^6.7.0",
+    "@radix-ui/react-avatar": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.5",
     "@radix-ui/react-separator": "^1.1.1",
     "@react-three/drei": "^9.108.4",
     "@react-three/fiber": "^8.16.8",
@@ -51,6 +53,7 @@
     "remark-gfm": "^4.0.0",
     "styled-components": "^6.1.14",
     "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7",
     "three": "^0.166.1",
     "uuid": "^11.0.3",
     "zustand": "^5.0.2"

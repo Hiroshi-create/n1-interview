@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
 import { Message } from '@/stores/Message';
@@ -59,6 +59,8 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     selectThemeName,
     operationCheckPhases,
     setOperationCheckPhases,
+    remainingTimeGetter,
+    setIsInterviewCollected,
 
     // 仮
     interviewPhases,
@@ -105,7 +107,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           unsubscribe = onSnapshot(q, (snapshot) => {
             const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
             setMessages(newMessages);
-            console.log('Messages:', JSON.stringify(newMessages, null, 2));
             // メッセージが空で初期化されていない場合、初期メッセージを送信
             if (newMessages.length === 0 && !isInitialized && !isOperationCheck && !isInterviewInitialized) {
               chat("初期メッセージ");
@@ -126,6 +127,23 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       }
     };
   }, [selectedInterviewId, selectedInterviewRef, isOperationCheck, isInitialized, isInterviewInitialized]);
+
+  const checkRemainingTime = useCallback(() => {
+    if (remainingTimeGetter) {
+      const remainingTime = remainingTimeGetter();
+      console.log("残り秒数 : " + remainingTime);
+      return remainingTime;
+    }
+    return null;
+  }, [remainingTimeGetter]);
+
+  // インタビューが終了したかどうかをチェックする関数
+  const checkIfInterviewEnded = useCallback(() => {
+    const remainingTime = checkRemainingTime();
+    console.log("残り秒数⇨" + remainingTime)
+    const isInterviewEnded = remainingTime !== null && remainingTime <= 60;  // インタビュー終了通知の残り秒数を指定
+    return isInterviewEnded;
+  }, [checkRemainingTime]);
 
   const chat = useCallback(async (messageText: string) => {
     if (isLoading) return;
@@ -174,11 +192,9 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         if (data.messages && data.messages.length > 0) {
           setMessage(data.messages[0]);
           setOperationCheckPhases(data.phases);
-          console.log("更新後、何個目の質問か(クライアントサイド) : " + operationCheckPhases.findIndex(phase => !phase.isChecked));
           
           // 現在のフェーズのタイプに応じてshowTwoChoicesを設定
           const currentPhase = data.phases.find(phase => !phase.isChecked);
-          console.log("何個目の質問か(クライアントサイド) : " + currentPhase?.text)
           if (currentPhase && (currentPhase.type === "two_choices" || currentPhase.type === "one_choice")) {
             const options = currentPhase.type === "two_choices" ? ["はい", "いいえ"] : ["開始"];
             setOptions(options);
@@ -191,6 +207,8 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         }
       } else {
         console.log("--- インタビューが始まりました。 ---")
+
+        const isInterviewEnded = checkIfInterviewEnded();
         const response = await fetch('/api/interview_server', {
           method: 'POST',
           headers: {
@@ -198,8 +216,10 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           },
           body: JSON.stringify({
             message: messageText,
+            selectThemeName: selectThemeName,
             interviewRefPath: selectedInterviewRef.path,
-            phases: interviewPhases
+            phases: interviewPhases,
+            isInterviewEnded: isInterviewEnded,
           }),
         });
         
@@ -210,47 +230,42 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         
         const data: InterviewResponse = await response.json();
         
-        console.log("data.isInterviewComplete : " + data.isInterviewComplete)
-        if (data.isInterviewComplete) {
-          console.log("レポート作成開始")
-          setIsTimerStarted(false);
-          // インタビュー終了時にレポート生成APIを呼び出す
-          const reportResponse = await fetch('/api/report/individualReport', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
-          });
-
-          if (!reportResponse.ok) {
-            throw new Error('レポート生成に失敗しました');
-          }
-
-          const reportData = await reportResponse.json();
-          console.log('生成されたレポート:', reportData.report);
-          return;
-        }
-        
-        // if (data.messages && data.messages.length > 0) {
-        //   setMessage(data.messages[0]);
-        // } else {
-        //   throw new Error('サーバーからの応答が不正です');
-        // }
         if (data.messages && data.messages.length > 0) {
-          setMessage(data.messages[0]);
-          setInterviewPhases(data.phases);
-          console.log("更新後、何個目の質問か(クライアントサイド) : " + interviewPhases.findIndex(phase => !phase.isChecked));
-          
-          // 現在のフェーズのタイプに応じてshowTwoChoicesを設定
           const currentPhase = data.phases.find(phase => !phase.isChecked);
-          console.log("何個目の質問か(クライアントサイド) : " + currentPhase?.text)
-          if (currentPhase && (currentPhase.type === "two_choices" || currentPhase.type === "one_choice")) {
-            const options = currentPhase.type === "two_choices" ? ["はい", "いいえ"] : ["開始"];
-            setOptions(options);
-            setShowSingleSelect(true);
-          } else {
-            setShowSingleSelect(false);
+
+          if (currentPhase) {
+            if (currentPhase.type === "interview_complete") {
+              setIsInterviewCollected(true);
+              console.log("--- レポート作成開始 ---")
+              setIsTimerStarted(false);
+              // setIsInterviewEnded(false);
+              // インタビュー終了時にレポート生成APIを呼び出す
+              const reportResponse = await fetch('/api/report/individualReport', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
+              });
+    
+              if (!reportResponse.ok) {
+                throw new Error('レポート生成に失敗しました');
+              }
+    
+              const reportData = await reportResponse.json();
+              console.log('生成されたレポート:', reportData.report);
+              return;
+            } else if (currentPhase.type === "two_choices" || currentPhase.type === "one_choice") {
+              setMessage(data.messages[0]);
+              setInterviewPhases(data.phases);
+              const options = currentPhase.type === "two_choices" ? ["はい", "いいえ"] : ["開始"];
+              setOptions(options);
+              setShowSingleSelect(true);
+            } else {
+              setMessage(data.messages[0]);
+              setInterviewPhases(data.phases);
+              setShowSingleSelect(false);
+            }
           }
         } else {
           throw new Error('サーバーからの応答が不正です');
@@ -324,7 +339,7 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
 
 const Chat: React.FC = () => {
   const router = useRouter();
-  const { userId, selectedInterviewRef, setIsOperationCheck } = useAppsContext();
+  const { userId, setIsOperationCheck } = useAppsContext();
   const { messages, isLoading, selectThemeName, chat, showSingleSelect, setShowSingleSelect, options } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
@@ -381,7 +396,6 @@ const Chat: React.FC = () => {
 
   // 選択ボタン
   const handleSelect = (option: string) => {
-    console.log(`Selected option: ${option}`);
     if (option === "はい" || option === "いいえ") {
       chat(option);
     } else if (option === "開始") {
@@ -392,10 +406,10 @@ const Chat: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="sticky top-0 bg-gray-600 bg-opacity-40 z-10 p-4 shadow-md flex items-center">
+      <div className="sticky top-0 bg-gray-600 bg-opacity-40 pl-2 z-10 shadow-md flex items-center">
         <button 
           onClick={handleConfirmation}
-          className="mr-6 text-white hover:text-gray-200 hover:bg-gray-700 transition-all duration-200 rounded-full p-2"
+          className="mr-2 text-white hover:text-gray-200 hover:bg-gray-700 transition-all duration-200 rounded-full p-2"
           aria-label="ホームに戻る"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -411,8 +425,7 @@ const Chat: React.FC = () => {
           yesText={isDeleting ? "処理中..." : "はい"}
           noText="いいえ"
         />
-        
-        <h1 className="text-lg font-semibold text-white">{selectThemeName}</h1>
+        <h1 className="text-lg font-semibold text-white mt-4">{selectThemeName}</h1>
       </div>
       <div 
         className="flex-grow overflow-y-auto p-4 space-y-4 pb-[20vh]" 

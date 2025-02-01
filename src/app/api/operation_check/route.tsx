@@ -4,6 +4,7 @@ import { db } from '../../../../firebase';
 import { Theme } from '@/stores/Theme';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';
+import { Phase } from '@/context/interface/Phase';
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -39,10 +40,8 @@ const templates = {
     5. ユーザーの回答に応じて適切にフォローアップしてください。
     これまでの会話コンテキスト: {context}
   `,
-  confirmation_complete: `
-    音声インタビューシステムの動作確認が完了しました。ご協力ありがとうございました。
-    これからインタビューを開始します。リラックスして、質問にお答えください。
-  `,
+  confirmation_complete: `音声インタビューシステムの動作確認が完了しました。
+インタビューを始めます。リラックスして、質問にお答えください。`,
 };
 
 export async function POST(request: Request) {
@@ -102,7 +101,9 @@ export async function POST(request: Request) {
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
+        if (data.type === "operation_check") {
+          context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
+        }
       });
     } catch (error) {
       console.error('コンテキストの取得中にエラーが発生しました:', error);

@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-} from "@/context/components/ui/sidebar"
+} from "@/context/components/ui/sidebar/sidebar"
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { auth, db } from "../../../../firebase"

@@ -1,8 +1,8 @@
 "use client";
 
 import { Sidebar } from '@/app/components/clients/Sidebar';
-import { Header } from '@/context/components/ui/header';
-import { SidebarInset, SidebarProvider } from '@/context/components/ui/sidebar';
+import { Header } from '@/context/components/ui/header/header';
+import { SidebarInset, SidebarProvider } from '@/context/components/ui/sidebar/sidebar';
 import { useAppsContext } from "@/context/AppContext";
 
 export default function TabContentLayout({

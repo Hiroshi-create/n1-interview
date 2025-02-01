@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/context/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { Header } from '@/context/components/ui/header';
+import { Header } from '@/context/components/ui/header/header';
 
 const Home = () => {
   const router = useRouter();

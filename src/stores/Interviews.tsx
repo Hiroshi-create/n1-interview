@@ -8,6 +8,7 @@ export type Interviews = {
     createdAt: Timestamp | FieldValue;
     questionCount: number;
     reportCreated: boolean;
+    interviewCollected: boolean;
     interviewDurationMin: number;
     themeId: string;
 }

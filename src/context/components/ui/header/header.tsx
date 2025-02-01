@@ -2,10 +2,13 @@ import * as React from "react";
 import { cn } from "@/context/lib/utils";
 import { useRouter } from "next/navigation";
 import { useAppsContext } from "@/context/AppContext";
-import { Menu } from 'lucide-react';
+import { LogOut, Menu, MoreVertical } from 'lucide-react';
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "./button";
+import { Button } from "../button";
+import ThreeDotIconDropdown from "./threeDotIconDropdown";
+import { CreditCard, Settings, ExternalLink, FileText } from "lucide-react"
+import UserProfile from "./userProfile";
 
 const Header = React.forwardRef<
   HTMLDivElement,
@@ -13,6 +16,70 @@ const Header = React.forwardRef<
 >(({ className, handleLogoClickPath, ...props }, ref) => {
   const router = useRouter();
   const { handleLogout, user, isMenuOpen, setIsMenuOpen } = useAppsContext();
+
+  const menuItems = [
+    // {
+    //   items: [
+    //     { 
+    //       icon: CreditCard, 
+    //       title: "請求先アカウントの管理", 
+    //       onClick: () => {
+    //         console.log("請求先アカウントの管理ページへ遷移");
+    //         // ここに遷移のロジックを追加
+    //       }
+    //     },
+    //     { 
+    //       icon: CreditCard, 
+    //       title: "お支払い方法", 
+    //       onClick: () => {
+    //         console.log("お支払い方法ページへ遷移");
+    //         // ここに遷移のロジックを追加
+    //       }
+    //     },
+    //   ]
+    // },
+    {
+      items: [
+        { 
+          icon: FileText, 
+          title: "利用規約", 
+          onClick: () => {
+            window.open("/terms/TermsOfService", "_blank", "noopener,noreferrer");
+          },
+          secondaryIcon: ExternalLink,
+        },
+        { 
+          icon: FileText, 
+          title: "プライバシー", 
+          onClick: () => {
+            window.open("/terms/PrivacyPolicy", "_blank", "noopener,noreferrer");
+          },
+          secondaryIcon: ExternalLink,
+        },
+      ]
+    },
+    {
+      items: [
+        { 
+          icon: Settings, 
+          title: "設定", 
+          onClick: () => {
+            console.log("設定ページへ遷移");
+            // ここに遷移のロジックを追加
+          }
+        }
+      ]
+    },
+    {
+      items: [
+        { 
+          icon: LogOut,
+          title: "Sign Out", 
+          onClick: handleLogout,
+        }
+      ]
+    }
+  ];
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -34,7 +101,7 @@ const Header = React.forwardRef<
         <div className="flex items-center">
           <button
             onClick={toggleMenu}
-            className="px-2 text-slate-600 hover:text-slate-800 transition-colors duration-200"
+            className="p-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300"
           >
             <Menu size={24} />
           </button>
@@ -82,16 +149,9 @@ const Header = React.forwardRef<
                   Dashboard
                 </Link>
                 <span>|</span>
-                <Link href="#" className="hover-underline-animation">
-                  Account
-                </Link>
+                <UserProfile />
               </div>
-              <Button
-                onClick={handleLogout}
-                className="bg-background text-text hover:bg-primary transition-all duration-300 text-sm md:text-base hover-underline-animation"
-              >
-                Sign Out
-              </Button>
+              <ThreeDotIconDropdown menuItems={menuItems} />
             </>
           )}
         </div>

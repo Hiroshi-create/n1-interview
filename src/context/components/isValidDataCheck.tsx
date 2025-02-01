@@ -13,6 +13,7 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         'createdAt' in data &&
         'questionCount' in data &&
         'reportCreated' in data &&
+        'interviewCollected' in data &&
         'interviewDurationMin' in data &&
         'themeId' in data &&
         typeof (data as any).interviewId === 'string' &&
@@ -22,6 +23,7 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         ((data as any).createdAt instanceof Timestamp || (data as any).createdAt instanceof FieldValue) &&
         typeof (data as any).questionCount === 'number' &&
         typeof (data as any).reportCreated === 'boolean' &&
+        typeof (data as any).interviewCollected === 'boolean' &&
         typeof (data as any).interviewDurationMin === 'number' &&
         typeof (data as any).themeId === 'string'
     );

@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
               questionCount: interviewData.questionCount,
               themeId: interviewData.themeId,
               reportCreated: interviewData.reportCreated,
+              interviewCollected: interviewData.interviewCollected,
               interviewDurationMin: interviewData.interviewDurationMin,
             },
             theme: {
