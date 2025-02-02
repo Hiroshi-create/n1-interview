@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'インタビュードキュメントが見つかりません' }, { status: 404 });
     }
 
-    const interviewCollected = interviewDocSnap.data().interviewCollected;
+    const data = interviewDocSnap.data();
+    const interviewCollected = data.interviewCollected;
 
     if (typeof interviewCollected !== 'boolean') {
       return NextResponse.json({ error: 'interviewCollectedフィールドが見つからないか、boolean型ではありません' }, { status: 400 });

@@ -27,6 +27,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '組織IDが見つかりません' }, { status: 400 });
     }
 
+    const parsedMaximumNumberOfInterviews = Number(maximumNumberOfInterviews);
+    if (isNaN(parsedMaximumNumberOfInterviews) || parsedMaximumNumberOfInterviews <= 0) {
+      return NextResponse.json({ error: "無効な最大インタビュー数です" }, { status: 400 });
+    }
+
     const newThemeId = uuidv4();
     const intervieweeIds = isTest ? [userId] : [userId];
 
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
       collectInterviewsCount: 0,
       interviewDurationMin: duration,
       isPublic: isPublic !== undefined ? isPublic : true,
-      maximumNumberOfInterviews: maximumNumberOfInterviews,
+      maximumNumberOfInterviews: parsedMaximumNumberOfInterviews,
     };
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);

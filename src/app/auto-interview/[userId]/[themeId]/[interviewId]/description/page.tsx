@@ -29,6 +29,7 @@ const DescriptionDetail = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [interviewDuration, setInterviewDuration] = useState<number | null>(null);
+  const [interviewCollected, setInterviewCollected] = useState<boolean>(false);
   const [checkedItems1, setCheckedItems1] = useState<{ [key: string]: boolean }>({});
   const [checkedItems2, setCheckedItems2] = useState<{ [key: string]: boolean }>({});
 

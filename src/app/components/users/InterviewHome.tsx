@@ -17,6 +17,7 @@ const InterviewHome: React.FC = () => {
     setSelectedThemeId,
     setSelectedInterviewId,
     setSelectedInterviewRef,
+    isInterviewCollected,
     setSelectThemeName
   } = useAppsContext();
   const [searchTerm, setSearchTerm] = useState('');

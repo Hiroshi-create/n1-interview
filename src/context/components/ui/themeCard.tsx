@@ -17,12 +17,16 @@ const ThemeCard: React.FC<CardProps> = ({
   const router = useRouter();
   const { userId } = useAppsContext();
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const [recruitmentClosed, setRecruitmentClosed] = useState<boolean>(false);
+
+  const isInterviewCollected = interviewNav.interview.interviewCollected;
 
   const getHref = (href: string) => {
     return userId ? href.replace('[userId]', userId) : '#';
   };
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (recruitmentClosed) return;
     const href = getHref(interviewNav.href);
     if (onClick) {
       onClick();
@@ -37,13 +41,17 @@ const ThemeCard: React.FC<CardProps> = ({
     const calculateTimeLeft = () => {
       if (!(deadline instanceof Timestamp)) {
         setTimeLeft('締切日時不明');
+        setRecruitmentClosed(true);
         return;
       }
 
       const now = Timestamp.now();
       const difference = deadline.toMillis() - now.toMillis();
 
-      if (difference > 0) {
+      const progressPercentage = (interviewNav.theme.collectInterviewsCount / interviewNav.theme.maximumNumberOfInterviews) * 100;
+      const isOverAchieved = progressPercentage >= 100;
+
+      if (difference > 0 && !isOverAchieved) {
         const days = Math.floor(difference / (1000 * 60 * 60 * 24));
         const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
         const minutes = Math.floor((difference / 1000 / 60) % 60);
@@ -55,8 +63,10 @@ const ThemeCard: React.FC<CardProps> = ({
         } else {
           setTimeLeft(`あと${minutes}分`);
         }
+        setRecruitmentClosed(false);
       } else {
         setTimeLeft('締切済み');
+        setRecruitmentClosed(true);
       }
     };
 
@@ -64,7 +74,7 @@ const ThemeCard: React.FC<CardProps> = ({
     const timer = setInterval(calculateTimeLeft, 60000); // 1分ごとに更新
 
     return () => clearInterval(timer);
-  }, [interviewNav.theme.deadline]);
+  }, [interviewNav.theme.deadline, interviewNav.theme.collectInterviewsCount, interviewNav.theme.maximumNumberOfInterviews]);
 
   const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
     if (timestamp instanceof Timestamp) {
@@ -77,13 +87,9 @@ const ThemeCard: React.FC<CardProps> = ({
   const cappedProgressPercentage = Math.min(progressPercentage, 100);
   const isOverAchieved = progressPercentage > 100;
 
-  console.log('Progress Percentage:', progressPercentage);
-  console.log('Collect Interviews Count:', interviewNav.theme.collectInterviewsCount);
-  console.log('Maximum Number of Interviews:', interviewNav.theme.maximumNumberOfInterviews);
-
   return (
     <div
-      className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:bg-gray-100 hover:shadow-lg transition-all duration-300 border border-gray-200 flex flex-col h-full"
+      className={`bg-white p-6 rounded-lg shadow-md cursor-pointer hover:bg-gray-100 hover:shadow-lg transition-all duration-300 border border-gray-200 flex flex-col h-full ${recruitmentClosed ? 'opacity-50 pointer-events-none' : ''}`}
       onClick={handleClick}
     >
       <div className="flex items-center justify-between mb-3">
@@ -119,8 +125,8 @@ const ThemeCard: React.FC<CardProps> = ({
               />
               {timeLeft}
             </div>
-            <div className="text-sm font-semibold text-blue-600 group-hover:text-blue-800 transition-colors duration-200">
-              詳細を見る →
+            <div className={`text-sm font-semibold ${isInterviewCollected ? 'text-red-600' : 'text-blue-600 group-hover:text-blue-800'} transition-colors duration-200`}>
+              {isInterviewCollected ? '回答済み' : '詳細を見る →'}
             </div>
           </div>
         </div>
