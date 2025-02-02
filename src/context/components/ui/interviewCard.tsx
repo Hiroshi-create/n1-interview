@@ -10,7 +10,7 @@ interface CardProps {
   onClick?: () => void;
 }
 
-const ThemeCard: React.FC<CardProps> = ({
+const InterviewCard: React.FC<CardProps> = ({
   interviewNav,
   onClick,
 }) => {
@@ -135,4 +135,4 @@ const ThemeCard: React.FC<CardProps> = ({
   );
 };
 
-export default ThemeCard;
+export default InterviewCard;

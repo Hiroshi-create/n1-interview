@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppsContext } from '@/context/AppContext';
-import ThemeCard from '@/context/components/ui/themeCard';
+import ThemeCard from '@/context/components/ui/interviewCard';
 import React, { useEffect, useState } from 'react';
 import { collection, DocumentReference, getDoc, doc as firebaseDoc, onSnapshot, orderBy, query, Timestamp, DocumentData, FieldValue } from 'firebase/firestore';
 import { db } from '../../../../firebase';
@@ -17,7 +17,6 @@ const InterviewHome: React.FC = () => {
     setSelectedThemeId,
     setSelectedInterviewId,
     setSelectedInterviewRef,
-    isInterviewCollected,
     setSelectThemeName
   } = useAppsContext();
   const [searchTerm, setSearchTerm] = useState('');
