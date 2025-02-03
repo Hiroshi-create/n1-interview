@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { collection, query, orderBy, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, doc, getDoc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
 import { Theme } from '@/stores/Theme';
 import { IndividualReport } from '@/stores/IndividualReport';
 import { db } from '../../../../../firebase';

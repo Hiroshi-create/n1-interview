@@ -1,7 +1,6 @@
 "use client"
 
-import React, { useEffect } from 'react'
-import { usePathname } from 'next/navigation';
+import React from 'react'
 import GuestUserHome from '@/app/components/guest-user/guestUserHome';
 
 const AutoInterview = () => {

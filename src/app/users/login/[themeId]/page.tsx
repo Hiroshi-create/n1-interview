@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { useAppsContext } from '@/context/AppContext'

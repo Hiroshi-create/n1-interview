@@ -1,8 +1,5 @@
-// フェーズ管理用
-
-
 import { NextResponse } from 'next/server';
-import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, orderBy, where, getCountFromServer, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';

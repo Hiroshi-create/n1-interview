@@ -3,7 +3,6 @@
 import React from 'react'
 import Chat, { ChatProvider } from '@/app/components/users/Chat';
 import App from '@/app/components/users/App';
-import Bubble from '@/context/components/ui/bubble';
 
 const AutoInterviewDetail = () => {
   return (

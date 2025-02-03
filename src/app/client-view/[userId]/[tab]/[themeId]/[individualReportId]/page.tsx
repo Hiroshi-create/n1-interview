@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { doc, DocumentReference, getDoc } from "firebase/firestore";
-import { auth, db } from "../../../../../../../firebase";
+import { db } from "../../../../../../../firebase";
 import { Theme } from "@/stores/Theme";
 import { IndividualReport } from "@/stores/IndividualReport";
 import LoadingIcons from "react-loading-icons";

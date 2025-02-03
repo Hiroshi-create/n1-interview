@@ -5,7 +5,7 @@ import { useAppsContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
-import { getDoc, DocumentReference, doc } from 'firebase/firestore';
+import { getDoc, doc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../../../../../firebase';
 

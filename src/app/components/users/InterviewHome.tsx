@@ -1,15 +1,13 @@
 "use client";
 
 import { useAppsContext } from '@/context/AppContext';
-import ThemeCard from '@/context/components/ui/interviewCard';
 import React, { useEffect, useState } from 'react';
 import { collection, DocumentReference, getDoc, doc as firestoreDoc, onSnapshot, orderBy, query, Timestamp, DocumentData, FieldValue } from 'firebase/firestore';
 import { db } from '../../../../firebase';
-import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
-import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck';
-import { ThemeNav } from '@/context/interface/InterviewNav';
+import { isValidThemeData } from '@/context/components/isValidDataCheck';
 import InterviewCard from '@/context/components/ui/interviewCard';
+import { ThemeNav } from '@/context/interface/ThemeNav';
 
 const InterviewHome: React.FC = () => {
   const {

@@ -5,19 +5,16 @@ import Image from "next/image"
 import {
   SidebarContent,
   SidebarGroup,
-  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/context/components/ui/sidebar/sidebar"
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { analysisNav, mainNav } from "@/context/components/lists"
 import { auth } from "../../../../firebase"
-import { SlLogout } from "react-icons/sl"
 import { useRouter } from "next/navigation"
 import { MdClose } from "react-icons/md"
 

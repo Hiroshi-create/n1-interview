@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Sidebar from '../../components/users/Sidebar'
 import { SidebarInset, SidebarProvider } from '@/context/components/ui/sidebar/sidebar';
 import { Header } from '@/context/components/ui/header/header';

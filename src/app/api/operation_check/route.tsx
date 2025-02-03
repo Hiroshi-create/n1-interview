@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
 import { db } from '../../../../firebase';
 import { Theme } from '@/stores/Theme';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';

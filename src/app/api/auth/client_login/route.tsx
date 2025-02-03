@@ -1,6 +1,6 @@
 // route.tsx
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, db } from '../../../../../firebase';
+import { db } from '../../../../../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 export async function POST(req: NextRequest) {

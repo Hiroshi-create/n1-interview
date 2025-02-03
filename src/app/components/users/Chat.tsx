@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode, useMemo, useCallback } from 'react';
-import { collection, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
 import { Message } from '@/stores/Message';

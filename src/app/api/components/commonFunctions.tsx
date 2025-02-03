@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { addDoc, serverTimestamp, CollectionReference, updateDoc, setDoc, doc } from 'firebase/firestore';
+import { serverTimestamp, CollectionReference, setDoc, doc } from 'firebase/firestore';
 import { protos, SpeechClient } from '@google-cloud/speech';
 import axios from 'axios';
 import { kv } from '@vercel/kv';
@@ -8,11 +8,6 @@ import { cleanOperationMessages } from './cleanOperationMessages';
 import { v4 as uuidv4 } from 'uuid';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
-
-// const startTimer = (label: string) => {
-//   console.time(label);
-//   return () => console.timeEnd(label);
-// };
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
