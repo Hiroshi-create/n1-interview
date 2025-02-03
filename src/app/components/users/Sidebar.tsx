@@ -112,8 +112,8 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                             interviewResponseURL: themeData.interviewResponseURL,
                           } as Theme,
                           organizationName: organizationName,
-                          // href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
-                          href: `/auto-interview/${userId}/${themeId}/description`,
+                          href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
+                          // href: `/auto-interview/${userId}/${themeId}/description`,
                           isActive: false,
                         } as InterviewNav;
                       }
