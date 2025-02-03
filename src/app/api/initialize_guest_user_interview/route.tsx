@@ -4,25 +4,12 @@ import { GuestUser } from "@/stores/GuestUser";
 import { db } from "../../../../firebase";
 import { v4 as uuidv4 } from 'uuid';
 import { Interviews } from "@/stores/Interviews";
-import { AnswerInterviews } from "@/stores/AnswerInterviews";
 import { Theme } from "@/stores/Theme";
 
 export async function POST(req: NextRequest) {
   try {
-    const { pathname } = await req.json();
-
-    if (!pathname) {
-      return NextResponse.json({ error: 'インタビューの参照パスが指定されていません' }, { status: 400 });
-    }
-    
-    const uuidRegex = /\/guest-user\/([0-9a-fA-F-]{36})/;
-    const match = pathname.match(uuidRegex);
-    
-    if (!match) {
-      return NextResponse.json({ error: '有効な情報が見つかりません' }, { status: 400 });
-    }
-
-    const themeId = match[1];
+    const { acquiredThemeId } = await req.json();
+    const themeId = acquiredThemeId as string;
     
     // firestoreのthemesコレクションのthemeIdドキュメントのフィールドを取得
     const themeDocRef = doc(db, "themes", themeId);
@@ -37,7 +24,6 @@ export async function POST(req: NextRequest) {
     const guestUserId = uuidv4();
     const interviewId = uuidv4();
     const answerInterviewId = uuidv4();
-    const manageThemeId = uuidv4();
 
     // firestoreの、themesコレクション/themeIdドキュメント/interviewsコレクションにinterviewIdをドキュメントIdとして追加
     const themeRef = doc(db, "themes", themeId);
@@ -46,7 +32,6 @@ export async function POST(req: NextRequest) {
     const interviewData: Interviews = {
       interviewId: interviewId,
       intervieweeId: guestUserId,
-      manageThemeId: manageThemeId,
       answerInterviewId: answerInterviewId,
       createdAt: serverTimestamp(),
       questionCount: 0,

@@ -502,13 +502,6 @@ const Chat: React.FC = () => {
               <p>ワンタイムコードは一度しか表示されません。</p>
               <p>このワンタイムコードは第三者に教えてはいけません。</p>
               <div className="bg-gray-100 p-2 rounded mt-2">
-                {/* <code>{temporaryId}</code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(temporaryId)}
-                  className="ml-2 text-blue-500 hover:text-blue-700"
-                >
-                  コピー
-                </button> */}
                 <input
                   type="text"
                   value={temporaryId}

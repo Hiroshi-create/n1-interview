@@ -88,7 +88,6 @@ export async function POST(req: NextRequest) {
               interviewId: doc.id,
               intervieweeId: interviewData.intervieweeId,
               answerInterviewId: interviewData.answerInterviewId,
-              manageThemeId: interviewData.manageThemeId,
               createdAt: interviewData.createdAt instanceof Timestamp ? interviewData.createdAt.toDate().toISOString() : new Date().toISOString(),
               questionCount: interviewData.questionCount,
               themeId: interviewData.themeId,

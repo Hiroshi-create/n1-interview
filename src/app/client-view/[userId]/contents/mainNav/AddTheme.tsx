@@ -35,7 +35,7 @@ const AddTheme = () => {
       setIsLoading(true);
       try {
         const deadline = new Date(`${data.deadlineDate}T${data.deadlineTime}:00`);
-        const response = await fetch('/api/create_interview', {
+        const response = await fetch('/api/create_theme', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

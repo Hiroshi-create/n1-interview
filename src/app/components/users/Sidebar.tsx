@@ -17,12 +17,10 @@ import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { auth, db } from "../../../../firebase"
 import { X, LogOut } from 'lucide-react';
-import { Interviews } from '@/stores/Interviews'
-import { collection, DocumentReference, FieldValue, doc as firebaseDoc, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
+import { collection, doc as firestoreDoc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
-import { Theme } from '@/stores/Theme'
-import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck'
-import { InterviewNav } from '@/context/interface/InterviewNav'
+import { isValidThemeData } from '@/context/components/isValidDataCheck'
+import { ThemeNav } from '@/context/interface/InterviewNav'
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   toggleMenu: () => void;
@@ -34,8 +32,6 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     user,
     userId,
     setSelectedThemeId,
-    setSelectedInterviewId,
-    setSelectedInterviewRef,
     setSelectThemeName
   } = useAppsContext();
 
@@ -47,116 +43,59 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     router.push(`/auto-interview/${userId}`);
   }
 
-  const [interviewsNav, setInterviewsNav] = useState<InterviewNav[]>([]);
-  const [interviewRefs, setInterviewRefs] = useState<{[key: string]: DocumentReference}>({});
+  const [themesNav, setThemesNav] = useState<ThemeNav[]>([]);
 
   useEffect(() => {
     if(user && userId) {
-      const fetchInterviews = async () => {
-        const interviewCollectionRef = collection(db, "users", userId, "answerInterviews");
-        const q = query(interviewCollectionRef, orderBy("createdAt", "desc"));
-        
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-          const interviewPromises = snapshot.docs.map(async (doc) => {
-            const interviewRef = doc.data().interviewReference as DocumentReference;
-            if (interviewRef) {
-              const interviewDoc = await getDoc(interviewRef);
-              if (interviewDoc.exists()) {
-                const interviewData = interviewDoc.data();
-                if (isValidInterviewData(interviewData)) {
-                  // テーマデータの取得
-                  const parentDocRef = interviewRef.parent.parent;
-                  
-                  if (parentDocRef) {
-                    const themeDoc = await getDoc(parentDocRef);
-                    const themeId = themeDoc.id;
-                  
-                    if (themeDoc.exists()) {
-                      const themeData = themeDoc.data();
-                      if (isValidThemeData(themeData)) {
-                        let organizationName = "";
-                        const clientDocRef = firebaseDoc(db, "clients", themeData.clientId);
-                        if (clientDocRef) {
-                          const clientDoc = await getDoc(clientDocRef);
-                          if (clientDoc.exists()) {
-                            organizationName = clientDoc.data().organizationName;
-                          }
-                        }
-
-                        return {
-                          interview: {
-                            interviewId: doc.id,
-                            intervieweeId: interviewData.intervieweeId,
-                            answerInterviewId: interviewData.answerInterviewId,
-                            manageThemeId: interviewData.manageThemeId,
-                            createdAt: interviewData.createdAt,
-                            questionCount: interviewData.questionCount,
-                            themeId: interviewData.themeId,
-                            reportCreated: interviewData.reportCreated,
-                            interviewCollected: interviewData.interviewCollected,
-                            interviewDurationMin: interviewData.interviewDurationMin,
-                            temporaryId: interviewData.temporaryId,
-                            confirmedUserId: interviewData.confirmedUserId,
-                          } as Interviews,
-                          theme: {
-                            themeId: themeId,
-                            theme: themeData.theme,
-                            createUserId: themeData.createUserId,
-                            createdAt: themeData.createdAt,
-                            deadline: themeData.deadline,
-                            clientId: themeData.clientId,
-                            interviewsRequestedCount: themeData.interviewsRequestedCount,
-                            collectInterviewsCount: themeData.collectInterviewsCount,
-                            interviewDurationMin: themeData.interviewDurationMin,
-                            isPublic: themeData.isPublic,
-                            maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
-                            interviewResponseURL: themeData.interviewResponseURL,
-                          } as Theme,
-                          organizationName: organizationName,
-                          href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
-                          isActive: false,
-                        } as InterviewNav;
-                      }
-                    }
-                  }
-                }
-              }
+      const themeCollectionRef = collection(db, "themes");
+      const q = query(themeCollectionRef, orderBy("createdAt", "desc"));
+      
+      const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const themePromises = snapshot.docs.map(async (doc) => {
+          const themeData = doc.data();
+          if (isValidThemeData(themeData)) {
+            let organizationName = "";
+            const clientDocRef = firestoreDoc(db, "clients", themeData.clientId);
+            const clientDoc = await getDoc(clientDocRef);
+            if (clientDoc.exists()) {
+              organizationName = clientDoc.data().organizationName;
             }
-            return null;
-          });
 
-          const interviewResults = await Promise.all(interviewPromises);
-          const validInterviews = interviewResults.filter((interview): interview is InterviewNav => interview !== null);
-          setInterviewsNav(validInterviews);
-
-          const newInterviewRefs = snapshot.docs.reduce((acc, doc) => {
-            const interviewRef = doc.data().interviewReference as DocumentReference;
-            if (interviewRef) {
-              acc[doc.id] = interviewRef;
-            }
-            return acc;
-          }, {} as {[key: string]: DocumentReference});
-          setInterviewRefs(newInterviewRefs);
+            return {
+              theme: {
+                themeId: doc.id,
+                theme: themeData.theme,
+                createUserId: themeData.createUserId,
+                createdAt: themeData.createdAt,
+                deadline: themeData.deadline,
+                clientId: themeData.clientId,
+                interviewsRequestedCount: themeData.interviewsRequestedCount,
+                collectInterviewsCount: themeData.collectInterviewsCount,
+                interviewDurationMin: themeData.interviewDurationMin,
+                isPublic: themeData.isPublic,
+                maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
+                interviewResponseURL: themeData.interviewResponseURL,
+              },
+              organizationName: organizationName,
+              href: `/auto-interview/${userId}/${doc.id}/description`,
+              isActive: false,
+            } as ThemeNav;
+          }
+          return null;
         });
 
-        return () => unsubscribe();
-      };
+        const themeResults = await Promise.all(themePromises);
+        const validThemes = themeResults.filter((theme): theme is ThemeNav => theme !== null);
+        setThemesNav(validThemes);
+      });
 
-      fetchInterviews();
+      return () => unsubscribe();
     }
   }, [user, userId]);
 
-  const selectInterview = (interviewNav: InterviewNav) => {
-    const interviewId = interviewNav.interview.interviewId;
-    console.log("サイドバーのinterviewId : " + interviewId)
-    setSelectedInterviewId(interviewId);
-    setSelectedInterviewRef(interviewRefs[interviewId]);
-    setSelectedThemeId(interviewNav.theme.themeId);
-    setSelectThemeName(interviewNav.theme.theme);
-  }
-
-  const handleLogout = () => {
-    auth.signOut();
+  const selectTheme = (themeNav: ThemeNav) => {
+    setSelectedThemeId(themeNav.theme.themeId);
+    setSelectThemeName(themeNav.theme.theme);
   }
 
   return (
@@ -187,16 +126,16 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
             <SidebarGroupLabel className="text-slate-400 text-sm font-semibold px-2 mb-2">テーマ</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {interviewsNav.map((interviewNav) => (
-                <SidebarMenuItem key={interviewNav.interview.interviewId}>
-                  <SidebarMenuButton asChild isActive={interviewNav.isActive}>
+                {themesNav.map((themeNav) => (
+                <SidebarMenuItem key={themeNav.theme.themeId}>
+                  <SidebarMenuButton asChild isActive={themeNav.isActive}>
                   <Link
-                    href={getHref(interviewNav.href)}
+                    href={getHref(themeNav.href)}
                     className="w-full transition-all duration-200 ease-in-out hover:bg-slate-700 rounded-md p-2 flex items-center space-x-3"
-                    onClick={() => selectInterview(interviewNav)}
+                    onClick={() => selectTheme(themeNav)}
                   >
                     <div className="flex items-center space-x-2 px-2">
-                    <span className="text-slate-300 text-base font-medium">{interviewNav.theme.theme}</span>
+                    <span className="text-slate-300 text-base font-medium">{themeNav.theme.theme}</span>
                     </div>
                   </Link>
                   </SidebarMenuButton>

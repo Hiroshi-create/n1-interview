@@ -33,22 +33,44 @@ const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
     setSelectedInterviewRef,
   } = useAppsContext();
 
+  const getThemeId = () => {
+    const uuidRegex = /\/guest-user\/([0-9a-fA-F-]{36})/;
+    const match = pathname.match(uuidRegex);
+    if (!match) {
+      alert('インタビューの情報取得エラー');
+      return "";
+    }
+    setSelectedThemeId(match[1]);
+    return match[1];
+  }
+
   const handleEmailSignup = () => {
-    router.push('/users/register');
+    if (acceptingGuestUsers) {
+      const themeId = getThemeId();
+      router.push(`/users/register/${themeId}`);
+    } else {
+      router.push(`/users/register`);
+    }
   }
 
   const handleLogin = () => {
-    router.push('/users/login');
+    if (acceptingGuestUsers) {
+      const themeId = getThemeId();
+      router.push(`/users/login/${themeId}`);
+    } else {
+      router.push('/users/login');
+    }
   }
 
   const handleGuestLogin = async () => {
+    const themeId = getThemeId();
     try {
       const response = await fetch('/api/initialize_guest_user_interview', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ pathname: pathname }),
+        body: JSON.stringify({ acquiredThemeId: themeId }),
       });
   
       if (!response.ok) {

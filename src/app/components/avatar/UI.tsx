@@ -45,10 +45,10 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     setRemainingTimeGetter,
     isInterviewCollected,
   } = useAppsContext();
-  const [isRecording, setIsRecording] = useState(false);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const chunksRef = useRef<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   const [isIOS, setIsIOS] = useState(false);
 
@@ -253,14 +253,23 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
                   disabled={isLoading || isProcessingAudio || !!message}
-                  className={`w-48 h-32 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-3xl flex items-center justify-center shadow-md transition-all duration-300 ${
+                  className={`w-48 h-32 ${
+                    isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-200 hover:bg-gray-300'
+                  } text-white rounded-3xl flex items-center justify-center shadow-md transition-all duration-300 ${
                     isLoading || isProcessingAudio || !!message ? "cursor-not-allowed opacity-50" : ""
                   }`}
                 >
-                  {isRecording || isProcessingAudio ? (
+                  {isRecording ? (
+                    <div className="flex flex-col items-center">
+                      <div className="animate-pulse">
+                        ●<span className="ml-2 text-sm">録音中</span>
+                      </div>
+                      <BallTriangle.Bars width="48" height="48" color="#FFFFFF" />
+                    </div>
+                  ) : isProcessingAudio ? (
                     <BallTriangle.Bars width="72" height="72" color="#4B5563" />
                   ) : (
-                    <FaMicrophoneAlt size={72} />
+                    <FaMicrophoneAlt size={72} className="text-gray-600" />
                   )}
                 </button>
               </div>

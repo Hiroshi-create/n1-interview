@@ -209,6 +209,10 @@ export function AppProvider({ children }: AppProviderProps) {
       }
   
       if (newUser) {
+        if (currentPath.startsWith('/auto-interview/guest-user')) {
+          handleLogout();
+          return;
+        }
         setIsMenuOpen(true);
         if (lastVisitedUrl) {
           resetOperationCheckPhases();
