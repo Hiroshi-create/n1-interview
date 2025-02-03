@@ -17,10 +17,12 @@ import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { auth, db } from "../../../../firebase"
 import { X, LogOut } from 'lucide-react';
-import { collection, doc as firestoreDoc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { Interviews } from '@/stores/Interviews'
+import { collection, DocumentReference, FieldValue, doc as firebaseDoc, getDoc, onSnapshot, orderBy, query, Timestamp } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
-import { isValidThemeData } from '@/context/components/isValidDataCheck'
-import { ThemeNav } from '@/context/interface/InterviewNav'
+import { Theme } from '@/stores/Theme'
+import { isValidInterviewData, isValidThemeData } from '@/context/components/isValidDataCheck'
+import { InterviewNav } from '@/context/interface/InterviewNav'
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   toggleMenu: () => void;
@@ -32,6 +34,8 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     user,
     userId,
     setSelectedThemeId,
+    setSelectedInterviewId,
+    setSelectedInterviewRef,
     setSelectThemeName
   } = useAppsContext();
 
@@ -43,59 +47,116 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     router.push(`/auto-interview/${userId}`);
   }
 
-  const [themesNav, setThemesNav] = useState<ThemeNav[]>([]);
+  const [interviewsNav, setInterviewsNav] = useState<InterviewNav[]>([]);
+  const [interviewRefs, setInterviewRefs] = useState<{[key: string]: DocumentReference}>({});
 
   useEffect(() => {
     if(user && userId) {
-      const themeCollectionRef = collection(db, "themes");
-      const q = query(themeCollectionRef, orderBy("createdAt", "desc"));
-      
-      const unsubscribe = onSnapshot(q, async (snapshot) => {
-        const themePromises = snapshot.docs.map(async (doc) => {
-          const themeData = doc.data();
-          if (isValidThemeData(themeData)) {
-            let organizationName = "";
-            const clientDocRef = firestoreDoc(db, "clients", themeData.clientId);
-            const clientDoc = await getDoc(clientDocRef);
-            if (clientDoc.exists()) {
-              organizationName = clientDoc.data().organizationName;
-            }
+      const fetchInterviews = async () => {
+        const interviewCollectionRef = collection(db, "users", userId, "answerInterviews");
+        const q = query(interviewCollectionRef, orderBy("createdAt", "desc"));
+        
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
+          const interviewPromises = snapshot.docs.map(async (doc) => {
+            const interviewRef = doc.data().interviewReference as DocumentReference;
+            if (interviewRef) {
+              const interviewDoc = await getDoc(interviewRef);
+              if (interviewDoc.exists()) {
+                const interviewData = interviewDoc.data();
+                if (isValidInterviewData(interviewData)) {
+                  // テーマデータの取得
+                  const parentDocRef = interviewRef.parent.parent;
+                  
+                  if (parentDocRef) {
+                    const themeDoc = await getDoc(parentDocRef);
+                    const themeId = themeDoc.id;
+                  
+                    if (themeDoc.exists()) {
+                      const themeData = themeDoc.data();
+                      if (isValidThemeData(themeData)) {
+                        let organizationName = "";
+                        const clientDocRef = firebaseDoc(db, "clients", themeData.clientId);
+                        if (clientDocRef) {
+                          const clientDoc = await getDoc(clientDocRef);
+                          if (clientDoc.exists()) {
+                            organizationName = clientDoc.data().organizationName;
+                          }
+                        }
 
-            return {
-              theme: {
-                themeId: doc.id,
-                theme: themeData.theme,
-                createUserId: themeData.createUserId,
-                createdAt: themeData.createdAt,
-                deadline: themeData.deadline,
-                clientId: themeData.clientId,
-                interviewsRequestedCount: themeData.interviewsRequestedCount,
-                collectInterviewsCount: themeData.collectInterviewsCount,
-                interviewDurationMin: themeData.interviewDurationMin,
-                isPublic: themeData.isPublic,
-                maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
-                interviewResponseURL: themeData.interviewResponseURL,
-              },
-              organizationName: organizationName,
-              href: `/auto-interview/${userId}/${doc.id}/description`,
-              isActive: false,
-            } as ThemeNav;
-          }
-          return null;
+                        return {
+                          interview: {
+                            interviewId: doc.id,
+                            intervieweeId: interviewData.intervieweeId,
+                            answerInterviewId: interviewData.answerInterviewId,
+                            createdAt: interviewData.createdAt,
+                            questionCount: interviewData.questionCount,
+                            themeId: interviewData.themeId,
+                            reportCreated: interviewData.reportCreated,
+                            interviewCollected: interviewData.interviewCollected,
+                            interviewDurationMin: interviewData.interviewDurationMin,
+                            temporaryId: interviewData.temporaryId,
+                            confirmedUserId: interviewData.confirmedUserId,
+                          } as Interviews,
+                          theme: {
+                            themeId: themeId,
+                            theme: themeData.theme,
+                            createUserId: themeData.createUserId,
+                            createdAt: themeData.createdAt,
+                            deadline: themeData.deadline,
+                            clientId: themeData.clientId,
+                            interviewsRequestedCount: themeData.interviewsRequestedCount,
+                            collectInterviewsCount: themeData.collectInterviewsCount,
+                            interviewDurationMin: themeData.interviewDurationMin,
+                            isPublic: themeData.isPublic,
+                            maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
+                            interviewResponseURL: themeData.interviewResponseURL,
+                          } as Theme,
+                          organizationName: organizationName,
+                          // href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
+                          href: `/auto-interview/${userId}/${themeId}/description`,
+                          isActive: false,
+                        } as InterviewNav;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return null;
+          });
+
+          const interviewResults = await Promise.all(interviewPromises);
+          const validInterviews = interviewResults.filter((interview): interview is InterviewNav => interview !== null);
+          setInterviewsNav(validInterviews);
+
+          const newInterviewRefs = snapshot.docs.reduce((acc, doc) => {
+            const interviewRef = doc.data().interviewReference as DocumentReference;
+            if (interviewRef) {
+              acc[doc.id] = interviewRef;
+            }
+            return acc;
+          }, {} as {[key: string]: DocumentReference});
+          setInterviewRefs(newInterviewRefs);
         });
 
-        const themeResults = await Promise.all(themePromises);
-        const validThemes = themeResults.filter((theme): theme is ThemeNav => theme !== null);
-        setThemesNav(validThemes);
-      });
+        return () => unsubscribe();
+      };
 
-      return () => unsubscribe();
+      fetchInterviews();
     }
   }, [user, userId]);
 
-  const selectTheme = (themeNav: ThemeNav) => {
-    setSelectedThemeId(themeNav.theme.themeId);
-    setSelectThemeName(themeNav.theme.theme);
+  const selectInterview = (interviewNav: InterviewNav) => {
+    const interviewId = interviewNav.interview.interviewId;
+    console.log("サイドバーのinterviewId : " + interviewId)
+    setSelectedInterviewId(interviewId);
+    setSelectedInterviewRef(interviewRefs[interviewId]);
+    setSelectedThemeId(interviewNav.theme.themeId);
+    setSelectThemeName(interviewNav.theme.theme);
+  }
+
+  const handleLogout = () => {
+    auth.signOut();
   }
 
   return (
@@ -126,16 +187,16 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
             <SidebarGroupLabel className="text-slate-400 text-sm font-semibold px-2 mb-2">テーマ</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {themesNav.map((themeNav) => (
-                <SidebarMenuItem key={themeNav.theme.themeId}>
-                  <SidebarMenuButton asChild isActive={themeNav.isActive}>
+                {interviewsNav.map((interviewNav) => (
+                <SidebarMenuItem key={interviewNav.interview.interviewId}>
+                  <SidebarMenuButton asChild isActive={interviewNav.isActive}>
                   <Link
-                    href={getHref(themeNav.href)}
+                    href={getHref(interviewNav.href)}
                     className="w-full transition-all duration-200 ease-in-out hover:bg-slate-700 rounded-md p-2 flex items-center space-x-3"
-                    onClick={() => selectTheme(themeNav)}
+                    onClick={() => selectInterview(interviewNav)}
                   >
                     <div className="flex items-center space-x-2 px-2">
-                    <span className="text-slate-300 text-base font-medium">{themeNav.theme.theme}</span>
+                    <span className="text-slate-300 text-base font-medium">{interviewNav.theme.theme}</span>
                     </div>
                   </Link>
                   </SidebarMenuButton>
