@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
     const interviewId = uuidv4();
     const answerInterviewId = uuidv4();
 
-    // firestoreの、themesコレクション/themeIdドキュメント/interviewsコレクションにinterviewIdをドキュメントIdとして追加
     const themeRef = doc(db, "themes", themeId);
     const interviewsCollection = collection(themeRef, 'interviews');
     const interviewDocRef = doc(interviewsCollection, interviewId);

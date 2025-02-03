@@ -1,25 +1,44 @@
-import { FieldValue, Timestamp } from 'firebase/firestore';
+import { collection, FieldValue, onSnapshot, query, Timestamp, where } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
-import { InterviewNav } from '@/context/interface/InterviewNav';
+import { ThemeNav } from '@/context/interface/InterviewNav';
 import { useAppsContext } from '@/context/AppContext';
+import { db } from '../../../../firebase';
 
 interface CardProps {
-  interviewNav: InterviewNav,
+  themeNav: ThemeNav,
   onClick?: () => void;
 }
 
 const InterviewCard: React.FC<CardProps> = ({
-  interviewNav,
+  themeNav,
   onClick,
 }) => {
   const router = useRouter();
-  const { userId } = useAppsContext();
+  const { userId, setIsInterviewCollected } = useAppsContext();
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [recruitmentClosed, setRecruitmentClosed] = useState<boolean>(false);
+  const [interviewCollected, setInterviewCollected] = useState<boolean>(false);
 
-  const isInterviewCollected = interviewNav.interview.interviewCollected;
+  useEffect(() => {
+    if (!userId || !themeNav.theme.themeId) return;
+  
+    const interviewsRef = collection(db, 'themes', themeNav.theme.themeId, 'interviews');
+  
+    const q = query(interviewsRef, where('intervieweeId', '==', userId));
+  
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0].data();
+        setInterviewCollected(docData.interviewCollected || false);
+      } else {
+        setInterviewCollected(false);
+      }
+    });
+  
+    return () => unsubscribe();
+  }, [userId, themeNav.theme.themeId]);
 
   const getHref = (href: string) => {
     return userId ? href.replace('[userId]', userId) : '#';
@@ -27,8 +46,9 @@ const InterviewCard: React.FC<CardProps> = ({
 
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (recruitmentClosed) return;
-    const href = getHref(interviewNav.href);
+    const href = getHref(themeNav.href);
     if (onClick) {
+      setIsInterviewCollected(interviewCollected);
       onClick();
     }
     if (href) {
@@ -37,7 +57,7 @@ const InterviewCard: React.FC<CardProps> = ({
   };
 
   useEffect(() => {
-    const deadline = interviewNav.theme.deadline;
+    const deadline = themeNav.theme.deadline;
     const calculateTimeLeft = () => {
       if (!(deadline instanceof Timestamp)) {
         setTimeLeft('締切日時不明');
@@ -48,7 +68,7 @@ const InterviewCard: React.FC<CardProps> = ({
       const now = Timestamp.now();
       const difference = deadline.toMillis() - now.toMillis();
 
-      const progressPercentage = (interviewNav.theme.collectInterviewsCount / interviewNav.theme.maximumNumberOfInterviews) * 100;
+      const progressPercentage = (themeNav.theme.collectInterviewsCount / themeNav.theme.maximumNumberOfInterviews) * 100;
       const isOverAchieved = progressPercentage >= 100;
 
       if (difference > 0 && !isOverAchieved) {
@@ -74,7 +94,7 @@ const InterviewCard: React.FC<CardProps> = ({
     const timer = setInterval(calculateTimeLeft, 60000); // 1分ごとに更新
 
     return () => clearInterval(timer);
-  }, [interviewNav.theme.deadline, interviewNav.theme.collectInterviewsCount, interviewNav.theme.maximumNumberOfInterviews]);
+  }, [themeNav.theme.deadline, themeNav.theme.collectInterviewsCount, themeNav.theme.maximumNumberOfInterviews]);
 
   const formatTimestamp = (timestamp: Timestamp | FieldValue) => {
     if (timestamp instanceof Timestamp) {
@@ -83,7 +103,7 @@ const InterviewCard: React.FC<CardProps> = ({
     return '日付不明';
   };
 
-  const progressPercentage = (interviewNav.theme.collectInterviewsCount / interviewNav.theme.maximumNumberOfInterviews) * 100;
+  const progressPercentage = (themeNav.theme.collectInterviewsCount / themeNav.theme.maximumNumberOfInterviews) * 100;
   const cappedProgressPercentage = Math.min(progressPercentage, 100);
   const isOverAchieved = progressPercentage > 100;
 
@@ -94,19 +114,19 @@ const InterviewCard: React.FC<CardProps> = ({
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
-          {interviewNav.organizationName}
+          {themeNav.organizationName}
         </span>
         <span className="text-sm text-gray-500">
-          作成日: {formatTimestamp(interviewNav.theme.createdAt)}
+          作成日: {formatTimestamp(themeNav.theme.createdAt)}
         </span>
       </div>
       <h2 className="text-xl md:text-2xl font-bold text-gray-800 leading-tight mb-2 line-clamp-2">
-        {interviewNav.theme.theme}
+        {themeNav.theme.theme}
       </h2>
       <div className="mt-auto mt-6">
       <div className="flex justify-end mb-2">
         <p className="text-sm text-gray-600">
-          {interviewNav.theme.collectInterviewsCount} / {interviewNav.theme.maximumNumberOfInterviews} 達成
+          {themeNav.theme.collectInterviewsCount} / {themeNav.theme.maximumNumberOfInterviews} 達成
         </p>
       </div>
         <div className="w-full rounded-full h-4 mb-4">
@@ -125,8 +145,8 @@ const InterviewCard: React.FC<CardProps> = ({
               />
               {timeLeft}
             </div>
-            <div className={`text-sm font-semibold ${isInterviewCollected ? 'text-red-600' : 'text-blue-600 group-hover:text-blue-800'} transition-colors duration-200`}>
-              {isInterviewCollected ? '回答済み' : '詳細を見る →'}
+            <div className={`text-sm font-semibold ${interviewCollected ? 'text-red-600' : 'text-blue-600 group-hover:text-blue-800'} transition-colors duration-200`}>
+              {interviewCollected ? '回答済み' : '詳細を見る →'}
             </div>
           </div>
         </div>

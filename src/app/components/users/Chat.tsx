@@ -497,31 +497,34 @@ const Chat: React.FC = () => {
           onClose={handleConfirmationResponse}
           title="重要！！"
           message={
-            <div>
-              <p>以下は重要なワンタイムコードです。完全に完了するには、インタビュー依頼者に伝える必要があります。</p>
-              <p>ワンタイムコードは一度しか表示されません。</p>
-              <p>このワンタイムコードは第三者に教えてはいけません。</p>
-              <div className="bg-gray-100 p-2 rounded mt-2">
+            <div className="space-y-4">
+              <p className="text-red-600 font-semibold">以下は重要なワンタイムコードです。完全に完了するには、インタビュー依頼者に伝える必要があります。</p>
+              <p className="font-medium">ワンタイムコードは一度しか表示されません。</p>
+              <p className="font-medium">このワンタイムコードは第三者に教えてはいけません。</p>
+              <div className="bg-gray-100 p-2 rounded-lg shadow-inner flex items-center space-x-2">
                 <input
                   type="text"
                   value={temporaryId}
                   readOnly
-                  className="flex-grow bg-transparent text-sm text-gray-700 focus:outline-none"
+                  className="flex-grow bg-transparent text-sm font-mono text-gray-700 focus:outline-none"
                 />
                 <button
                   onClick={handleCopyClick}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors duration-300 ${
-                      isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
-                  } hover:opacity-90`}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
+                    isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
+                  } hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isCopied ? 'focus:ring-green-400' : 'focus:ring-blue-400'
+                  }`}
                 >
-                  {isCopied ? '✔︎ 完了' : 'コピー'}
+                  {isCopied ? '✔ 完了' : 'コピー'}
                 </button>
               </div>
             </div>
           }
-          yesText="ホームに戻ります。戻ることはできません。"
+          yesText="ホームに戻る（この画面には戻れません）"
           singleButton={true}
         />
+
 
         <h1 className="text-lg font-semibold text-white mt-4">{selectThemeName}</h1>
       </div>

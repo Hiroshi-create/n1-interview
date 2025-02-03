@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     // interviewCollectedフィールドを取得
-    const interviewDocRef = doc(db, interviewRefPath);
+    const interviewDocRef = doc(db, interviewRefPath as string);
     const interviewDocSnap = await getDoc(interviewDocRef);
 
     if (!interviewDocSnap.exists()) {
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       message: 'operation_checkメッセージが正常に削除されました',
-      interviewCollected: interviewCollected
+      interviewCollected: interviewCollected,
     });
   } catch (error) {
     console.error('処理中にエラーが発生しました:', error);

@@ -7,7 +7,7 @@ interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: (response: 'yes' | 'no') => void;
   title: string;
-  message: ReactNode; // stringからReactNodeに変更
+  message: ReactNode;
   yesText?: string;
   noText?: string;
   isLoading?: boolean;
@@ -69,7 +69,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
       onClick={() => onClose('no')}
       ref={dialogRef}
-      style={{zIndex: 100}}
+      style={{zIndex: 101}}
     >
       <div 
         className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full"
