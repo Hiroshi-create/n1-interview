@@ -60,6 +60,8 @@ const InterviewHome: React.FC = () => {
                                 reportCreated: interviewData.reportCreated,
                                 interviewCollected: interviewData.interviewCollected,
                                 interviewDurationMin: interviewData.interviewDurationMin,
+                                temporaryId: interviewData.temporaryId,
+                                confirmedUserId: interviewData.confirmedUserId,
                               } as Interviews,
                               theme: {
                                 themeId: themeId,
@@ -73,6 +75,7 @@ const InterviewHome: React.FC = () => {
                                 interviewDurationMin: themeData.interviewDurationMin,
                                 isPublic: themeData.isPublic,
                                 maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
+                                interviewResponseURL: themeData.interviewResponseURL,
                               } as Theme,
                               organizationName: organizationName,
                               href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
@@ -156,7 +159,9 @@ const InterviewHome: React.FC = () => {
               reportCreated: validInterview.interview.reportCreated,
               interviewCollected: validInterview.interview.interviewCollected,
               interviewDurationMin: validInterview.interview.interviewDurationMin,
-              themeId: validInterview.interview.themeId
+              themeId: validInterview.interview.themeId,
+              temporaryId: validInterview.interview.temporaryId,
+              confirmedUserId: validInterview.interview.confirmedUserId,
             } as Interviews,
             theme: {
               themeId: validInterview.theme.themeId,
@@ -170,15 +175,13 @@ const InterviewHome: React.FC = () => {
               interviewDurationMin: validInterview.theme.interviewDurationMin,
               isPublic: validInterview.theme.isPublic,
               maximumNumberOfInterviews: validInterview.theme.maximumNumberOfInterviews,
+              interviewResponseURL: validInterview.theme.interviewResponseURL,
             } as Theme,
             organizationName: validInterview.organizationName,
             href: validInterview.href,
             isActive: validInterview.isActive
           } as InterviewNav;
         });
-        console.log(`インタビューの作成日: " + ${formatTimestamp(validInterviews[0].interview.createdAt)}`);
-        console.log(`テーマの作成日: " + ${formatTimestamp(validInterviews[0].theme.createdAt)}`);
-        console.log(`テーマの締切日: " + ${formatTimestamp(validInterviews[0].theme.deadline)}`);
         setInterviewsNav(validInterviews);
         
         if (data.interviewRefs && typeof data.interviewRefs === 'object') {
@@ -214,7 +217,7 @@ const InterviewHome: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="テーマを検索..."
-            className="w-full p-3 pl-10 rounded-lg border border-secondary"
+            className="w-full p-3 pl-10 rounded-lg border border-gray-400"
           />
           <button 
             type="submit" 

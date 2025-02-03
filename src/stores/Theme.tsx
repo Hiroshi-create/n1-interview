@@ -12,4 +12,5 @@ export type Theme = {
     interviewDurationMin: number;
     isPublic: boolean;
     maximumNumberOfInterviews: number;
+    interviewResponseURL: string | null;
 }

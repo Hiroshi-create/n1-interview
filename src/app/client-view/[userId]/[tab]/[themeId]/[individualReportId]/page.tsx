@@ -2,14 +2,20 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../../../../../../firebase";
+import { doc, DocumentReference, getDoc } from "firebase/firestore";
+import { auth, db } from "../../../../../../../firebase";
 import { Theme } from "@/stores/Theme";
 import { IndividualReport } from "@/stores/IndividualReport";
 import LoadingIcons from "react-loading-icons";
 import { useAppsContext } from "@/context/AppContext";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { SubmitHandler, useForm } from "react-hook-form";
+
+type Inputs = {
+    email: string
+    password: string
+}
 
 const IndividualReportDetailPage = () => {
     const { selectedInterviewId } = useAppsContext();
@@ -19,6 +25,17 @@ const IndividualReportDetailPage = () => {
     const [theme, setTheme] = useState<Theme | null>(null);
     const [individualReport, setIndividualReport] = useState<IndividualReport | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [temporaryId, setTemporaryId] = useState<string>("ワンタイムコード取得中...");
+    const [fullName, setFullName] = useState("");
+    const [isConfirmed, setIsConfirmed] = useState(false);
+    const [interviewRef, setInterviewRef] = useState<DocumentReference | null>(null);
+    const [confirmedUserId, setConfirmedUserId] = useState<string | null>(null);
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<Inputs>();
 
     const tab = params.tab as string;
     const themeId = params.themeId as string;
@@ -34,6 +51,12 @@ const IndividualReportDetailPage = () => {
                 }
 
                 const interviewRef = doc(db, "themes", themeId, "interviews", selectedInterviewId);
+                setInterviewRef(interviewRef);
+                const interviewSnap = await getDoc(interviewRef);
+                if (interviewSnap.exists()) {
+                    setTemporaryId(interviewSnap.data().temporaryId as string);
+                    setConfirmedUserId(interviewSnap.data().confirmedUserId as string | null);
+                }
                 const individualReportRef = doc(interviewRef, "individualReport", individualReportId);
                 const individualReportSnap = await getDoc(individualReportRef);
                 if (individualReportSnap.exists()) {
@@ -46,6 +69,39 @@ const IndividualReportDetailPage = () => {
         };
         fetchData();
     }, [themeId, selectedInterviewId, individualReportId]);
+
+    const reauthorizeUser: SubmitHandler<Inputs> = async (data) => {
+        try {
+            if (!interviewRef) {
+                throw new Error('インタビュー参照が見つかりません');
+            }
+            const response = await fetch('/api/reauthenticate', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    password: data.password,
+                    interviewRefPath: interviewRef.path,
+                    temporaryId: temporaryId,
+                }),
+            });
+      
+            const result = await response.json();
+        
+            if (!response.ok) {
+                throw new Error(result.error || '認証に失敗しました');
+            }
+        
+            console.log("ユーザーの再認証に成功しました");
+            return true;
+        } catch (error) {
+            console.error("再認証エラー:", error);
+            alert(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
+            return false;
+        }
+    };
 
     if (isLoading) {
         return (
@@ -103,6 +159,92 @@ const IndividualReportDetailPage = () => {
                         <p className="text-text text-center text-lg font-semibold">レポートが見つかりません</p>
                     )}
                 </div>
+                {temporaryId ? (
+                    <div className="bg-white rounded-3xl shadow-lg p-10 border border-gray-200 my-12 max-w-3xl mx-auto">
+                        <h2 className="text-3xl font-bold mb-8 text-secondary text-center">回答の完了承認</h2>
+                        <p className="mb-6 text-lg text-center text-gray-700">この確認によって、組織による確認が完了したものとします</p>
+                        
+                        <form
+                            onSubmit={handleSubmit(reauthorizeUser)}
+                            className='space-y-8'
+                        >
+                            <div className="bg-gray-100 p-4 rounded-lg mb-8">
+                                <p className="text-center">
+                                    <span className="text-gray-600">一時ID：</span>
+                                    <span className="font-semibold text-lg">{temporaryId}</span>
+                                </p>
+                            </div>
+
+                            <div>
+                                <label htmlFor="fullName" className="block text-lg font-medium text-gray-700 mb-2">確認者フルネーム</label>
+                                <input
+                                    type="text"
+                                    id="fullName"
+                                    className="w-full p-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="フルネームを入力してください"
+                                />
+                            </div>
+
+                            <div>
+                                <label className='block text-lg font-medium text-gray-700 mb-2'>
+                                    メールアドレス
+                                </label>
+                                <input
+                                    {...register("email", {
+                                        required: "メールアドレスは必須です。",
+                                        pattern: {
+                                            value: /^[a-zA-Z0-9_.+-]+@([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.)+[a-zA-Z]{2,}$/,
+                                            message: "不適切なメールアドレスです。"
+                                        }
+                                    })}
+                                    type='email'
+                                    className='w-full p-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                    placeholder="example@example.com"
+                                />
+                                {errors.email && <span className='text-red-600 text-sm mt-1 block'>{errors.email.message}</span>}
+                            </div>
+
+                            <div>
+                                <label className='block text-lg font-medium text-gray-700 mb-2'>
+                                    パスワード
+                                </label>
+                                <input
+                                    {...register("password", {
+                                        required: "パスワードは必須です。",
+                                        minLength: {
+                                            value: 6,
+                                            message: "6文字以上入力してください。"
+                                        }
+                                    })}
+                                    type='password'
+                                    className='w-full p-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                    placeholder="••••••••"
+                                />
+                                {errors.password && <span className='text-red-600 text-sm mt-1 block'>{errors.password.message}</span>}
+                            </div>
+
+                            <div className='flex justify-center'>
+                                <button
+                                type='submit'
+                                className='bg-blue-600 text-white font-bold py-4 px-8 rounded-lg hover:bg-blue-700 transition duration-300 w-full max-w-md text-lg shadow-md hover:shadow-lg transform hover:-translate-y-1'>
+                                    {isConfirmed ? "確認済み" : "確認する"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                ) : confirmedUserId ? (
+                    <div className="bg-green-100 rounded-3xl shadow-lg p-10 border border-green-200 my-12 max-w-3xl mx-auto text-center">
+                        <svg className="w-24 h-24 text-green-500 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h2 className="text-4xl font-bold mb-4 text-green-700">確認済み</h2>
+                        <p className="text-xl text-green-600">このインタビューは既に確認済みです。</p>
+                    </div>
+                ) : (
+                    <div className="bg-yellow-100 rounded-3xl shadow-lg p-10 border border-yellow-200 my-12 max-w-3xl mx-auto text-center">
+                        <p className="text-xl text-yellow-700">確認情報が見つかりません。</p>
+                    </div>
+                )}
             </main>
         </div>
     );

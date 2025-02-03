@@ -89,11 +89,13 @@ export async function POST(req: NextRequest) {
     };
     await setDoc(doc(reportsCollectionRef, newReportId), newReport);
 
+    const temporaryId = uuidv4();
     await updateDoc(interviewRef, {
-      reportCreated: true
+      reportCreated: true,
+      temporaryId: temporaryId,
     });
 
-    return NextResponse.json({ report });
+    return NextResponse.json({ report: report, temporaryId: temporaryId });
   } catch (error) {
     console.error('レポート生成中にエラーが発生しました:', error);
     return NextResponse.json({ error: 'レポートの生成に失敗しました' }, { status: 500 });

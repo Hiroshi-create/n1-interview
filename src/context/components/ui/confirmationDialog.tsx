@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: (response: 'yes' | 'no') => void;
   title: string;
-  message: string;
+  message: ReactNode; // stringからReactNodeに変更
   yesText?: string;
   noText?: string;
   isLoading?: boolean;
@@ -22,7 +22,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   yesText = 'はい',
   noText = 'いいえ',
   isLoading = false,
-  singleButton = false  // デフォルト値を設定
+  singleButton = false
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusableElement = useRef<HTMLButtonElement>(null);
@@ -76,7 +76,9 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold mb-4 text-gray-800">{title}</h2>
-        <p className="text-lg mb-6 text-gray-600">{message}</p>
+        <div className="text-lg mb-6 text-gray-600"> {/* pタグからdivに変更 */}
+          {message}
+        </div>
         <div className={`flex justify-between ${singleButton ? '' : 'space-x-4'}`}>
           {!singleButton && (
             <button 

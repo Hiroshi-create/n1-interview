@@ -16,6 +16,8 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         'interviewCollected' in data &&
         'interviewDurationMin' in data &&
         'themeId' in data &&
+        'temporaryId' in data &&
+        'confirmedUserId' in data &&
         typeof (data as any).interviewId === 'string' &&
         typeof (data as any).intervieweeId === 'string' &&
         typeof (data as any).answerInterviewId === 'string' &&
@@ -25,7 +27,9 @@ export function isValidInterviewData(data: unknown): data is Interviews {
         typeof (data as any).reportCreated === 'boolean' &&
         typeof (data as any).interviewCollected === 'boolean' &&
         typeof (data as any).interviewDurationMin === 'number' &&
-        typeof (data as any).themeId === 'string'
+        typeof (data as any).themeId === 'string' &&
+        typeof (data as any).temporaryId === 'string' || (data as any).interviewResponseURL === null &&
+        typeof (data as any).confirmedUserId === 'string' || (data as any).confirmedUserId === null
     );
 }
 
@@ -43,6 +47,7 @@ export function isValidThemeData(data: unknown): data is Theme {
         'interviewDurationMin' in data &&
         'isPublic' in data &&
         'maximumNumberOfInterviews' in data &&
+        'interviewResponseURL' in data &&
         typeof (data as any).themeId === 'string' &&
         typeof (data as any).theme === 'string' &&
         typeof (data as any).createUserId === 'string' &&
@@ -52,6 +57,7 @@ export function isValidThemeData(data: unknown): data is Theme {
         typeof (data as any).collectInterviewsCount === 'number' &&
         typeof (data as any).interviewDurationMin === 'number' &&
         typeof (data as any).isPublic === 'boolean' &&
-        typeof (data as any).maximumNumberOfInterviews === 'number'
+        typeof (data as any).maximumNumberOfInterviews === 'number' &&
+        typeof (data as any).interviewResponseURL === 'string' || (data as any).interviewResponseURL === null
     );
 }

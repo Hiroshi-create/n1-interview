@@ -14,8 +14,9 @@ type AppProviderProps = {
 type AppContextType = {
   handleLogout: () => Promise<void>;
   user: User | null;
-  userId: string | null,
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  userId: string | null,
+  setUserId: React.Dispatch<React.SetStateAction<string | null>>,
   selectedInterviewId: string | null,
   setSelectedInterviewId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedThemeId: string | null,
@@ -61,8 +62,9 @@ type AppContextType = {
 const AppContext = createContext<AppContextType>({
   handleLogout: async () => {},
   user: null,
-  userId: null,
   setUser: () => {},
+  userId: null,
+  setUserId: () => {},
   selectedInterviewId: null,
   setSelectedInterviewId: () => {},
   selectedThemeId: null,
@@ -75,7 +77,7 @@ const AppContext = createContext<AppContextType>({
   setSelectThemeName: () => {},
   micPermission: null,
   setMicPermission: () => {},
-  isOperationCheck: true,
+  isOperationCheck: false,
   setIsOperationCheck: () => {},
   requestMicPermission: async () => false,
   hasInteracted: false,
@@ -122,11 +124,11 @@ export function AppProvider({ children }: AppProviderProps) {
   const [selectedInterviewRef, setSelectedInterviewRef] = useState<DocumentReference | null>(null);
   const [selectedThemeRef, setSelectedThemeRef] = useState<DocumentReference | null>(null);
   const [selectThemeName, setSelectThemeName] = useState<string | null>(null);
-  const [isOperationCheck, setIsOperationCheck] = useState<boolean>(true);
+  const [isOperationCheck, setIsOperationCheck] = useState<boolean>(false);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [hasInteracted, setHasInteracted] = useState<boolean>(false);
   const [isInterviewCollected, setIsInterviewCollected] = useState<boolean>(false);
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(true);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [operationCheckPhases, setOperationCheckPhases] = useState(operation_check_phases);
   const [remainingTimeGetter, setRemainingTimeGetter] = useState<(() => number | null) | null>(null);
@@ -206,13 +208,11 @@ export function AppProvider({ children }: AppProviderProps) {
         return;
       }
   
-      if (!newUser) {
-        router.push("/home/");
-      } else {
+      if (newUser) {
+        setIsMenuOpen(true);
         if (lastVisitedUrl) {
           resetOperationCheckPhases();
           resetInterviewPhases();  // 仮
-          setIsOperationCheck(false);
           if (currentPath.startsWith('/auto-interview/')) {
             setIsUserAccount(true);
           } else if (currentPath.startsWith('/client-view/')) {
@@ -227,6 +227,12 @@ export function AppProvider({ children }: AppProviderProps) {
           } else {
             router.push(`/auto-interview/${newUser.uid}`);
           }
+        }
+      } else {
+        if (currentPath.startsWith('/auto-interview/guest-user')) {
+          return;
+        } else {
+          router.push(`/home`);
         }
       }
     });
@@ -249,8 +255,9 @@ export function AppProvider({ children }: AppProviderProps) {
       value={{ 
         handleLogout,
         user, 
-        userId, 
         setUser, 
+        userId, 
+        setUserId, 
         selectedInterviewId, 
         setSelectedInterviewId, 
         selectedThemeId, 

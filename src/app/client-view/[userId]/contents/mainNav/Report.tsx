@@ -57,6 +57,7 @@ const Report = () => {
                                                         interviewDurationMin: data.interviewDurationMin,
                                                         isPublic: data.isPublic,
                                                         maximumNumberOfInterviews: data.maximumNumberOfInterviews,
+                                                        interviewResponseURL: data.interviewResponseURL,
                                                     } as Theme;
                                                 }
                                             }
@@ -106,13 +107,31 @@ const Report = () => {
 
     return (
         <div className='flex-grow'>
-            <ul className=" rounded-lg shadow-md overflow-hidden  mt-4">
+            {/* <form onSubmit={handleSearch} className="mb-8">
+                <div className="relative">
+                <input
+                    type="text"
+                    // value={searchTerm}
+                    // onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="テーマを検索..."
+                    className="w-full p-3 pl-10 rounded-lg border border-gray-400"
+                />
+                <button 
+                    type="submit" 
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all"
+                >
+                    検索
+                </button>
+                </div>
+            </form> */}
+            <ul className="rounded-lg mt-4 space-y-2">
                 {themes.map((theme) => (
-                    <ClientsideThemeCard
-                        key={theme.themeId}
-                        themeNav={theme}
-                        onClick={() => selectTheme(theme.themeId, theme.theme)}
-                    />
+                    <li key={theme.themeId} className="bg-white">
+                        <ClientsideThemeCard
+                            themeNav={theme}
+                            onClick={() => selectTheme(theme.themeId, theme.theme)}
+                        />
+                    </li>
                 ))}
             </ul>
         </div>

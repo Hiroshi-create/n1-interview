@@ -20,7 +20,6 @@ const DescriptionDetail = () => {
     selectedThemeId,
     selectedInterviewId,
     selectedInterviewRef,
-    setIsOperationCheck,
     setIsMenuOpen,
     setIsInterviewCollected,
     resetOperationCheckPhases,
@@ -74,7 +73,6 @@ const DescriptionDetail = () => {
   const handleStartClick = async () => {
     resetOperationCheckPhases();
     resetInterviewPhases();  // 仮
-    setIsOperationCheck(false);
     setIsLoading(true);
     
     try {
@@ -104,12 +102,12 @@ const DescriptionDetail = () => {
       }
   
       // メッセージ削除成功後にインタビューページに遷移
-      router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);
+      router.push(`/auto-interview/guest-user/${selectedThemeId}/${selectedInterviewId}/interview`);
     } catch (error) {
       console.error('エラー:', error);
       // エラーが発生した場合でもユーザーに通知した上でインタビューページに遷移
       alert('メッセージの削除中にエラーが発生しましたが、インタビューを開始します。');
-      router.push(`/auto-interview/${userId}/${selectedThemeId}/${selectedInterviewId}/interview`);
+      router.push(`/auto-interview/guest-user/${selectedThemeId}/${selectedInterviewId}/interview`);
     } finally {
       setIsLoading(false);
     }

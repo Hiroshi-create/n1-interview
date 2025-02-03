@@ -35,6 +35,8 @@ export async function POST(request: Request) {
     const newThemeId = uuidv4();
     const intervieweeIds = isTest ? [userId] : [userId];
 
+    const interviewUrl = `${process.env.ROOT_DOMAIN}/auto-interview/guest-user/${newThemeId}`;
+
     const newThemeData: Theme = {
       themeId: newThemeId,
       theme: theme,
@@ -47,6 +49,7 @@ export async function POST(request: Request) {
       interviewDurationMin: duration,
       isPublic: isPublic !== undefined ? isPublic : true,
       maximumNumberOfInterviews: parsedMaximumNumberOfInterviews,
+      interviewResponseURL: interviewUrl,
     };
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);
@@ -70,6 +73,8 @@ export async function POST(request: Request) {
         interviewCollected: false,
         interviewDurationMin: duration,
         themeId: newThemeId,
+        temporaryId: null,
+        confirmedUserId: null,
       };
       await setDoc(interviewDocRef, interviewData);
 
@@ -94,7 +99,7 @@ export async function POST(request: Request) {
 
     await Promise.all(promises);
 
-    return NextResponse.json({ success: true, newThemeId });
+    return NextResponse.json({ success: true, newThemeId, interviewUrl });
   } catch (error) {
     console.error('インタビューの作成中にエラーが発生しました:', error);
     return NextResponse.json({ error: 'インタビューの作成に失敗しました' }, { status: 500 });

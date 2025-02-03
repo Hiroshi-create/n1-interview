@@ -23,6 +23,11 @@ interface InterviewResponse {
   isInterviewComplete?: boolean;
 }
 
+interface IndividualReportResponse {
+  report: string;
+  temporaryId: string;
+}
+
 type ChatContextType = {
     chat: (message: string) => Promise<void>;
     messages: Message[];
@@ -42,6 +47,10 @@ type ChatContextType = {
     themeId: string | undefined;
     isThinking: boolean;
     operationCheckComplete: boolean;
+    showTemporaryIdDialog: boolean;
+    setShowTemporaryIdDialog: React.Dispatch<React.SetStateAction<boolean>>;
+    temporaryId: string;
+    setTemporaryId: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -54,7 +63,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const {
     selectedInterviewId,
     isOperationCheck,
-    setIsOperationCheck,
     selectedInterviewRef,
     selectThemeName,
     operationCheckPhases,
@@ -80,6 +88,8 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [options, setOptions] = useState<string[]>([]);
   const [showSingleSelect, setShowSingleSelect] = useState(false);
   const [operationCheckComplete, setOperationCheckComplete] = useState(false);
+  const [showTemporaryIdDialog, setShowTemporaryIdDialog] = useState(false);
+  const [temporaryId, setTemporaryId] = useState('');
 
   useEffect(() => {
     if (isOperationCheck && !isInterviewInitialized && !isLoading && !isTimerStarted) {
@@ -252,7 +262,13 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
                 throw new Error('レポート生成に失敗しました');
               }
     
-              const reportData = await reportResponse.json();
+              const reportData: IndividualReportResponse = await reportResponse.json();
+
+              if (reportData! && reportData.temporaryId) {
+                // reportData.temporaryIdを使用して、ダイアログに表示
+                setTemporaryId(reportData.temporaryId);
+                setShowTemporaryIdDialog(true);
+              }
               console.log('生成されたレポート:', reportData.report);
               return;
             } else if (currentPhase.type === "two_choices" || currentPhase.type === "one_choice") {
@@ -308,6 +324,10 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       themeId: selectedInterviewId ?? undefined,
       isThinking,
       operationCheckComplete,
+      showTemporaryIdDialog,
+      setShowTemporaryIdDialog,
+      temporaryId,
+      setTemporaryId,
     }}>
       {children}
     </ChatContext.Provider>
@@ -339,13 +359,37 @@ const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = (
 
 const Chat: React.FC = () => {
   const router = useRouter();
-  const { userId, setIsOperationCheck, isInterviewCollected } = useAppsContext();
-  const { messages, isLoading, selectThemeName, chat, showSingleSelect, setShowSingleSelect, options } = useChat();
+  const {
+    user,
+    userId,
+    setUserId,
+    setSelectThemeName,
+    setSelectedInterviewId,
+    setSelectedInterviewRef,
+    setSelectedThemeId,
+    setSelectedThemeRef,
+    setIsOperationCheck,
+    isInterviewCollected,
+  } = useAppsContext();
+  const { 
+    messages, 
+    isLoading, 
+    selectThemeName, 
+    chat, 
+    showSingleSelect, 
+    setShowSingleSelect, 
+    options,
+    showTemporaryIdDialog,
+    setShowTemporaryIdDialog,
+    temporaryId,
+    setTemporaryId
+  } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -389,7 +433,17 @@ const Chat: React.FC = () => {
   // ホームに戻る
   const handleConfirmationResponse = (response: 'yes' | 'no') => {
     if (response === 'yes' && isInterviewCollected) {
-      router.push(`/auto-interview/${userId}`);
+      if (user) {
+        router.push(`/auto-interview/${userId}`);
+      } else {
+        setUserId(null);
+        setSelectThemeName(null);
+        setSelectedInterviewId(null);
+        setSelectedInterviewRef(null);
+        setSelectedThemeId(null);
+        setSelectedThemeRef(null);
+        router.push(`/home`);
+      }
     }
     setShowConfirmation(false);
   };
@@ -402,6 +456,18 @@ const Chat: React.FC = () => {
       setIsOperationCheck(true);
     }
     setShowSingleSelect(false);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(temporaryId).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 3000);
+    });
+  };
+
+  const handleCopyClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    copyToClipboard();
   };
 
   return (
@@ -420,12 +486,51 @@ const Chat: React.FC = () => {
           isOpen={showConfirmation}
           onClose={handleConfirmationResponse}
           title="確認"
-          message={isInterviewCollected ? "ホームに戻りますか？" : "インタビューがまだ途中です😭"}
+          message={isInterviewCollected ? "ホームに戻りますか？" : "インタビューがまだ途中です..."}
           isLoading={isDeleting}
           yesText={isInterviewCollected ? (isDeleting ? "処理中..." : "はい") : "インタビューに戻る"}
           noText="いいえ"
           singleButton={!isInterviewCollected}
         />
+
+        <ConfirmationDialog
+          isOpen={showTemporaryIdDialog}
+          onClose={handleConfirmationResponse}
+          title="重要！！"
+          message={
+            <div>
+              <p>以下は重要なワンタイムコードです。完全に完了するには、インタビュー依頼者に伝える必要があります。</p>
+              <p>ワンタイムコードは一度しか表示されません。</p>
+              <p>このワンタイムコードは第三者に教えてはいけません。</p>
+              <div className="bg-gray-100 p-2 rounded mt-2">
+                {/* <code>{temporaryId}</code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(temporaryId)}
+                  className="ml-2 text-blue-500 hover:text-blue-700"
+                >
+                  コピー
+                </button> */}
+                <input
+                  type="text"
+                  value={temporaryId}
+                  readOnly
+                  className="flex-grow bg-transparent text-sm text-gray-700 focus:outline-none"
+                />
+                <button
+                  onClick={handleCopyClick}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors duration-300 ${
+                      isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
+                  } hover:opacity-90`}
+                >
+                  {isCopied ? '✔︎ 完了' : 'コピー'}
+                </button>
+              </div>
+            </div>
+          }
+          yesText="ホームに戻ります。戻ることはできません。"
+          singleButton={true}
+        />
+
         <h1 className="text-lg font-semibold text-white mt-4">{selectThemeName}</h1>
       </div>
       <div 

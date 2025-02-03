@@ -17,6 +17,8 @@ const ThemeDetailPage = () => {
     const [theme, setTheme] = useState<Theme | null>(null);
     const [individualReports, setIndividualReports] = useState<IndividualReport[]>([]);
     const [interviewIds, setInterviewIds] = useState<string[]>([]);
+    const [temporaryIds, setTemporaryIds] = useState<(string | null)[]>([]);
+    const [confirmedUserIds, setConfirmedUserIds] = useState<string[]>([]);
 
     const tab = params.tab as string;
 
@@ -33,6 +35,9 @@ const ThemeDetailPage = () => {
         
                     const unsubscribe = onSnapshot(q, async (snapshot) => {
                         const individualReportPromises = snapshot.docs.map(async (interviewDoc) => {
+                            const temporaryId = interviewDoc.data().temporaryId as string | null;
+                            const confirmedUserId = interviewDoc.data().confirmedUserId as string | null;
+
                             const individualReportCollectionRef = collection(interviewDoc.ref, "individualReport");
                             const individualReportSnapshot = await getDocs(individualReportCollectionRef);
                             
@@ -45,7 +50,9 @@ const ThemeDetailPage = () => {
                                             createdAt: data.createdAt,
                                             report: data.report,
                                         } as IndividualReport,
-                                        interviewId: interviewDoc.id
+                                        interviewId: interviewDoc.id,
+                                        temporaryId: temporaryId,
+                                        confirmedUserId: confirmedUserId,
                                     };
                                 }
                             }
@@ -56,6 +63,8 @@ const ThemeDetailPage = () => {
                         
                         setIndividualReports(validResults.map(result => result.individualReport));
                         setInterviewIds(validResults.map(result => result.interviewId));
+                        setTemporaryIds(validResults.map(result => result.temporaryId));
+                        setConfirmedUserIds(validResults.map(result => result.confirmedUserId || ''));
                     });
                     return () => unsubscribe();
                 }
@@ -80,7 +89,7 @@ const ThemeDetailPage = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex items-center gap-2 border-b border-gray-300 px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-gray-300 px-4 py-3 mb-4">
                 <h1 className="text-xl font-semibold">
                     <span
                         className="cursor-pointer hover:text-primary transition-colors duration-300"
@@ -92,6 +101,7 @@ const ThemeDetailPage = () => {
                     <span className="text-text">{theme.theme}</span>
                 </h1>
             </div>
+
             <main className="container mx-auto py-8 px-4 flex-grow">
                 <div className='flex-grow'>
                     <ul className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-300 mt-8 mb-4">
@@ -106,6 +116,13 @@ const ThemeDetailPage = () => {
                                 )}
                             >
                                 <span className="text-gray-800">{individualReport.individualReportId}</span>
+                                <div className="text-gray-800">
+                                    {temporaryIds[index] 
+                                        ? `ワンタイムコード：${temporaryIds[index]}`
+                                        : confirmedUserIds[index]
+                                        ? "確認済み ✔️"
+                                        : "未確認"}
+                                </div>
                             </li>
                         ))}
                     </ul>

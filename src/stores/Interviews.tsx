@@ -11,4 +11,6 @@ export type Interviews = {
     interviewCollected: boolean;
     interviewDurationMin: number;
     themeId: string;
+    temporaryId: string | null;
+    confirmedUserId: string | null;
 }

@@ -99,12 +99,15 @@ const Header = React.forwardRef<
       <div className="flex items-center justify-between w-full">
         {/* 左側のメニューアイコンとロゴ */}
         <div className="flex items-center">
-          <button
+          {user && (
+            <button
             onClick={toggleMenu}
             className="p-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300"
           >
             <Menu size={24} />
           </button>
+          )}
+          
           <Image
             src="/logo/logo_yoko.svg"
             alt="感性分析 Logo"

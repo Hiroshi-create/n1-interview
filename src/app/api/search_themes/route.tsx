@@ -95,6 +95,8 @@ export async function POST(req: NextRequest) {
               reportCreated: interviewData.reportCreated,
               interviewCollected: interviewData.interviewCollected,
               interviewDurationMin: interviewData.interviewDurationMin,
+              temporaryId: interviewData.temporaryId,
+              confirmedUserId: interviewData.confirmedUserId,
             },
             theme: {
               themeId: themeId,
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
               interviewDurationMin: answerTheme.interviewDurationMin,
               isPublic: answerTheme.isPublic,
               maximumNumberOfInterviews: answerTheme.maximumNumberOfInterviews,
+              interviewResponseURL: answerTheme.interviewResponseURL,
             },
             organizationName: organizationName,
             href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,

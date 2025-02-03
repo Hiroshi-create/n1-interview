@@ -95,6 +95,8 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                             reportCreated: interviewData.reportCreated,
                             interviewCollected: interviewData.interviewCollected,
                             interviewDurationMin: interviewData.interviewDurationMin,
+                            temporaryId: interviewData.temporaryId,
+                            confirmedUserId: interviewData.confirmedUserId,
                           } as Interviews,
                           theme: {
                             themeId: themeId,
@@ -108,6 +110,7 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                             interviewDurationMin: themeData.interviewDurationMin,
                             isPublic: themeData.isPublic,
                             maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
+                            interviewResponseURL: themeData.interviewResponseURL,
                           } as Theme,
                           organizationName: organizationName,
                           href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,
