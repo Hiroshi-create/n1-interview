@@ -372,6 +372,7 @@ const Chat: React.FC = () => {
     isInterviewCollected,
   } = useAppsContext();
   const { 
+    message,
     messages, 
     isLoading, 
     selectThemeName, 
@@ -380,9 +381,7 @@ const Chat: React.FC = () => {
     setShowSingleSelect, 
     options,
     showTemporaryIdDialog,
-    setShowTemporaryIdDialog,
     temporaryId,
-    setTemporaryId
   } = useChat();
   const scrollDiv = useRef<HTMLDivElement>(null);
   const [visibleMessages, setVisibleMessages] = useState<{ message: Message; opacity: number }[]>([]);
@@ -590,6 +589,7 @@ const Chat: React.FC = () => {
               backgroundColor="#f0f0f0"
               textColor="#333333"
               position={{ x: -0.1, y: 1.6 }}
+              disabled={isLoading || !!message}
             />
           )}
         </div>

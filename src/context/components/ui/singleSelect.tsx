@@ -10,6 +10,7 @@ type SingleSelectProps = {
   backgroundColor?: string;
   textColor?: string;
   position?: { x: number; y: number };
+  disabled?: boolean;
 };
 
 type ButtonProps = {
@@ -17,9 +18,10 @@ type ButtonProps = {
   onClick: () => void;
   className?: string;
   color?: string;
+  disabled?: boolean;
 };
 
-const Button: React.FC<ButtonProps> = ({ children, onClick, className, color = 'blue' }) => {
+const Button: React.FC<ButtonProps> = ({ children, onClick, className, color = 'blue', disabled = false }) => {
   const hoverColor = (c: string) => {
     const darken = (hex: string, amount: number) => {
       return '#' + hex.replace(/^#/, '').replace(/../g, color => ('0' + Math.min(255, Math.max(0, parseInt(color, 16) - amount)).toString(16)).substr(-2));
@@ -31,7 +33,9 @@ const Button: React.FC<ButtonProps> = ({ children, onClick, className, color = '
     <button
       className={`text-white text-lg font-semibold rounded-full
                   transition duration-300 ease-in-out transform
-                  hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50 shadow-lg ${className}`}
+                  hover:scale-105 focus:outline-none focus:ring-2
+                  focus:ring-opacity-50 shadow-lg ${className}
+                  ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
       style={{
         backgroundColor: color,
         width: '160px',
@@ -45,9 +49,10 @@ const Button: React.FC<ButtonProps> = ({ children, onClick, className, color = '
         lineHeight: '1.2',
         textAlign: 'center',
       }}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverColor(color))}
       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = color)}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -61,6 +66,7 @@ const SingleSelect: React.FC<SingleSelectProps> = ({
     backgroundColor = 'white',
     textColor = 'black',
     position = { x: 0, y: 0 },
+    disabled = false,
 }) => {
     const [isVisible, setIsVisible] = useState(true);
   
@@ -110,11 +116,12 @@ const SingleSelect: React.FC<SingleSelectProps> = ({
               }}
             >
               {options.slice().reverse().map((option, index) => (
-                <Button 
-                  key={index} 
+                <Button
+                  key={option}
                   onClick={() => handleSelect(option)}
                   className="flex-shrink-0"
                   color={colors[(options.length - 1 - index) % colors.length]}
+                  disabled={disabled}
                 >
                   {option}
                 </Button>
