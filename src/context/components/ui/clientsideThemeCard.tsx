@@ -34,22 +34,23 @@ const ClientsideThemeCard: React.FC<CardProps> = ({ themeNav, onClick }) => {
             const now = new Date();
             const deadlineDate = deadline.toDate();
             const difference = deadlineDate.getTime() - now.getTime();
-
+    
             if (difference > 0) {
                 const days = Math.floor(difference / (1000 * 60 * 60 * 24));
                 const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
                 const minutes = Math.floor((difference / 1000 / 60) % 60);
-
-                if (days > 0) return `あと${days}日`;
-                if (hours > 0) return `あと${hours}時間`;
-                return `あと${minutes}分`;
+    
+                if (days > 0) return { text: `あと${days}日`, isExpired: false };
+                if (hours > 0) return { text: `あと${hours}時間`, isExpired: false };
+                return { text: `あと${minutes}分`, isExpired: false };
             }
         }
-        return '締切済み';
+        return { text: '締切済み', isExpired: true };
     };
 
     const progressPercentage = (themeNav.collectInterviewsCount / themeNav.maximumNumberOfInterviews) * 100;
     const cappedProgressPercentage = Math.min(progressPercentage, 100);
+    const timeLeft = calculateTimeLeft(themeNav.deadline);
 
     return (
         <div 
@@ -92,8 +93,12 @@ const ClientsideThemeCard: React.FC<CardProps> = ({ themeNav, onClick }) => {
                 ></div>
             </div>
             <div className="text-right">
-                <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                    {calculateTimeLeft(themeNav.deadline)}
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    timeLeft.isExpired 
+                    ? 'text-red-600 bg-red-100' 
+                    : 'text-blue-600 bg-blue-100'
+                }`}>
+                    {timeLeft.text}
                 </span>
                 <div className="mt-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center space-x-2 bg-gray-200 p-2 rounded-md">

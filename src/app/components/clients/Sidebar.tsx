@@ -34,10 +34,6 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     router.push(`/client-view/${userId}/Report`);
   }
 
-  const handleLogout = () => {
-    auth.signOut();
-  }
-
   return (
     <div className='bg-slate-900 h-full overflow-y-auto flex flex-col border-r border-slate-700 shadow-lg'>
       <div className='flex-grow' {...props}>

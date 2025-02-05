@@ -15,7 +15,7 @@ const Header = React.forwardRef<
   React.ComponentProps<"div"> & { handleLogoClickPath: string }
 >(({ className, handleLogoClickPath, ...props }, ref) => {
   const router = useRouter();
-  const { handleLogout, user, isMenuOpen, setIsMenuOpen } = useAppsContext();
+  const { user, userId, isMenuOpen, setIsMenuOpen } = useAppsContext();
 
   const menuItems = [
     // {
@@ -65,7 +65,7 @@ const Header = React.forwardRef<
           title: "設定", 
           onClick: () => {
             console.log("設定ページへ遷移");
-            // ここに遷移のロジックを追加
+            router.push(`/client-view/client-preferences/${userId}`);
           }
         }
       ]

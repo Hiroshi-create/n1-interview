@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { collection, query, orderBy, getDocs, doc, getDoc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
-import { Theme } from '@/stores/Theme';
+import { collection, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
 import { IndividualReport } from '@/stores/IndividualReport';
 import { db } from '../../../../../firebase';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,20 +11,12 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
-    const { themeId: themeId, interviewRefPath: interviewRefPath } = await req.json();
+    const { theme: theme, interviewRefPath: interviewRefPath } = await req.json();
     const interviewRef = doc(db, interviewRefPath);
 
-    if (!themeId) {
-      return NextResponse.json({ error: 'テーマIDが指定されていません' }, { status: 400 });
+    if (!theme) {
+      return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });
     }
-
-    const themeDocSnap = await getDoc(interviewRef);
-    if (!themeDocSnap.exists()) {
-      console.error('指定されたテーマIDのドキュメントが存在しません');
-      return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
-    }
-    const themeData = themeDocSnap.data() as Theme;
-    const theme = themeData.theme;
 
     const messageCollectionRef = collection(interviewRef, "messages");
     const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
@@ -34,18 +25,23 @@ export async function POST(req: NextRequest) {
     let context = "";
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
+      if (data.type === "interview") {
+        context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
+      }
     });
 
     const summary_template = `
     テーマ: ${theme}
-    インタビュー全体を分析し、以下の形式で詳細なレポートを作成してください：
+    インタビュー全体を分析し、情報は省略せず、以下の形式で詳細なレポートを作成してください：
 
     1. インタビューの概要:
     ここに${theme}に関するインタビューの全体的な概要を記載
 
     2. 主要な発見事項:
     ここに${theme}に関する重要な発見や洞察を記載
+    (以下に特徴の数だけ列挙する)
+    - ${theme}に求める特徴
+      - その理由等詳細を記載
 
     3. ユーザーの特性と行動パターン:
     ここに${theme}に関連するユーザーの特徴や行動傾向を記載

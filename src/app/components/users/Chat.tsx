@@ -255,7 +255,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
                 headers: {
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ themeId: selectedInterviewId, interviewRefPath: selectedInterviewRef.path }),
+                body: JSON.stringify({ theme: selectThemeName, interviewRefPath: selectedInterviewRef.path }),
               });
     
               if (!reportResponse.ok) {
