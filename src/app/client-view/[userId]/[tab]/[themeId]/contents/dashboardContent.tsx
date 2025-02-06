@@ -1,29 +1,63 @@
 "use client";
 
+import { useEffect, useState, useRef } from "react";
 import type { Theme } from "@/stores/Theme"
 import LineChart from './components/lineChart';
 import BarChart from './components/barChart';
 import NetworkGraph from './components/networkGraph';
 import PieChart from './components/pieChart';
 import ScatterPlot from './components/scatterPlot';
+import SunburstChart from "./components/sunburstChart";
+import ResizeObserver from 'resize-observer-polyfill';
 
 interface ComponentProps {
   theme: Theme;
+  isReportListOpen: boolean;
 }
 
 interface ChartContainerProps {
   title: string;
   children: React.ReactNode;
+  containerSize: { width: number; height: number };
 }
 
-const ChartContainer = ({ title, children }: ChartContainerProps) => (
-  <div className="h-80 bg-white p-4 rounded-lg shadow">
+const ChartContainer = ({ title, children, containerSize }: ChartContainerProps) => (
+  <div className="bg-white p-4 rounded-lg shadow h-full flex flex-col w-full">
     <h3 className="text-lg font-semibold mb-4">{title}</h3>
-    {children}
+    <div className="flex-1 min-h-0 w-full" style={{ height: `${containerSize.height * 0.4}px` }}>
+      {children}
+    </div>
   </div>
 )
 
-const DashboardContent = ({ theme }: ComponentProps): JSX.Element => {
+const DashboardContent = ({ theme, isReportListOpen }: ComponentProps): JSX.Element => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        });
+      }
+    };
+
+    const ro = new ResizeObserver(updateSize);
+    if (containerRef.current) {
+      ro.observe(containerRef.current);
+    }
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [isReportListOpen]);
+
   const networkData = {
     nodes: [
       { id: 'Node 1', size: 20, color: '#e41a1c' },
@@ -101,28 +135,30 @@ const DashboardContent = ({ theme }: ComponentProps): JSX.Element => {
   ]
 
   return (
-    <div className="mt-4 p-6">
+    <div ref={containerRef} className="p-6 bg-gray-100 min-h-screen">
       <h2 className="text-2xl font-bold mb-6">分析ダッシュボード</h2>
       
-      <ChartContainer title="ネットワーク分析">
-        <NetworkGraph data={networkData} />
-      </ChartContainer>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <ChartContainer title="カテゴリ別分布">
-          <BarChart data={barData} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <ChartContainer title="サンバースト" containerSize={containerSize}>
+          <SunburstChart windowSize={containerSize} />
         </ChartContainer>
-
-        <ChartContainer title="時系列推移">
-          <LineChart data={lineData} />
+        <ChartContainer title="カテゴリ別分布" containerSize={containerSize}>
+          <BarChart windowSize={containerSize} />
         </ChartContainer>
+      </div>
 
-        <ChartContainer title="構成比率">
-          <PieChart data={pieData} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* <ChartContainer title="ネットワーク図" containerSize={containerSize}>
+          <NetworkGraph data={networkData} windowSize={containerSize} />
+        </ChartContainer> */}
+        <ChartContainer title="構成比率" containerSize={containerSize}>
+          <PieChart data={pieData} windowSize={containerSize} />
         </ChartContainer>
-
-        <ChartContainer title="相関分析">
-          <ScatterPlot data={scatterData} />
+        <ChartContainer title="時系列推移" containerSize={containerSize}>
+          <LineChart data={lineData} windowSize={containerSize} />
+        </ChartContainer>
+        <ChartContainer title="相関分析" containerSize={containerSize}>
+          <ScatterPlot data={scatterData} windowSize={containerSize} />
         </ChartContainer>
       </div>
     </div>

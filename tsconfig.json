@@ -39,7 +39,7 @@
     ".next/types/**/*.ts",
     "next.config.js",
     "src/context/components/ui/timer.tsx"
-  ],
+, "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/reagraphContent.tsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/TreeMap.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/TreeGraph.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/SunburstChart.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/LineChart.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/Modal.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/DemoTable.jsx", "src/app/client-view/[userId]/[tab]/[themeId]/contents/components/components/BarChart.jsx"  ],
   "exclude": [
     "node_modules"
   ]

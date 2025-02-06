@@ -77,6 +77,7 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                 isPublic: themeData.isPublic,
                 maximumNumberOfInterviews: themeData.maximumNumberOfInterviews,
                 interviewResponseURL: themeData.interviewResponseURL,
+                reportCreated: themeData.reportCreated,
               },
               organizationName: organizationName,
               href: `/auto-interview/${userId}/${doc.id}/description`,

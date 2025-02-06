@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
               isPublic: answerTheme.isPublic,
               maximumNumberOfInterviews: answerTheme.maximumNumberOfInterviews,
               interviewResponseURL: answerTheme.interviewResponseURL,
+              reportCreated: answerTheme.reportCreated,
             },
             organizationName: organizationName,
             href: `/auto-interview/${userId}/${themeId}/${doc.id}/description`,

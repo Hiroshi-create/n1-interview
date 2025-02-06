@@ -54,17 +54,26 @@ const ClientsideThemeCard: React.FC<CardProps> = ({ themeNav, onClick }) => {
 
     return (
         <div 
-            className="bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 hover:border-blue-300 cursor-pointer hover:bg-gray-100"
+            className={`bg-white p-4 rounded-xl shadow-md transition-all duration-300 border border-gray-200 ${ onClick === undefined ? "" : "hover:shadow-xl hover:border-gray-300 cursor-pointer hover:bg-gray-100"}`}
             onClick={onClick}
         >
             <div className="flex justify-between items-center mb-2">
                 <h2 className="text-xl font-bold text-gray-800 line-clamp-1">{themeNav.theme}</h2>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${themeNav.isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} flex items-center`}>
-                    {themeNav.isPublic ? <Eye className="mr-1" size={12} /> : <EyeOff className="mr-1" size={12} />}
-                    {themeNav.isPublic ? '公開' : '非公開'}
-                </span>
+                <div className='flex flex-row space-x-2'>
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        timeLeft.isExpired 
+                        ? 'text-red-600 bg-red-100' 
+                        : 'text-blue-600 bg-blue-100'
+                    }`}>
+                        {timeLeft.text}
+                    </span>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${themeNav.isPublic ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} flex items-center`}>
+                        {themeNav.isPublic ? <Eye className="mr-1" size={12} /> : <EyeOff className="mr-1" size={12} />}
+                        {themeNav.isPublic ? '公開' : '非公開'}
+                    </span>
+                </div>
             </div>
-            <div className="flex flex-wrap justify-between text-gray-600 mb-3">
+            <div className="flex flex-wrap justify-between text-gray-600 mb-4">
                 <div className="w-full sm:w-1/2 flex items-center mb-2">
                     <Calendar className="mr-2" size={14} />
                     <span>作成日: {formatTimestamp(themeNav.createdAt)}</span>
@@ -92,32 +101,23 @@ const ClientsideThemeCard: React.FC<CardProps> = ({ themeNav, onClick }) => {
                     style={{ width: `${cappedProgressPercentage}%` }}
                 ></div>
             </div>
-            <div className="text-right">
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    timeLeft.isExpired 
-                    ? 'text-red-600 bg-red-100' 
-                    : 'text-blue-600 bg-blue-100'
-                }`}>
-                    {timeLeft.text}
-                </span>
-                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center space-x-2 bg-gray-200 p-2 rounded-md">
-                        <Link size={16} className="text-gray-500" />
-                        <input
-                            type="text"
-                            value={interviewResponseURL}
-                            readOnly
-                            className="flex-grow bg-transparent text-sm text-gray-700 focus:outline-none"
-                        />
-                        <button
-                            onClick={handleCopyClick}
-                            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors duration-300 ${
-                                isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
-                            } hover:opacity-90`}
-                        >
-                            {isCopied ? '✔︎ 完了' : 'コピー'}
-                        </button>
-                    </div>
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center space-x-2 bg-gray-200 p-2 rounded-md">
+                    <Link size={16} className="text-gray-500" />
+                    <input
+                        type="text"
+                        value={interviewResponseURL}
+                        readOnly
+                        className="flex-grow bg-transparent text-sm text-gray-700 focus:outline-none"
+                    />
+                    <button
+                        onClick={handleCopyClick}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors duration-300 ${
+                            isCopied ? 'bg-green-500 text-white' : 'bg-blue-600 text-white'
+                        } hover:opacity-90`}
+                    >
+                        {isCopied ? '✔︎ 完了' : 'コピー'}
+                    </button>
                 </div>
             </div>
         </div>

@@ -213,7 +213,6 @@ export function AppProvider({ children }: AppProviderProps) {
           handleLogout();
           return;
         }
-        setIsMenuOpen(true);
         if (lastVisitedUrl) {
           resetOperationCheckPhases();
           resetInterviewPhases();  // 仮

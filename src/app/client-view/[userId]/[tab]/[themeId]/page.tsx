@@ -7,18 +7,31 @@ import { db } from '../../../../../../firebase';
 import { Theme } from '@/stores/Theme';
 import LoadingIcons from 'react-loading-icons';
 import { IndividualReport } from '@/stores/IndividualReport';
-import { useAppsContext } from '@/context/AppContext';
+import BreadcrumbComponent from './contents/breadcrumb';
+import IndividualReportList from './contents/individualReportList';
+import ClientsideThemeCard from '@/context/components/ui/clientsideThemeCard';
+import InterviewResults from './contents/interviewResults';
+import SummaryContent from './contents/summaryContent';
+import DetailsContent from './contents/detailsContent';
+import FeedbackContent from './contents/feedbackContent';
+import KanseiAiMarketer from './contents/kanseiAiMarketer';
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import DashboardContent from './contents/dashboardContent';
 
 const ThemeDetailPage = () => {
-    const { userId, setSelectedInterviewId } = useAppsContext();
     const params = useParams();
-    const router = useRouter();
 
     const [theme, setTheme] = useState<Theme | null>(null);
     const [individualReports, setIndividualReports] = useState<IndividualReport[]>([]);
     const [interviewIds, setInterviewIds] = useState<string[]>([]);
     const [temporaryIds, setTemporaryIds] = useState<(string | null)[]>([]);
     const [confirmedUserIds, setConfirmedUserIds] = useState<string[]>([]);
+
+    const [isReportListOpen, setIsReportListOpen] = useState(true);
+
+    const toggleReportList = () => {
+        setIsReportListOpen(!isReportListOpen);
+    };
 
     const tab = params.tab as string;
 
@@ -73,11 +86,6 @@ const ThemeDetailPage = () => {
         fetchTheme();
     }, [params.themeId]);
 
-    const selectIndividualReport = (individualReportId: string, themeId: string, index: number) => {
-        setSelectedInterviewId(interviewIds[index]);
-        router.push(`/client-view/${userId}/Report/${themeId}/${individualReportId}`);
-    }
-
     if (!theme) {
         return (
             <div className="flex flex-col items-center justify-center h-64">
@@ -88,46 +96,95 @@ const ThemeDetailPage = () => {
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex items-center gap-2 border-b border-gray-300 px-4 py-3 mb-4">
-                <h1 className="text-xl font-semibold">
-                    <span
-                        className="cursor-pointer hover:text-primary transition-colors duration-300"
-                        onClick={() => router.push(`/client-view/${params.userId}/${tab}`)}
-                    >
-                        {tab}
-                    </span>
-                    &nbsp;＞&nbsp;
-                    <span className="text-text">{theme.theme}</span>
-                </h1>
-            </div>
+        <div className="flex flex-col w-full h-full">
+            <BreadcrumbComponent
+                tab={tab}
+                theme={theme}
+                userId={params.userId}
+            />
+            <ClientsideThemeCard
+                themeNav={theme}
+            />
 
-            <main className="container mx-auto py-8 px-4 flex-grow">
-                <div className='flex-grow'>
-                    <ul className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-300 mt-8 mb-4">
-                        {individualReports.map((individualReport, index) => (
-                            <li 
-                                key={individualReport.individualReportId}
-                                className='cursor-pointer border-b border-gray-300 p-4 hover:bg-gray-100 transition-colors duration-300'
-                                onClick={() => selectIndividualReport(
-                                    individualReport.individualReportId,
-                                    theme.themeId,
-                                    index
-                                )}
-                            >
-                                <span className="text-gray-800">{individualReport.individualReportId}</span>
-                                <div className="text-gray-800">
-                                    {temporaryIds[index] 
-                                        ? `ワンタイムコード：${temporaryIds[index]}`
-                                        : confirmedUserIds[index]
-                                        ? "確認済み ✔️"
-                                        : "未確認"}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+            <div className='flex flex-row space-x-4 mb-16'>
+                <div className={`${isReportListOpen ? 'w-3/4' : 'w-full'} border bg-white bg-gray-100 shadow-md rounded-lg p-6 my-4 transition-all duration-300`}>
+                    <InterviewResults
+                        theme={theme}
+                        showKanseiAiMarketer={true}
+                        tabsConfig={[
+                            {
+                                value: "summary",
+                                label: "Summary",
+                                content: <SummaryContent theme={theme}/>
+                            },
+                            {
+                                value: "details",
+                                label: "Details",
+                                content: <DetailsContent theme={theme}/>
+                            },
+                            {
+                                value: "feedback",
+                                label: "Feedback",
+                                content: <FeedbackContent theme={theme}/>
+                            },
+                            {
+                                value: "dashboard",
+                                label: "Dashboard",
+                                content: <DashboardContent
+                                    theme={theme}
+                                    isReportListOpen={isReportListOpen}
+                                />
+                            },
+                            {
+                                value: "kanseiAiMarketer",
+                                label: "感性 AI Copilot",
+                                content: <KanseiAiMarketer 
+                                    theme={theme} 
+                                    height="520px"
+                                />
+                            }
+                        ]}
+                        className="custom-class"
+                    />
                 </div>
-            </main>
+
+                <div className={`${isReportListOpen ? 'w-1/4' : 'w-16'} border bg-white shadow-md rounded-lg my-4 transition-all duration-300 flex flex-col`}>
+                    <div className={`flex flex-col ${isReportListOpen ? 'w-full' : 'w-16'} overflow-hidden`}>
+                        <div className='flex flex-row items-start p-4'>
+                            <button
+                                onClick={toggleReportList}
+                                className="mr-2 mt-1 bg-white hover:bg-gray-50 rounded-full p-1 transition-all duration-300 hover:scale-110 border border-gray-200"
+                                aria-label={isReportListOpen ? "レポートリストを閉じる" : "レポートリストを開く"}
+                                role="switch"
+                                aria-checked={isReportListOpen}
+                            >
+                                {isReportListOpen ? (
+                                    <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                                ) : (
+                                    <ChevronLeftIcon className="h-5 w-5 text-gray-500" />
+                                )}
+                            </button>
+                            {isReportListOpen && (
+                                <h4 className="px-2 font-semibold whitespace-nowrap">個別レポート</h4>
+                            )}
+                        </div>
+                        {!isReportListOpen && (
+                            <div className="writing-mode-vertical-rl text-lg font-semibold text-gray-500 mt-2 mx-auto mb-8">
+                                個別レポートを表示
+                            </div>
+                        )}
+                        {isReportListOpen && (
+                            <IndividualReportList
+                                individualReports={individualReports}
+                                interviewIds={interviewIds}
+                                theme={theme}
+                                temporaryIds={temporaryIds}
+                                confirmedUserIds={confirmedUserIds}
+                            />
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

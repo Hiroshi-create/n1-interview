@@ -56,6 +56,7 @@ export function isValidThemeData(data: unknown): data is Theme {
         typeof (data as any).interviewDurationMin === 'number' &&
         typeof (data as any).isPublic === 'boolean' &&
         typeof (data as any).maximumNumberOfInterviews === 'number' &&
-        typeof (data as any).interviewResponseURL === 'string' || (data as any).interviewResponseURL === null
+        typeof (data as any).interviewResponseURL === 'string' || (data as any).interviewResponseURL === null &&
+        typeof (data as any).reportCreated === 'boolean'
     );
 }

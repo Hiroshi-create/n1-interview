@@ -8,7 +8,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+// import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChevronDown, LogOut, Plus, User as UserIcon } from "lucide-react"
 import Link from "next/link"
 import { Button } from "../button"
@@ -18,6 +18,8 @@ import { doc, getDoc } from "firebase/firestore"
 import { db } from "../../../../../firebase"
 import { User } from "@/stores/User"
 import { useRouter } from "next/navigation"
+import { Avatar } from "@/components/ui/avatar"
+import { AvatarFallback, AvatarImage } from "@radix-ui/react-avatar"
 
 export default function UserProfile() {
     const router = useRouter();
@@ -104,7 +106,7 @@ export default function UserProfile() {
                                     <AvatarFallback>{name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <h2 className="text-xl font-semibold">Hi, {name} ! </h2>
+                                    <h2 className="text-xl font-semibold mb-0">Hi, {name} ! </h2>
                                     <p className="text-sm text-muted-foreground">{userData?.email}</p>
                                 </div>
                             </>

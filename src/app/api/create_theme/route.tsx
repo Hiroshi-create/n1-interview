@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       isPublic: isPublic !== undefined ? isPublic : true,
       maximumNumberOfInterviews: parsedMaximumNumberOfInterviews,
       interviewResponseURL: interviewUrl,
+      reportCreated: false,
     };
     const newThemeRef = doc(db, "themes", newThemeId);
     await setDoc(newThemeRef, newThemeData);

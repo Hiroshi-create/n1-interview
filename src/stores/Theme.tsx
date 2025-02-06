@@ -13,4 +13,5 @@ export type Theme = {
     isPublic: boolean;
     maximumNumberOfInterviews: number;
     interviewResponseURL: string | null;
+    reportCreated: boolean;
 }

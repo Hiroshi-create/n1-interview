@@ -241,3 +241,33 @@ input:checked + .slider:before {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-flow {
+  animation: gradient-flow 12s ease infinite;
+  background-size: 200% 200%;
+  transform: translateZ(0); /* ハードウェアアクセラレーションを有効化 */
+}
+
+.writing-mode-vertical-rl {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+.node {
+  touch-action: none;
+  user-select: none;
+}
+
+
+.grid-responsive {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  transition: grid-template-columns 0.3s ease;
+}
+
+

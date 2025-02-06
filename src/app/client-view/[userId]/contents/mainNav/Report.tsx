@@ -58,6 +58,7 @@ const Report = () => {
                                                         isPublic: data.isPublic,
                                                         maximumNumberOfInterviews: data.maximumNumberOfInterviews,
                                                         interviewResponseURL: data.interviewResponseURL,
+                                                        reportCreated: data.reportCreated,
                                                     } as Theme;
                                                 }
                                             }
@@ -124,7 +125,7 @@ const Report = () => {
                 </button>
                 </div>
             </form> */}
-            <ul className="rounded-lg mt-4 space-y-2">
+            <ul className="rounded-lg mt-4 space-y-4">
                 {themes.map((theme) => (
                     <li key={theme.themeId} className="bg-white">
                         <ClientsideThemeCard
