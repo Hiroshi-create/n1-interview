@@ -17,7 +17,7 @@ const AutoInterview = () => {
   }, [pathname]);
 
   return (
-    <div className="h-full flex flex-col p-4">
+    <div className="h-full flex flex-col p-4 mb-32">
       <InterviewHome />
     </div>
   )

@@ -3,7 +3,7 @@
 import { useAppsContext } from '@/context/AppContext';
 import React, { useEffect, useState } from 'react';
 import { collection, DocumentReference, getDoc, doc as firestoreDoc, onSnapshot, orderBy, query, Timestamp, DocumentData, FieldValue } from 'firebase/firestore';
-import { db } from '../../../../firebase';
+import { db } from '../../../lib/firebase';
 import { Theme } from '@/stores/Theme';
 import { isValidThemeData } from '@/context/components/isValidDataCheck';
 import InterviewCard from '@/context/components/ui/interviewCard';

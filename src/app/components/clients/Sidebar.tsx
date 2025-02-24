@@ -14,7 +14,7 @@ import {
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { analysisNav, mainNav } from "@/context/components/lists"
-import { auth } from "../../../../firebase"
+import { auth } from "../../../lib/firebase"
 import { useRouter } from "next/navigation"
 import { MdClose } from "react-icons/md"
 

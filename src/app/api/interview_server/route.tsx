@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
-import { collection, doc, getDocs, query, orderBy, where, getCountFromServer, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../firebase';
+import { adminDb } from '../../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';
 import { Phase } from '@/context/interface/Phase';
+
+interface RequestBody {
+  message: string;
+  selectThemeName: string;
+  interviewRefPath: string;
+  phases: Phase[];
+  isInterviewEnded: boolean
+}
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -77,15 +85,9 @@ AI「具体的にどのサイズ（例: 直径40mm以下）なら許容できま
 
 export async function POST(request: Request) {
   try {
-    const { message: userMessage, selectThemeName, interviewRefPath, phases, isInterviewEnded }: {
-      message: string;
-      selectThemeName: string;
-      interviewRefPath: string;
-      phases: Phase[];
-      isInterviewEnded: boolean
-    } = await request.json();
+    const { message: userMessage, selectThemeName, interviewRefPath, phases, isInterviewEnded }: RequestBody = await request.json();
 
-    const interviewRef = doc(db, interviewRefPath);
+    const interviewRef = adminDb.doc(interviewRefPath);
     if (!interviewRef) {
       console.error('インタビューが指定されていません');
       return NextResponse.json({ error: 'インタビューが指定されていません' }, { status: 400 });
@@ -95,7 +97,6 @@ export async function POST(request: Request) {
     let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
 
-    // フェーズが全て完了しているかチェック
     if (currentPhaseIndex >= phases.length) {
       console.log("全てのフェーズが完了しました(1)");
       return NextResponse.json({ 
@@ -104,15 +105,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const messageCollectionRef = collection(interviewRef, "messages");
+    const messageCollectionRef = interviewRef.collection("messages");
 
     try {
-      const botMessagesQuery = query(
-        messageCollectionRef,
-        where("type", "==", "interview"),
-        where("sender", "==", "bot")
-      );
-      const snapshot = await getCountFromServer(botMessagesQuery);
+      const botMessagesQuery = messageCollectionRef.where("type", "==", "interview").where("sender", "==", "bot");
+      const snapshot = await botMessagesQuery.count().get();
       totalQuestionCount = snapshot.data().count;
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
@@ -120,8 +117,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await messageCollectionRef.orderBy("createdAt", "asc").get();
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.type === "interview") {
@@ -133,7 +129,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
     }
 
-    if (!userMessage) {  // 使ってないのでは？
+    if (!userMessage) {
       try {
         const messages: Message[] = [{
           text: 'インタビューを始めます。まずはあなたの基本的なプロフィールについて教えてください。',
@@ -152,13 +148,11 @@ export async function POST(request: Request) {
     console.log("現フェーズのindex番号 : " + currentPhaseIndex);
     console.log("現フェーズのtheme : " + selectThemeName);
     let currentPhase = phases[currentPhaseIndex];
-    // フェーズ移行
     if (isInterviewEnded) {
       phases[currentPhaseIndex].isChecked = true;
       currentPhaseIndex++;
     }
 
-    // 次のフェーズが存在するかチェック
     if (currentPhaseIndex >= phases.length) {
       console.log("全てのフェーズが完了しました(2)");
       return NextResponse.json({ 
@@ -180,14 +174,14 @@ export async function POST(request: Request) {
       "interview",
       "interviewEnd",
       interviewRef,
-      messageCollectionRef,
+      messageCollectionRef.path,
       context,
       totalQuestionCount,
       currentPhaseIndex,
       phases,
       async (updatedContext, userMessage) => {
         if (currentTemplate === "thank_you") {
-          await updateDoc(interviewRef, {
+          await interviewRef.update({
             interviewCollected: true
           });
           return templates.thank_you;

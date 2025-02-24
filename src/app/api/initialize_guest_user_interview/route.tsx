@@ -1,23 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { doc, setDoc, serverTimestamp, collection, getDoc } from 'firebase/firestore';
-import { GuestUser } from "@/stores/GuestUser";
-import { db } from "../../../../firebase";
-import { v4 as uuidv4 } from 'uuid';
+import { adminDb } from "../../../lib/firebase-admin";
+import { DocumentData, DocumentReference, FieldValue, Timestamp } from "firebase-admin/firestore";
+import { v4 as uuidv4 } from "uuid";
 import { Interviews } from "@/stores/Interviews";
 import { Theme } from "@/stores/Theme";
 
+interface ServerGuestUser {
+  createdAt: Timestamp | FieldValue;
+  guestUserId: string;
+  interviewReference: DocumentReference<DocumentData>;
+}
+
+interface RequestBody {
+  acquiredThemeId: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { acquiredThemeId } = await req.json();
-    const themeId = acquiredThemeId as string;
-    
-    // firestoreのthemesコレクションのthemeIdドキュメントのフィールドを取得
-    const themeDocRef = doc(db, "themes", themeId);
-    const themeDoc = await getDoc(themeDocRef);
-    if (!themeDoc.exists()) {
-      return NextResponse.json({ error: 'テーマが見つかりません' }, { status: 404 });
+    const { acquiredThemeId }: RequestBody = await req.json();
+    const themeId = acquiredThemeId;
+
+    // FirestoreのthemesコレクションのthemeIdドキュメントのフィールドを取得
+    const themeDocRef = adminDb.doc(`themes/${themeId}`);
+    const themeDocSnap = await themeDocRef.get();
+    if (!themeDocSnap.exists) {
+      return NextResponse.json({ error: "テーマが見つかりません" }, { status: 404 });
     }
-    const themeData = themeDoc.data() as Theme;
+    const themeData = themeDocSnap.data() as Theme;
     const interviewDurationMin = themeData.interviewDurationMin;
     const theme = themeData.theme;
 
@@ -25,14 +34,13 @@ export async function POST(req: NextRequest) {
     const interviewId = uuidv4();
     const answerInterviewId = uuidv4();
 
-    const themeRef = doc(db, "themes", themeId);
-    const interviewsCollection = collection(themeRef, 'interviews');
-    const interviewDocRef = doc(interviewsCollection, interviewId);
+    // インタビューのデータを作成
+    const interviewDocRef = themeDocRef.collection("interviews").doc(interviewId);
     const interviewData: Interviews = {
       interviewId: interviewId,
       intervieweeId: guestUserId,
       answerInterviewId: answerInterviewId,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       questionCount: 0,
       reportCreated: false,
       interviewCollected: false,
@@ -41,29 +49,30 @@ export async function POST(req: NextRequest) {
       temporaryId: null,
       confirmedUserId: null,
     };
-    await setDoc(interviewDocRef, interviewData);
+    await interviewDocRef.set(interviewData);
 
-    // Firestoreにデータを追加
-    const interviewReference = doc(db, 'themes', themeId, 'interviews', interviewId);
-    const guestUserData: GuestUser = {
-      createdAt: serverTimestamp(),
+    // ゲストユーザーのデータを作成
+    const guestUserDocRef = adminDb.collection("guestUsers").doc(guestUserId);
+    const guestUserData: ServerGuestUser = {
+      createdAt: FieldValue.serverTimestamp(),
       guestUserId: guestUserId,
-      interviewReference: interviewReference,
+      interviewReference: interviewDocRef,
     };
-    await setDoc(doc(db, 'guestUsers', guestUserId), guestUserData);
+    await guestUserDocRef.set(guestUserData);
 
+    // ゲストユーザー用のURLを生成
     const guestUserPathname = `/auto-interview/guest-user/${themeId}/${interviewId}/description`;
 
     return NextResponse.json({
-      guestUserPathname: guestUserPathname,
-      guestUserId: guestUserId,
-      theme: theme,
-      themeId: themeId,
-      interviewId: interviewId,
-      interviewRefPath: interviewReference.path,
+      guestUserPathname,
+      guestUserId,
+      theme,
+      themeId,
+      interviewId,
+      interviewRefPath: interviewDocRef.path,
     });
   } catch (error) {
-    console.error('処理中にエラーが発生しました:', error);
-    return NextResponse.json({ error: '処理に失敗しました' }, { status: 500 });
+    console.error("処理中にエラーが発生しました:", error);
+    return NextResponse.json({ error: "処理に失敗しました" }, { status: 500 });
   }
 }

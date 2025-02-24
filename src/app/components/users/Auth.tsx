@@ -7,7 +7,7 @@ import { Button } from '@/context/components/ui/button'
 import { Card } from '@/context/components/ui/card'
 import { useAppsContext } from '@/context/AppContext'
 import { doc } from 'firebase/firestore'
-import { db } from '../../../../firebase'
+import { db } from '../../../lib/firebase'
 
 interface AuthProps {
   acceptingGuestUsers?: boolean

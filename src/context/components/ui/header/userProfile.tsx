@@ -15,7 +15,7 @@ import { Button } from "../button"
 import { useAppsContext } from "@/context/AppContext"
 import LoadingIcons from "react-loading-icons"
 import { doc, getDoc } from "firebase/firestore"
-import { db } from "../../../../../firebase"
+import { db } from "../../../../lib/firebase"
 import { User } from "@/stores/User"
 import { useRouter } from "next/navigation"
 import { Avatar } from "@/components/ui/avatar"
@@ -86,7 +86,6 @@ export default function UserProfile() {
     }
 
     const name = userData?.userNickname || "ユーザー";
-    const avatarUrl = "/placeholder.svg";
 
     return (
         <DropdownMenu>
@@ -102,8 +101,19 @@ export default function UserProfile() {
                         {isUserAccount ? (
                             <>
                                 <Avatar className="h-12 w-12">
-                                    <AvatarImage src={avatarUrl} alt={name} />
-                                    <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage alt={name} />
+                                    <AvatarFallback
+                                        style={{
+                                            background: '#f0f0f0',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            width: '100%',
+                                            height: '100%',
+                                        }}
+                                    >
+                                        {name.charAt(0)}
+                                    </AvatarFallback>
                                 </Avatar>
                                 <div>
                                     <h2 className="text-xl font-semibold mb-0">Hi, {name} ! </h2>
@@ -113,8 +123,19 @@ export default function UserProfile() {
                         ) : (
                             <>
                                 <Avatar className="h-12 w-12">
-                                    <AvatarImage src="/placeholder.svg" alt="組織アカウント" />
-                                    <AvatarFallback>{organizationName?.charAt(0)}</AvatarFallback>
+                                    <AvatarImage alt="組織アカウント" />
+                                    <AvatarFallback
+                                        style={{
+                                            background: '#f0f0f0',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            width: '100%',
+                                            height: '100%',
+                                        }}
+                                    >
+                                        {organizationName?.charAt(0)}
+                                    </AvatarFallback>
                                 </Avatar>
                                 <div>
                                     <p className="text-sm text-muted-foreground mt-2">組織</p>
@@ -147,8 +168,19 @@ export default function UserProfile() {
                                     {isUserAccount ? (
                                         <>
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src="/placeholder.svg" alt="組織アカウント" />
-                                                <AvatarFallback>{organizationName.charAt(0)}</AvatarFallback>
+                                                <AvatarImage alt="組織アカウント" />
+                                                <AvatarFallback
+                                                    style={{
+                                                        background: '#f0f0f0',
+                                                        display: 'flex',
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                    }}
+                                                >
+                                                    {organizationName.charAt(0)}
+                                                </AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col items-start">
                                                 <p className="text-sm font-semibold text-gray-800">{organizationName}</p>
@@ -157,8 +189,19 @@ export default function UserProfile() {
                                     ) : (
                                         <>
                                             <Avatar className="h-10 w-10">
-                                                <AvatarImage src={avatarUrl} alt={name} />
-                                                <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                                                <AvatarImage alt={name} />
+                                                <AvatarFallback
+                                                    style={{
+                                                        background: '#f0f0f0',
+                                                        display: 'flex',
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                    }}
+                                                >
+                                                    {name.charAt(0)}
+                                                </AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col items-start">
                                                 <p className="text-sm font-semibold text-gray-800 text-left">{name}</p>

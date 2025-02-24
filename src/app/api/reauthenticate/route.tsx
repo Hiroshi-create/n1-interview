@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
-import { FirebaseError } from 'firebase/app';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '../../../../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { adminDb, adminAuth } from '../../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+
+interface RequestBody {
+  userId: string;
+  interviewRefPath: string;
+  temporaryId: string;
+}
 
 export async function POST(request: Request) {
   try {
-    const { email, password, interviewRefPath, temporaryId } = await request.json();
-
-    // ユーザー認証
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const userId = userCredential.user.uid;
+    const { userId, interviewRefPath, temporaryId }: RequestBody = await request.json();
 
     // ユーザードキュメントの取得と組織所属確認
-    const userRef = doc(db, "users", userId);
-    const userDoc = await getDoc(userRef);
+    const userRef = adminDb.doc(`users/${userId}`);
+    const userDoc = await userRef.get();
     
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return NextResponse.json(
         { success: false, error: 'ユーザーが見つかりません' },
         { status: 404 }
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const userData = userDoc.data();
-    if (!userData.inOrganization) {
+    if (!userData?.inOrganization) {
       return NextResponse.json(
         { success: false, error: '組織に所属していないユーザーです' },
         { status: 403 }
@@ -32,10 +32,10 @@ export async function POST(request: Request) {
     }
 
     // インタビュードキュメントの取得
-    const interviewRef = doc(db, interviewRefPath);
-    const interviewDoc = await getDoc(interviewRef);
+    const interviewRef = adminDb.doc(interviewRefPath);
+    const interviewDoc = await interviewRef.get();
 
-    if (!interviewDoc.exists()) {
+    if (!interviewDoc.exists) {
       return NextResponse.json(
         { success: false, error: 'インタビューが見つかりません' },
         { status: 404 }
@@ -45,11 +45,11 @@ export async function POST(request: Request) {
     const interviewData = interviewDoc.data();
 
     // temporaryIdの確認と更新
-    if (interviewData.temporaryId === temporaryId) {
-      await updateDoc(interviewRef, {
+    if (interviewData?.temporaryId === temporaryId) {
+      await interviewRef.update({
         temporaryId: null,
         confirmedUserId: userId,
-        confirmedAt: new Date(),
+        confirmedAt: FieldValue.serverTimestamp(),
       });
 
       return NextResponse.json({
@@ -64,24 +64,7 @@ export async function POST(request: Request) {
     );
 
   } catch (error) {
-    if (error instanceof FirebaseError) {
-      let errorMessage = '認証に失敗しました';
-      switch (error.code) {
-        case 'auth/wrong-password':
-          errorMessage = 'パスワードが間違っています';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'ユーザーが見つかりません';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = '試行回数が多すぎます。後ほどお試しください';
-          break;
-      }
-      return NextResponse.json(
-        { success: false, error: errorMessage },
-        { status: 401 }
-      );
-    }
+    console.error('エラー:', error);
     return NextResponse.json(
       { success: false, error: '予期せぬエラーが発生しました' },
       { status: 500 }

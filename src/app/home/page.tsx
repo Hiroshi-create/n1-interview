@@ -36,7 +36,7 @@ const Home = () => {
               GET STARTED
             </Button>
             <Button
-              className="text-text border-white hover:bg-white/10 px-8 py-6 text-lg"
+              className="bg-primary hover:bg-[#f37676] text-white px-8 py-6 text-lg"
               onClick={handleClientStarted}
             >
               CLIENT STARTED

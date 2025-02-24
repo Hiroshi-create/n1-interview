@@ -117,6 +117,7 @@ const Header = React.forwardRef<
             draggable="false"
             style={{ userSelect: "none" }}
             onClick={handleLogoClick}
+            priority
           />
         </div>
 
@@ -139,16 +140,16 @@ const Header = React.forwardRef<
                 </Link>
               </div>
               <Link href="/users" className="hover-underline-animation">
-                <Button className="bg-background text-text hover:bg-primary transition-all duration-300 text-sm md:text-base">
+                <button className="bg-background text-text transition-all duration-300 text-sm md:text-base">
                   SIGN UP FOR FREE
-                </Button>
+                </button>
               </Link>
             </>
           ) : (
             // ログインしている場合
             <>
               <div className="flex items-center gap-4 text-sm md:text-base text-text">
-                <Link href="#" className="hover-underline-animation">
+                <Link href={`/client-view/${userId}/dashboard`} className="hover-underline-animation">
                   Dashboard
                 </Link>
                 <span>|</span>

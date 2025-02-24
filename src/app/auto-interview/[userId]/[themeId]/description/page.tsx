@@ -7,7 +7,7 @@ import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
 import { getDoc, doc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../../../../../../firebase';
+import { db } from '../../../../../lib/firebase';
 
 interface CreateInterviewResponse {
   success: boolean;
@@ -269,7 +269,7 @@ const DescriptionDetail = () => {
   };
 
   return (
-    <div className="h-full flex flex-col p-4 mb-8">
+    <div className="h-full flex flex-col p-4 mb-32">
       <h1 className="text-3xl text-text font-semibold mb-4">テーマ：{selectThemeName}</h1>
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">

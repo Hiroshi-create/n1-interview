@@ -1,28 +1,47 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../firebase';
-import { doc, setDoc, collection, serverTimestamp, getDoc, Timestamp } from 'firebase/firestore';
+import { adminDb } from '../../../lib/firebase-admin';
+import { DocumentData, DocumentReference, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
-import { AnswerInterviews } from '@/stores/AnswerInterviews';
-import { ManageThemes } from '@/stores/ManageThemes';
+
+interface ServerAnswerInterviews {
+  createdAt: FieldValue;
+  interviewReference: DocumentReference<DocumentData>;
+}
+
+interface ServerManageThemes {
+  createdAt: Timestamp | FieldValue;
+  themeReference: DocumentReference<DocumentData>;
+}
+
+interface RequestBody {
+  theme: string;
+  isCustomer: boolean;
+  isTest: boolean;
+  userId: string;
+  duration: number;
+  isPublic: boolean;
+  deadline: string;
+  maximumNumberOfInterviews: number;
+}
 
 export async function POST(request: Request) {
   try {
-    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline, maximumNumberOfInterviews } = await request.json();
+    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline, maximumNumberOfInterviews }: RequestBody = await request.json();
 
     if (!theme || !userId || !duration || !deadline || !maximumNumberOfInterviews) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
     }
 
     // ユーザードキュメントから organizationId を取得
-    const userDocRef = doc(db, "users", userId);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
+    const userDocRef = adminDb.doc(`users/${userId}`);
+    const userDocSnap = await userDocRef.get();
+    if (!userDocSnap.exists) {
         return NextResponse.json({ error: 'ユーザードキュメントが見つかりません' }, { status: 404 });
     }
     const userData = userDocSnap.data();
-    const organizationId = userData.organizationId;
+    const organizationId = userData?.organizationId;
     if (!organizationId) {
         return NextResponse.json({ error: '組織IDが見つかりません' }, { status: 400 });
     }
@@ -44,7 +63,7 @@ export async function POST(request: Request) {
       createdAt: Timestamp.now(),
       deadline: Timestamp.fromDate(new Date(deadline)),
       clientId: organizationId,
-      interviewsRequestedCount: intervieweeIds.length,
+      interviewsRequestedCount: 0,
       collectInterviewsCount: 0,
       interviewDurationMin: duration,
       isPublic: isPublic !== undefined ? isPublic : true,
@@ -52,22 +71,21 @@ export async function POST(request: Request) {
       interviewResponseURL: interviewUrl,
       reportCreated: false,
     };
-    const newThemeRef = doc(db, "themes", newThemeId);
-    await setDoc(newThemeRef, newThemeData);
+    const newThemeRef = adminDb.doc(`themes/${newThemeId}`);
+    await newThemeRef.set(newThemeData);
 
-
-    const interviewsCollection = collection(newThemeRef, 'interviews');
+    const interviewsCollection = newThemeRef.collection('interviews');
     const promises = intervieweeIds.map(async (intervieweeId) => {
       const interviewId = uuidv4();
       const answerInterviewId = uuidv4();
       const manageThemeId = uuidv4();
 
-      const interviewDocRef = doc(interviewsCollection, interviewId);
+      const interviewDocRef = interviewsCollection.doc(interviewId);
       const interviewData: Interviews = {
         interviewId: interviewId,
         intervieweeId: intervieweeId,
         answerInterviewId: answerInterviewId,
-        createdAt: serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         questionCount: 0,
         reportCreated: false,
         interviewCollected: false,
@@ -76,25 +94,25 @@ export async function POST(request: Request) {
         temporaryId: null,
         confirmedUserId: null,
       };
-      await setDoc(interviewDocRef, interviewData);
+      await interviewDocRef.set(interviewData);
 
       // users コレクションの intervieweeId に answerInterviews サブコレクションを作成
-      const userAnswerInterviewsCollection = collection(db, "users", intervieweeId, "answerInterviews");
-      const answerInterviewDocRef = doc(userAnswerInterviewsCollection, answerInterviewId);
-      const answerInterviewData: AnswerInterviews = {
-        createdAt: serverTimestamp(),
+      const userAnswerInterviewsCollection = adminDb.collection(`users/${intervieweeId}/answerInterviews`);
+      const answerInterviewDocRef = userAnswerInterviewsCollection.doc(answerInterviewId);
+      const answerInterviewData: ServerAnswerInterviews = {
+        createdAt: FieldValue.serverTimestamp(),
         interviewReference: interviewDocRef,
       };
-      await setDoc(answerInterviewDocRef, answerInterviewData);
+      await answerInterviewDocRef.set(answerInterviewData);
 
       // clients コレクションの organizationId に manageThemes サブコレクションを作成
-      const clientManageThemesCollection = collection(db, "clients", organizationId, "manageThemes");
-      const manageThemeDocRef = doc(clientManageThemesCollection, manageThemeId);
-      const manageThemeData: ManageThemes = {
-        createdAt: serverTimestamp(),
+      const clientManageThemesCollection = adminDb.collection(`clients/${organizationId}/manageThemes`);
+      const manageThemeDocRef = clientManageThemesCollection.doc(manageThemeId);
+      const manageThemeData: ServerManageThemes = {
+        createdAt: FieldValue.serverTimestamp(),
         themeReference: newThemeRef,
       };
-      return setDoc(manageThemeDocRef, manageThemeData);
+      return manageThemeDocRef.set(manageThemeData);
     });
 
     await Promise.all(promises);

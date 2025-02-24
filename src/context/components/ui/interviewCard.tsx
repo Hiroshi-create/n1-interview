@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { useAppsContext } from '@/context/AppContext';
-import { db } from '../../../../firebase';
+import { db } from '../../../lib/firebase';
 import { ThemeNav } from '@/context/interface/ThemeNav';
 
 interface CardProps {
@@ -105,7 +105,7 @@ const InterviewCard: React.FC<CardProps> = ({
 
   const progressPercentage = (themeNav.theme.collectInterviewsCount / themeNav.theme.maximumNumberOfInterviews) * 100;
   const cappedProgressPercentage = Math.min(progressPercentage, 100);
-  const isOverAchieved = progressPercentage > 100;
+  const isOverAchieved = progressPercentage >= 100;
 
   return (
     <div

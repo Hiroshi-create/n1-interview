@@ -1,308 +1,392 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { countries, languages, organizationTypes, positions } from '@/context/components/lists'
+import { Timestamp } from 'firebase/firestore'
+import { Header } from '@/context/components/ui/header/header';
+import { auth } from '@/lib/firebase'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { getTenantIdForDomain } from '@/context/lib/getTenantIdForDomain'
+import { NextResponse } from 'next/server'
 
-type Inputs = {
-    lastName: string
-    firstName: string
-    gender: 'man' | 'woman' | 'Unanswered'
-    userBirthday: {
-        year: string
-        monthDay: string
-    }
-    organizationType: string
-    organizationName: string
-    departmentName: string
-    position: string
-    email: string
-    password: string
-    phoneNumber: string
-    employeeCount: number
-    country: string
-    language: string
+type ClientInputs = {
+  organizationType: string
+  organizationName: string
+  employeeCount: number
+  country: string
+  language: string
 }
 
+type UserInputs = {
+  lastName: string
+  firstName: string
+  gender: 'male' | 'female' | 'other' | 'not_specified'
+  userBirthday: {
+    year: string
+    monthDay: string
+  }
+  position: string
+  email: string
+  password: string
+  phoneNumber: string
+}
+
+type FormInputs = ClientInputs & UserInputs
+
 const Register = () => {
-    const router = useRouter();
+  const router = useRouter()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormInputs>()
+  const [error, setError] = useState<string | null>(null);
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<Inputs>();
+  const onSubmit: SubmitHandler<FormInputs> = async (data) => {
+    try {
+      const domain = data.email.split('@')[1];
+      const tenantId = await getTenantIdForDomain(domain);
 
-    const onSubmit: SubmitHandler<Inputs> = async (data) => {
-        try {
-            const response = await fetch('/api/auth/client_register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
+      if (!tenantId) {
+        setError('組織がまだ登録されていません。お問い合わせください。');
+        return;
+      }
 
-            if (response.ok) {
-                const result = await response.json();
-                localStorage.setItem('token', result.token);
-                router.push("/clients/login");
-            } else {
-                const errorData = await response.json();
-                alert(errorData.message || '登録に失敗しました。');
-            }
-        } catch (error) {
-            console.error('登録エラー:', error);
-            alert('登録処理中にエラーが発生しました。');
-        }
-    };
+      auth.tenantId = tenantId;
 
-    return (
-        <div className='min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
-            <form
-                onSubmit={handleSubmit(onSubmit)}
-                className='bg-white p-8 rounded-lg shadow-md w-full max-w-md'
-            >
-                <h1 className='mb-6 text-2xl text-gray-700 font-medium text-center'>新規登録（組織）</h1>
-                
-                <div className='mb-4 flex space-x-4'>
-                    <div className='flex-1'>
-                        <label className='block text-sm font-medium text-gray-600'>
-                            姓<span className='text-red-600'>*</span>
-                        </label>
-                        <input
-                            {...register("lastName", { required: "姓は必須です。" })}
-                            type='text'
-                            className='mt-1 border-2 rounded-md w-full p-2'
-                        />
-                        {errors.lastName && <span className='text-red-600 text-sm'>{errors.lastName.message}</span>}
-                    </div>
-                    <div className='flex-1'>
-                        <label className='block text-sm font-medium text-gray-600'>
-                            名<span className='text-red-600'>*</span>
-                        </label>
-                        <input
-                            {...register("firstName", { required: "名は必須です。" })}
-                            type='text'
-                            className='mt-1 border-2 rounded-md w-full p-2'
-                        />
-                        {errors.firstName && <span className='text-red-600 text-sm'>{errors.firstName.message}</span>}
-                    </div>
-                </div>
+      console.log("作成するユーザーのテナントチェック : " + auth.tenantId)
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const userId = userCredential.user.uid;
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        性別<span className='text-red-600'>*</span>
-                    </label>
-                    <select
-                        {...register("gender", { required: "性別を選択してください。" })}
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    >
-                        <option value="">選択してください</option>
-                        <option value="man">男性</option>
-                        <option value="woman">女性</option>
-                        <option value="Unanswered">未回答</option>
-                    </select>
-                    {errors.gender && <span className='text-red-600 text-sm'>{errors.gender.message}</span>}
-                </div>
+      // Clientデータの作成（フォームで受け取った情報のみ）
+      const clientData = {
+        organizationType: data.organizationType,
+        organizationName: data.organizationName,
+        administratorId: userId,
+        childUsersCount: 1,
+        childUserIds: [userId],
+        employeeCount: data.employeeCount,
+        country: data.country,
+        language: data.language,
+      }
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        生年月日<span className='text-red-600'>*</span>
-                    </label>
-                    <div className='flex'>
-                        <input
-                            {...register("userBirthday.year", { required: "年を入力してください。" })}
-                            type='text'
-                            placeholder='年（例：1990）'
-                            className='mt-1 border-2 rounded-md w-1/2 p-2 mr-2'
-                        />
-                        <input
-                            {...register("userBirthday.monthDay", { required: "月日を入力してください。" })}
-                            type='text'
-                            placeholder='月日（例：0101）'
-                            className='mt-1 border-2 rounded-md w-1/2 p-2'
-                        />
-                    </div>
-                    {errors.userBirthday?.year && <span className='text-red-600 text-sm'>{errors.userBirthday.year.message}</span>}
-                    {errors.userBirthday?.monthDay && <span className='text-red-600 text-sm'>{errors.userBirthday.monthDay.message}</span>}
-                </div>
+      // Userデータの作成（フォームで受け取った情報のみ）
+      const userData = {
+        email: data.email,
+        userNickname: `${data.lastName}${data.firstName}`,
+        userName: [data.lastName, data.firstName],
+        userId,
+        gender: data.gender,
+        userBirthday: `${data.userBirthday.year}-${data.userBirthday.monthDay}T00:00:00Z`,
+        organizationPosition: data.position,
+        userPhoneNumber: data.phoneNumber.replace(/\D/g, '') !== '' ? data.phoneNumber.replace(/\D/g, '') : null,
+      }
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        組織タイプ<span className='text-red-600'>*</span>
-                    </label>
-                    <select {...register("organizationType", { required: "組織タイプを選択してください。" })} className='mt-1 border-2 rounded-md w-full p-2'>
-                        <option value="">選択してください</option>
-                        {organizationTypes.map(type => (
-                        type.options ? (
-                            <optgroup key={type.label} label={type.label}>
-                            {type.options.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                            </optgroup>
-                        ) : (
-                            <option key={type.value} value={type.value}>{type.label}</option>
-                        )
-                        ))}
-                    </select>
-                    {errors.organizationType && <span className='text-red-600 text-sm'>{errors.organizationType.message}</span>}
-                    </div>
+      // Firestoreへの保存処理
+      const response = await fetch('/api/auth/client_register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client: clientData,
+          user: userData
+        }),
+      })
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        組織名<span className='text-red-600'>*</span>
-                    </label>
-                    <input
-                        {...register("organizationName", { required: "組織名は必須です。" })}
-                        type='text'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                    {errors.organizationName && <span className='text-red-600 text-sm'>{errors.organizationName.message}</span>}
-                </div>
+      if (response.ok) {
+        const result = await response.json()
+        localStorage.setItem('token', result.token)
+        router.push("/clients/login")
+      } else {
+        const errorData = await response.json()
+        alert(errorData.message || '登録に失敗しました。')
+      }
+    } catch (error) {
+      console.error('登録エラー:', error)
+      setError('登録処理中にエラーが発生しました。');
+    }
+  }
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>部署名</label>
-                    <input
-                        {...register("departmentName")}
-                        type='text'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                </div>
+  return (
+    <div className="min-h-screen bg-background">
+      <Header 
+        className="h-14 border-b border-slate-700 flex flex-row items-center justify-between z-10"
+        handleLogoClickPath={`/home`}
+      />
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        役職<span className='text-red-600'>*</span>
-                    </label>
-                    <select
-                        {...register("position", { required: "役職を選択してください。" })}
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    >
-                        <option value="">選択してください</option>
-                        {positions.map((pos) => (
-                            <option key={pos} value={pos}>{pos}</option>
-                        ))}
-                    </select>
-                    {errors.position && <span className='text-red-600 text-sm'>{errors.position.message}</span>}
-                </div>
+      <div className="max-w-2xl mx-auto mt-16 p-6 bg-white rounded-lg shadow-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">組織新規登録</h1>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* ユーザー情報セクション */}
+          <section className="border-b pb-4">
+            <h2 className="text-lg font-semibold mb-4">管理者情報</h2>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">姓*</label>
+                <input
+                  {...register("lastName", { required: "姓は必須です" })}
+                  className="w-full p-2 border rounded"
+                />
+                {errors.lastName && <span className="text-red-500 text-sm">{errors.lastName.message}</span>}
+              </div>
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        勤務先メールアドレス<span className='text-red-600'>*</span>
-                    </label>
-                    <input
-                        {...register("email", {
-                            required: "メールアドレスは必須です。",
-                            pattern: {
-                                value: /^[a-zA-Z0-9_.+-]+@([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.)+[a-zA-Z]{2,}$/,
-                                message: "不適切なメールアドレスです。"
-                            }
-                        })}
-                        type='email'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                    {errors.email && <span className='text-red-600 text-sm'>{errors.email.message}</span>}
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">名*</label>
+                <input
+                  {...register("firstName", { required: "名は必須です" })}
+                  className="w-full p-2 border rounded"
+                />
+                {errors.firstName && <span className="text-red-500 text-sm">{errors.firstName.message}</span>}
+              </div>
+            </div>
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        電話(携帯)番号<span className='text-red-600'>*</span>
-                    </label>
-                    <input
-                        {...register("phoneNumber", { required: "電話番号は必須です。" })}
-                        type='tel'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                    {errors.phoneNumber && <span className='text-red-600 text-sm'>{errors.phoneNumber.message}</span>}
-                </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">性別*</label>
+              <select
+                {...register("gender", { required: "性別を選択してください" })}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">選択してください</option>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+                <option value="other">その他</option>
+                <option value="not_specified">未回答</option>
+              </select>
+              {errors.gender && <span className="text-red-500 text-sm">{errors.gender.message}</span>}
+            </div>
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        パスワード<span className='text-red-600'>*</span>
-                    </label>
-                    <input
-                        {...register("password", {
-                            required: "パスワードは必須です。",
-                            minLength: {
-                                value: 6,
-                                message: "6文字以上入力してください。"
-                            }
-                        })}
-                        type='password'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                    {errors.password && <span className='text-red-600 text-sm'>{errors.password.message}</span>}
-                </div>
+            {/* 生年月日入力フィールド */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">生年月日*</label>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  {...register("userBirthday.year", { 
+                    required: "年を入力してください",
+                    min: { value: 1900, message: "有効な年を入力してください" }
+                  })}
+                  placeholder="年（例: 1990）"
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  type="text"
+                  {...register("userBirthday.monthDay", { 
+                    required: "月日を入力してください",
+                    pattern: {
+                      value: /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
+                      message: "MM-DD形式で入力してください"
+                    }
+                  })}
+                  placeholder="月日（例: 12-31）"
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              {errors.userBirthday?.year && (
+                <span className="text-red-500 text-sm">{errors.userBirthday.year.message}</span>
+              )}
+              {errors.userBirthday?.monthDay && (
+                <span className="text-red-500 text-sm">{errors.userBirthday.monthDay.message}</span>
+              )}
+            </div>
+          </section>
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        従業員数<span className='text-red-600'>*</span>
-                    </label>
-                    <input
-                        {...register("employeeCount", { 
-                            required: "従業員数は必須です。",
-                            valueAsNumber: true,
-                            min: { value: 1, message: "1以上の数を入力してください。" }
-                        })}
-                        type='number'
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    />
-                    {errors.employeeCount && <span className='text-red-600 text-sm'>{errors.employeeCount.message}</span>}
-                </div>
+          {/* 組織情報セクション */}
+          <section className="border-b pb-4">
+            <h2 className="text-lg font-semibold mb-4">組織情報</h2>
 
-                <div className='mb-4'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        国/地域<span className='text-red-600'>*</span>
-                    </label>
-                    <select
-                        {...register("country", { required: "国/地域を選択してください。" })}
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    >
-                        <option value="">選択してください</option>
-                        {countries.map((country) => (
-                            <option key={country} value={country}>{country}</option>
-                        ))}
-                    </select>
-                    {errors.country && <span className='text-red-600 text-sm'>{errors.country.message}</span>}
-                </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">組織タイプ*</label>
+              <select
+                {...register("organizationType", { required: "組織タイプを選択してください" })}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">選択してください</option>
+                {organizationTypes.map(type => (
+                  type.options ? (
+                      <optgroup key={type.label} label={type.label}>
+                      {type.options.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                      </optgroup>
+                  ) : (
+                      <option key={type.value} value={type.value}>{type.label}</option>
+                  )
+                ))}
+              </select>
+              {errors.organizationType && (
+                <span className="text-red-500 text-sm">{errors.organizationType.message}</span>
+              )}
+            </div>
 
-                <div className='mb-6'>
-                    <label className='block text-sm font-medium text-gray-600'>
-                        言語<span className='text-red-600'>*</span>
-                    </label>
-                    <select
-                        {...register("language", { required: "言語を選択してください。" })}
-                        className='mt-1 border-2 rounded-md w-full p-2'
-                    >
-                        <option value="">選択してください</option>
-                        {languages.map((lang) => (
-                            <option key={lang} value={lang}>{lang}</option>
-                        ))}
-                    </select>
-                    {errors.language && <span className='text-red-600 text-sm'>{errors.language.message}</span>}
-                </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">組織名*</label>
+              <input
+                {...register("organizationName", { required: "組織名は必須です" })}
+                className="w-full p-2 border rounded"
+              />
+              {errors.organizationName && (
+                <span className="text-red-500 text-sm">{errors.organizationName.message}</span>
+              )}
+            </div>
 
-                <div className='flex justify-end'>
-                    <button
-                        type='submit'
-                        className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'
-                    >
-                        新規登録
-                    </button>
-                </div>
-                <div className='mt-4 text-center'>
-                    <span className='text-gray-600 text-sm'>
-                        既にアカウントをお持ちですか？
-                    </span>
-                    <Link href="/clients/login" className='text-blue-500 text-sm font-bold ml-1 hover:text-blue-700'>
-                        ログインページ
-                    </Link>
-                </div>
-            </form>
-        </div>
-    )
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">役職*</label>
+              <select
+                {...register("position", { required: "役職を選択してください" })}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">選択してください</option>
+                {positions.map((pos) => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+              {errors.position && (
+                <span className="text-red-500 text-sm">{errors.position.message}</span>
+              )}
+            </div>
+          </section>
+
+          {/* 連絡先情報セクション */}
+          <section className="border-b pb-4">
+            <h2 className="text-lg font-semibold mb-4">連絡先情報</h2>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">メールアドレス*</label>
+              <input
+                type="email"
+                {...register("email", { 
+                  required: "メールアドレスは必須です",
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: "有効なメールアドレスを入力してください"
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+              {errors.email && (
+                <span className="text-red-500 text-sm">{errors.email.message}</span>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">電話番号*</label>
+              <input
+                type="tel"
+                {...register("phoneNumber", { 
+                  required: "電話番号は必須です",
+                  pattern: {
+                    value: /^0\d{9,10}$/,
+                    message: "有効な電話番号を入力してください"
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+              {errors.phoneNumber && (
+                <span className="text-red-500 text-sm">{errors.phoneNumber.message}</span>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1">パスワード*</label>
+              <input
+                type="password"
+                {...register("password", { 
+                  required: "パスワードは必須です",
+                  minLength: {
+                    value: 8,
+                    message: "8文字以上で入力してください"
+                  }
+                })}
+                className="w-full p-2 border rounded"
+              />
+              {errors.password && (
+                <span className="text-red-500 text-sm">{errors.password.message}</span>
+              )}
+            </div>
+          </section>
+
+          {/* 追加情報セクション */}
+          <section>
+            <h2 className="text-lg font-semibold mb-4">追加情報</h2>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">従業員数*</label>
+                <input
+                  type="number"
+                  {...register("employeeCount", { 
+                    required: "従業員数を入力してください",
+                    min: 1
+                  })}
+                  className="w-full p-2 border rounded"
+                />
+                {errors.employeeCount && (
+                  <span className="text-red-500 text-sm">{errors.employeeCount.message}</span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">国/地域*</label>
+                <select
+                  {...register("country", { required: "国を選択してください" })}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">選択してください</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+                {errors.country && (
+                  <span className="text-red-500 text-sm">{errors.country.message}</span>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">言語*</label>
+                <select
+                  {...register("language", { required: "言語を選択してください" })}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">選択してください</option>
+                  {languages.map((lang) => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+                {errors.language && (
+                  <span className="text-red-500 text-sm">{errors.language.message}</span>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {error && (
+            <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+          >
+            新規登録
+          </button>
+
+          <div className="text-center mt-4">
+            <span className="text-gray-600">既にアカウントをお持ちですか？</span>
+            <Link href="/clients/login" className="text-blue-600 hover:underline ml-2">
+              ログインページ
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 }
 
 export default Register

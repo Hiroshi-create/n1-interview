@@ -1,8 +1,8 @@
 "use client";
 
-import { onAuthStateChanged, User } from "firebase/auth";
+import { multiFactor, onAuthStateChanged, User } from "firebase/auth";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { auth, db } from "../../firebase";
+import { auth, db } from "../lib/firebase";
 import { useRouter } from "next/navigation";
 import { doc, DocumentReference, getDoc } from "firebase/firestore";
 import { interview_phases, operation_check_phases } from "./components/lists";
@@ -56,6 +56,8 @@ type AppContextType = {
   isUserAccount: boolean | null;
   setIsUserAccount: React.Dispatch<React.SetStateAction<boolean | null>>;
 
+  checkMFAStatus: (user: User) => Promise<void>;
+
   resetContext: () => void;
 }
 
@@ -103,6 +105,8 @@ const AppContext = createContext<AppContextType>({
 
   isUserAccount: null,
   setIsUserAccount: () => {},
+
+  checkMFAStatus: async () => {},
 
   resetContext: () => {},
 });
@@ -201,49 +205,104 @@ export function AppProvider({ children }: AppProviderProps) {
     const unsubscribe = onAuthStateChanged(auth, async (newUser) => {
       setUser(newUser);
       setUserId(newUser ? newUser.uid : null);
-      const lastVisitedUrl = getLastVisitedUrl();
-
-      const currentPath = window.location.pathname;
-      if (currentPath.startsWith('/terms/')) {
-        return;
-      }
-  
       if (newUser) {
-        if (currentPath.startsWith('/auto-interview/guest-user')) {
-          handleLogout();
-          return;
-        }
-        if (lastVisitedUrl) {
-          resetOperationCheckPhases();
-          resetInterviewPhases();  // 仮
-          if (currentPath.startsWith('/auto-interview/')) {
-            setIsUserAccount(true);
-          } else if (currentPath.startsWith('/client-view/')) {
-            setIsUserAccount(false);
-          }
-          router.push(lastVisitedUrl);
-        } else {
-          const userDoc = await getDoc(doc(db, "users", newUser.uid));
-          const userData = userDoc.data();
-          if (userData && userData.inOrganization) {
-            router.push(`/client-view/${newUser.uid}/Report`);
-          } else {
-            router.push(`/auto-interview/${newUser.uid}`);
-          }
-        }
+        // ユーザーがログインしている場合の処理
+        await checkMFAStatus(newUser);
       } else {
-        if (currentPath.startsWith('/auto-interview/guest-user')) {
-          return;
-        } else {
-          router.push(`/home`);
-        }
+        // ユーザーがログアウトしている場合の処理
+        // router.push(`/home`);
       }
     });
   
+    // クリーンアップ関数
     return () => {
       unsubscribe();
     }
   }, []);
+
+  const checkMFAStatus = async (newUser: User) => {
+    try {
+      const mfaEnabled = multiFactor(newUser).enrolledFactors.length > 0;
+      const currentPath = window.location.pathname;
+      
+      if (mfaEnabled) {
+        // MFAが有効な場合、ユーザーを認証済みとして扱う
+        setUser(newUser);
+        setUserId(newUser ? newUser.uid : null);
+        if (currentPath.startsWith('/auto-interview')) {
+          setIsUserAccount(true);
+          router.push(`/auto-interview/${newUser.uid}`);
+        } else if (currentPath.startsWith('/client-view')) {
+          setIsUserAccount(false);
+          router.push(`/client-view/${newUser.uid}/Report`);
+        }
+      } else {
+        // MFAが無効な場合、TOTP設定画面に誘導
+        if (newUser.tenantId === null) {
+          // テナントに属さないユーザー
+          setIsUserAccount(true);
+          router.push(`/auto-interview/${newUser.uid}`);
+        } else if (!isUserAccount) {
+
+          // router.push('/clients/login');
+        } else {
+          router.push(`/auto-interview/${newUser.uid}`);
+        }
+      }
+    } catch (error) {
+      console.error('MFA状態の確認中にエラーが発生しました:', error);
+      // エラー処理
+    }
+  };
+  
+
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, async (newUser) => {
+  //     setUser(newUser);
+  //     setUserId(newUser ? newUser.uid : null);
+  //     const lastVisitedUrl = getLastVisitedUrl();
+
+  //     const currentPath = window.location.pathname;
+  //     if (currentPath.startsWith('/terms/')) {
+  //       return;
+  //     }
+  
+  //     if (newUser) {
+  //       if (currentPath.startsWith('/auto-interview/guest-user')) {
+  //         handleLogout();
+  //         return;
+  //       }
+  //       if (lastVisitedUrl) {
+  //         resetOperationCheckPhases();
+  //         resetInterviewPhases();  // 仮
+  //         if (currentPath.startsWith('/auto-interview/')) {
+  //           setIsUserAccount(true);
+  //         } else if (currentPath.startsWith('/client-view/')) {
+  //           setIsUserAccount(false);
+  //         }
+  //         router.push(lastVisitedUrl);
+  //       } else {
+  //         const userDoc = await getDoc(doc(db, "users", newUser.uid));
+  //         const userData = userDoc.data();
+  //         if (userData && userData.inOrganization) {
+  //           // router.push(`/client-view/${newUser.uid}/Report`);
+  //         } else {
+  //           router.push(`/auto-interview/${newUser.uid}`);
+  //         }
+  //       }
+  //     } else {
+  //       if (currentPath.startsWith('/auto-interview/guest-user')) {
+  //         return;
+  //       } else {
+  //         router.push(`/home`);
+  //       }
+  //     }
+  //   });
+  
+  //   return () => {
+  //     unsubscribe();
+  //   }
+  // }, []);
 
   const resetContext = () => {
     setSelectedInterviewId(null);
@@ -299,6 +358,8 @@ export function AppProvider({ children }: AppProviderProps) {
 
         isUserAccount,
         setIsUserAccount,
+
+        checkMFAStatus,
 
         resetContext,
       }}

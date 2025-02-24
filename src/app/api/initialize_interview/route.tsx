@@ -1,33 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from '../../../../firebase';
-import { collection, doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '../../../lib/firebase-admin';
 import { cleanOperationMessages } from "../components/cleanOperationMessages";
+
+interface RequestBody {
+  interviewRefPath: string;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { interviewRefPath } = await req.json();
+    const { interviewRefPath }: RequestBody = await req.json();
 
     if (!interviewRefPath) {
       return NextResponse.json({ error: 'インタビューの参照パスが指定されていません' }, { status: 400 });
     }
 
     // interviewCollectedフィールドを取得
-    const interviewDocRef = doc(db, interviewRefPath as string);
-    const interviewDocSnap = await getDoc(interviewDocRef);
+    const interviewDocRef = adminDb.doc(interviewRefPath);
+    const interviewDocSnap = await interviewDocRef.get();
 
-    if (!interviewDocSnap.exists()) {
+    if (!interviewDocSnap.exists) {
       return NextResponse.json({ error: 'インタビュードキュメントが見つかりません' }, { status: 404 });
     }
 
     const data = interviewDocSnap.data();
-    const interviewCollected = data.interviewCollected;
+    const interviewCollected = data?.interviewCollected;
 
     if (typeof interviewCollected !== 'boolean') {
       return NextResponse.json({ error: 'interviewCollectedフィールドが見つからないか、boolean型ではありません' }, { status: 400 });
     }
 
-    const messageCollectionRef = collection(db, interviewRefPath, "messages");
-    await cleanOperationMessages(messageCollectionRef);
+    const messageCollectionRef = interviewDocRef.collection("messages");
+    await cleanOperationMessages(messageCollectionRef.path);
 
     return NextResponse.json({ 
       success: true, 

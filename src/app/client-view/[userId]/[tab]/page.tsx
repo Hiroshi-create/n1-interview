@@ -50,7 +50,7 @@ const TabContent = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full pb-24">
       <div className="flex items-center gap-2 border-b border-neutral-700 px-4 py-3">
         <h1 className="text-xl font-semibold">{getTitle()}</h1>
       </div>

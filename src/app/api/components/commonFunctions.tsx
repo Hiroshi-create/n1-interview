@@ -1,11 +1,12 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
-import { serverTimestamp, CollectionReference, setDoc, doc } from 'firebase/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { protos, SpeechClient } from '@google-cloud/speech';
 import axios from 'axios';
 import { kv } from '@vercel/kv';
 import { cleanOperationMessages } from './cleanOperationMessages';
 import { v4 as uuidv4 } from 'uuid';
+import { adminDb } from '@/lib/firebase-admin';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
 
@@ -374,7 +375,7 @@ export const handleUserMessage = async (
   messageType: string,
   endType: string,
   interviewRef: any,
-  messageCollectionRef: CollectionReference,
+  messageCollectionRefPath: string,
   context: string,
   totalQuestionCount: number,
   currentPhaseIndex: number,
@@ -384,14 +385,14 @@ export const handleUserMessage = async (
 ): Promise<NextResponse> => {
   try {
     if (messageType === "interview") {
-      await cleanOperationMessages(messageCollectionRef);
+      await cleanOperationMessages(messageCollectionRefPath);
     }
     
     const userMessageId = uuidv4();
-    await setDoc(doc(messageCollectionRef, userMessageId), {
+    await adminDb.collection(messageCollectionRefPath).doc(userMessageId).set({
       text: userMessage,
       sender: "user",
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       type: messageType,
       messageId: userMessageId
     });
@@ -425,10 +426,10 @@ export const handleUserMessage = async (
         };
 
         const botMessageId = uuidv4();
-        await setDoc(doc(messageCollectionRef, botMessageId), {
+        await adminDb.collection(messageCollectionRefPath).doc(botMessageId).set({
           text: botResponseText,
           sender: "bot",
-          createdAt: serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
           type: messageType,
           messageId: botMessageId
         });

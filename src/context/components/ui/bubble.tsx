@@ -93,7 +93,7 @@ const Bubble: React.FC<BubbleProps> = ({
       case 'bottom-r':
         return {
           ...baseStyle,
-          bottom: '-12px',
+          bottom: '-7px',
           left: '75%',
           transform: 'translateX(-50%)',
           borderWidth: '15px 0px 0 40px',
@@ -102,7 +102,7 @@ const Bubble: React.FC<BubbleProps> = ({
       case 'bottom-l':
         return {
           ...baseStyle,
-          bottom: '-12px',
+          bottom: '-7px',
           left: '25%',
           transform: 'translateX(-50%)',
           borderWidth: '15px 40px 0 0px',

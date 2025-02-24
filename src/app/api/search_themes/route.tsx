@@ -2,22 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import algoliasearch from 'algoliasearch/lite';
 import { Theme } from '@/stores/Theme';
 import { Interviews } from "@/stores/Interviews";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  doc as firebaseDoc,
-  getDoc,
-  Timestamp,
-  DocumentReference,
-} from "firebase/firestore";
-import { db } from "../../../../firebase";
+import { adminDb } from "../../../lib/firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 // Algolia検索クライアントの初期化
 const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID as string;
 const apiKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY as string;
 const indexName = process.env.NEXT_PUBLIC_ALGOLIA_INDEX_NAME as string;
+
+interface RequestBody {
+  initialQuery: string;
+  userId: string | null;
+}
 
 interface InterviewNav {
     interview: Omit<Interviews, 'createdAt'> & { createdAt: string };
@@ -32,7 +28,7 @@ const searchClient = algoliasearch(appId, apiKey);
 export async function POST(req: NextRequest) {
     let interviewRefs: {[key: string]: string} = {};
     try {
-      const { userId, initialQuery } = await req.json();
+      const { initialQuery, userId }: RequestBody = await req.json();
   
       if (!userId || !initialQuery) {
         return NextResponse.json({ error: '検索クエリが提供されていません' }, { status: 400 });
@@ -46,49 +42,53 @@ export async function POST(req: NextRequest) {
         const themeId = hit.themeId;
         
         // テーマドキュメントを取得
-        const answerThemeDocRef = firebaseDoc(db, 'themes', themeId);
-        const answerThemeDoc = await getDoc(answerThemeDocRef);
-        if (!answerThemeDoc.exists()) {
+        const answerThemeDocRef = adminDb.doc(`themes/${themeId}`);
+        const answerThemeDoc = await answerThemeDocRef.get();
+        if (!answerThemeDoc.exists) {
           console.log(`テーマドキュメント ${themeId} が存在しません`);
           return [];
         }
         const answerTheme = answerThemeDoc.data() as Theme;
 
-        const interviewsRef = collection(db, "themes", themeId, "interviews");
-        const q = query(interviewsRef, where("intervieweeId", "==", userId));
-
-        const interviewDocs = await getDocs(q);
+        const interviewsRef = adminDb.collection(`themes/${themeId}/interviews`);
+        const interviewDocs = await interviewsRef.where("intervieweeId", "==", userId).get();
 
         const interviewNavPromises = interviewDocs.docs.map(async (doc) => {
           const interviewData = doc.data() as Interviews;
 
-          const answerInterviewDocRef = firebaseDoc(db, 'users', userId, 'answerInterviews', interviewData.answerInterviewId);
-          const answerInterviewDoc = await getDoc(answerInterviewDocRef);
+          const answerInterviewDocRef = adminDb.doc(`users/${userId}/answerInterviews/${interviewData.answerInterviewId}`);
+          const answerInterviewDoc = await answerInterviewDocRef.get();
         
-          if (answerInterviewDoc.exists()) {
+          if (answerInterviewDoc.exists) {
             const data = answerInterviewDoc.data();
-            const interviewRef = data.interviewReference as DocumentReference;
-            interviewRefs[doc.id] = interviewRef.path;
+            interviewRefs[doc.id] = data?.interviewReference.path;
           } else {
             console.log('指定されたドキュメントが存在しません');
             return null;
           }
   
           let organizationName = "";
-          const clientDocRef = firebaseDoc(db, "clients", answerTheme.clientId);
+          const clientDocRef = adminDb.doc(`clients/${answerTheme.clientId}`);
           if (clientDocRef) {
-            const clientDoc = await getDoc(clientDocRef);
-            if (clientDoc.exists()) {
-              organizationName = clientDoc.data().organizationName;
+            const clientDoc = await clientDocRef.get();
+            if (clientDoc.exists) {
+              organizationName = clientDoc.data()?.organizationName;
             }
           }
+
+          const formatTimestamp = (timestamp: Timestamp | FieldValue): string => {
+            if (timestamp instanceof Timestamp) {
+                return timestamp.toDate().toISOString();
+            }
+            return new Date().toISOString(); // FieldValueの場合は現在の日時を使用
+          };
 
           return {
             interview: {
               interviewId: doc.id,
               intervieweeId: interviewData.intervieweeId,
               answerInterviewId: interviewData.answerInterviewId,
-              createdAt: interviewData.createdAt instanceof Timestamp ? interviewData.createdAt.toDate().toISOString() : new Date().toISOString(),
+              createdAt: formatTimestamp(interviewData.createdAt),
               questionCount: interviewData.questionCount,
               themeId: interviewData.themeId,
               reportCreated: interviewData.reportCreated,
@@ -101,8 +101,8 @@ export async function POST(req: NextRequest) {
               themeId: themeId,
               theme: answerTheme.theme,
               createUserId: answerTheme.createUserId,
-              createdAt: answerTheme.createdAt instanceof Timestamp ? answerTheme.createdAt.toDate().toISOString() : new Date().toISOString(),
-              deadline: answerTheme.deadline instanceof Timestamp ? answerTheme.deadline.toDate().toISOString() : new Date().toISOString(),
+              createdAt: formatTimestamp(answerTheme.createdAt),
+              deadline: formatTimestamp(answerTheme.deadline),
               clientId: answerTheme.clientId,
               interviewsRequestedCount: answerTheme.interviewsRequestedCount,
               collectInterviewsCount: answerTheme.collectInterviewsCount,

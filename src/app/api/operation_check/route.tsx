@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
-import { collection, doc, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
-import { db } from '../../../../firebase';
+import { adminDb } from '../../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { Theme } from '@/stores/Theme';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
 import OpenAI from 'openai';
 import { Phase } from '@/context/interface/Phase';
+
+interface RequestBody {
+  message: string;
+  interviewRefPath: string;
+  phases: Phase[];
+}
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
@@ -46,13 +52,9 @@ const templates = {
 
 export async function POST(request: Request) {
   try {
-    const { message: userMessage, interviewRefPath, phases }: {
-      message: string;
-      interviewRefPath: string;
-      phases: Phase[];
-    } = await request.json();
+    const { message: userMessage, interviewRefPath, phases }: RequestBody = await request.json();
 
-    const interviewRef = doc(db, interviewRefPath);
+    const interviewRef = adminDb.doc(interviewRefPath);
     if (!interviewRef) {
       console.error('インタビューが指定されていません');
       return NextResponse.json({ error: 'インタビューが指定されていません' }, { status: 400 });
@@ -62,7 +64,6 @@ export async function POST(request: Request) {
     let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
 
-    // フェーズが全て完了しているかチェック
     if (currentPhaseIndex >= phases.length) {
       console.log("全てのフェーズが完了しました");
       return NextResponse.json({ 
@@ -71,8 +72,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const themeDocSnap = await getDoc(interviewRef);
-    if (!themeDocSnap.exists()) {
+    const themeDocSnap = await interviewRef.get();
+    if (!themeDocSnap.exists) {
       console.error('指定されたテーマIDのドキュメントが存在しません');
       return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
     }
@@ -81,15 +82,13 @@ export async function POST(request: Request) {
     const theme = themeData.theme;
     console.log("theme : " + theme);
 
-    const messageCollectionRef = collection(interviewRef, "messages");
+    const messageCollectionRef = interviewRef.collection("messages");
 
     try {
-      const botMessagesQuery = query(
-        messageCollectionRef,
-        where("type", "==", "operation_check"),
-        where("sender", "==", "bot")
-      );
-      const snapshot = await getCountFromServer(botMessagesQuery);
+      const botMessagesQuery = messageCollectionRef
+        .where("type", "==", "operation_check")
+        .where("sender", "==", "bot");
+      const snapshot = await botMessagesQuery.count().get();
       totalQuestionCount = snapshot.data().count;
     } catch (error) {
       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
@@ -97,8 +96,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await messageCollectionRef.orderBy("createdAt", "asc").get();
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.type === "operation_check") {
@@ -126,7 +124,6 @@ export async function POST(request: Request) {
       }
     }
 
-    
     let currentPhase = phases[currentPhaseIndex];
     if (currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") {
       phases[currentPhaseIndex].isChecked = true;
@@ -136,7 +133,6 @@ export async function POST(request: Request) {
       currentPhaseIndex++;
     }
 
-    // 次のフェーズが存在するかチェック
     if (currentPhaseIndex >= phases.length) {
       console.log("全てのフェーズが完了しました");
       return NextResponse.json({ 
@@ -158,7 +154,7 @@ export async function POST(request: Request) {
       "operation_check",
       "operationCheckComplete",
       interviewRef,
-      messageCollectionRef,
+      messageCollectionRef.path,
       context,
       totalQuestionCount,
       currentPhaseIndex,

@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { collection, query, orderBy, getDocs, doc, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import { adminDb } from '../../../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { IndividualReport } from '@/stores/IndividualReport';
-import { db } from '../../../../../firebase';
 import { v4 as uuidv4 } from 'uuid';
 
 const openai = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
 });
 
+interface RequestBody {
+  theme: string | null;
+  interviewRefPath: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { theme: theme, interviewRefPath: interviewRefPath } = await req.json();
-    const interviewRef = doc(db, interviewRefPath);
+    const { theme, interviewRefPath }: RequestBody = await req.json();
+    const interviewRef = adminDb.doc(interviewRefPath);
 
     if (!theme) {
       return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });
     }
 
-    const messageCollectionRef = collection(interviewRef, "messages");
-    const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
-    const querySnapshot = await getDocs(q);
+    const messageCollectionRef = interviewRef.collection("messages");
+    const querySnapshot = await messageCollectionRef.orderBy("createdAt", "asc").get();
 
     let context = "";
     querySnapshot.forEach((doc) => {
@@ -76,17 +80,17 @@ export async function POST(req: NextRequest) {
       throw new Error('レポートの内容がnullです');
     }
 
-    const reportsCollectionRef = collection(interviewRef, "individualReport");
+    const reportsCollectionRef = interviewRef.collection("individualReport");
     const newReportId = uuidv4();
     const newReport: IndividualReport = {
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       report: report,
       individualReportId: newReportId,
     };
-    await setDoc(doc(reportsCollectionRef, newReportId), newReport);
+    await reportsCollectionRef.doc(newReportId).set(newReport);
 
     const temporaryId = uuidv4();
-    await updateDoc(interviewRef, {
+    await interviewRef.update({
       reportCreated: true,
       temporaryId: temporaryId,
     });

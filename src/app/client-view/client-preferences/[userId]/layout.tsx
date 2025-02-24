@@ -29,11 +29,9 @@ export default function TabContentLayout({
               toggleMenu={toggleMenu}
             />
           </div>
-          <SidebarInset className={`flex-1 w-full bg-background text-text overflow-auto py-8 ${isMenuOpen ? 'ml-64' : 'ml-0'}`}>
-            <main className="container mx-auto py-8 px-4">
-              <div className="bg-white shadow-md rounded-lg p-6">
-                {children}
-              </div>
+          <SidebarInset className={`flex-1 w-full bg-blue-100/30 text-text overflow-auto ${isMenuOpen ? 'ml-64' : 'ml-0'}`}>
+            <main className="w-full mb-32 px-4 pt-8">
+              {children}
             </main>
           </SidebarInset>
         </div>

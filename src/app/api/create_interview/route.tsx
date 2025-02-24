@@ -1,31 +1,40 @@
 import { NextResponse } from 'next/server';
-import { db } from '../../../../firebase';
-import { doc, setDoc, collection, serverTimestamp, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { adminDb } from '../../../lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
-import { AnswerInterviews } from '@/stores/AnswerInterviews';
+import { DocumentReference, DocumentData } from 'firebase-admin/firestore';
+
+interface RequestBody {
+  intervieweeId: string;
+  themeRefPath: string;
+}
+
+interface ServerAnswerInterviews {
+  createdAt: FieldValue;
+  interviewReference: DocumentReference<DocumentData>;
+}
 
 export async function POST(request: Request) {
   try {
-    const { intervieweeId, themeRefPath } = await request.json();
+    const { intervieweeId, themeRefPath }: RequestBody = await request.json();
 
     if (!intervieweeId || !themeRefPath) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
     }
 
-    const themeDocRef = doc(db, themeRefPath as string);
-    const themeDocSnap = await getDoc(themeDocRef);
-    if (!themeDocSnap.exists()) {
+    const themeDocRef = adminDb.doc(themeRefPath);
+    const themeDocSnap = await themeDocRef.get();
+    if (!themeDocSnap.exists) {
       return NextResponse.json({ error: 'テーマドキュメントが見つかりません' }, { status: 404 });
     }
     const themeData = themeDocSnap.data() as Theme;
 
-    const interviewsCollection = collection(themeDocRef, 'interviews');
+    const interviewsCollection = themeDocRef.collection('interviews');
 
     // 既存のインタビューを検索
-    const q = query(interviewsCollection, where('intervieweeId', '==', intervieweeId));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await interviewsCollection.where('intervieweeId', '==', intervieweeId).get();
 
     if (!querySnapshot.empty) {
       // 既存のインタビューがある場合は最初のドキュメントを取得
@@ -43,12 +52,12 @@ export async function POST(request: Request) {
     const interviewId = uuidv4();
     const answerInterviewId = uuidv4();
 
-    const interviewDocRef = doc(interviewsCollection, interviewId);
+    const interviewDocRef = interviewsCollection.doc(interviewId);
     const interviewData: Interviews = {
       interviewId: interviewId,
       intervieweeId: intervieweeId,
       answerInterviewId: answerInterviewId,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       questionCount: 0,
       reportCreated: false,
       interviewCollected: false,
@@ -57,16 +66,16 @@ export async function POST(request: Request) {
       temporaryId: null,
       confirmedUserId: null,
     };
-    await setDoc(interviewDocRef, interviewData);
+    await interviewDocRef.set(interviewData);
 
     // users コレクションの answerInterviews 作成
-    const userAnswerInterviewsCollection = collection(db, "users", intervieweeId, "answerInterviews");
-    const answerInterviewDocRef = doc(userAnswerInterviewsCollection, answerInterviewId);
-    const answerInterviewData: AnswerInterviews = {
-      createdAt: serverTimestamp(),
+    const userAnswerInterviewsCollection = adminDb.collection("users").doc(intervieweeId).collection("answerInterviews");
+    const answerInterviewDocRef = userAnswerInterviewsCollection.doc(answerInterviewId);
+    const answerInterviewData: ServerAnswerInterviews = {
+      createdAt: FieldValue.serverTimestamp(),
       interviewReference: interviewDocRef,
     };
-    await setDoc(answerInterviewDocRef, answerInterviewData);
+    await answerInterviewDocRef.set(answerInterviewData);
 
     return NextResponse.json({ 
       success: true, 

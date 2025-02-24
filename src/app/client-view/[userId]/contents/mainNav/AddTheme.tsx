@@ -1,9 +1,16 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useAppsContext } from '@/context/AppContext';
 import LoadingIcons from 'react-loading-icons';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/context/components/ui/card';
+import { Label } from '@/context/components/ui/label';
+import { Input } from '@/context/components/ui/input';
+import { Switch } from '@/context/components/ui/switch';
+import { Separator } from '@/context/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/context/components/ui/select';
+import { Button } from '@/context/components/ui/button';
 
 type FormData = {
   theme: string;
@@ -18,10 +25,11 @@ type FormData = {
 
 const AddTheme = () => {
   const { userId } = useAppsContext();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
       deadlineTime: '00:00',
-      maximumNumberOfInterviews: 50
+      maximumNumberOfInterviews: 50,
+      duration: '' // デフォルト値を空文字列に設定
     }
   });
   const [isPublic, setIsPublic] = useState(true);
@@ -77,100 +85,119 @@ const AddTheme = () => {
   };
 
   return (
-    <div className='bg-custom-blue p-4 rounded-md'>
-      <form onSubmit={handleSubmit(onSubmit)} className='flex flex-col'>
-        <fieldset disabled={isLoading}>
-          <input
-            {...register("theme", { required: "テーマは必須です" })}
-            id="theme"
-            type="text"
-            placeholder="新しいテーマを入力"
-            className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-300 ease-in-out"
-          />
-          {errors.theme && <span className='text-red-500 mb-2'>{errors.theme.message}</span>}
+    <div>
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>新しいテーマを追加</CardTitle>
+          <CardDescription>インタビューのテーマと設定を入力してください</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <fieldset disabled={isLoading}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="theme">テーマ</Label>
+                  <Input
+                    {...register("theme", { required: "テーマは必須です" })}
+                    id="theme"
+                    type="text"
+                    placeholder="新しいテーマを入力"
+                  />
+                  {errors.theme && <p className="text-red-500 text-sm mt-1">{errors.theme.message}</p>}
+                </div>
 
-        <div className="flex items-center mb-2">
-          <label className="toggle-switch mr-2">
-            <input type="checkbox" {...register("isTest")} />
-            <span className="slider round"></span>
-          </label>
-          <span>テスト</span>
-        </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="isTest">テスト</Label>
+                    <Switch {...register("isTest")} id="isTest" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span>社内</span>
+                    <Switch {...register("isCustomer")} />
+                    <span>顧客</span>
+                  </div>
+                </div>
 
-        <div className="flex items-center mb-2">
-          <span className="mr-2">社内</span>
-          <label className="toggle-switch">
-            <input type="checkbox" {...register("isCustomer")} />
-            <span className="slider round"></span>
-          </label>
-          <span className="ml-2">顧客</span>
-        </div>
+                <Separator />
 
-        <div className="flex items-center mb-2">
-          <label htmlFor="duration" className="mr-2">インタビュー時間:</label>
-          <select
-            {...register("duration", { required: "インタビュー時間は必須です" })}
-            className="p-2 rounded-md text-black border border-gray-300"
-          >
-            <option value="30">30分</option>
-            <option value="60">60分</option>
-          </select>
-        </div>
-        {errors.duration && <span className='text-red-500 mb-2'>{errors.duration.message}</span>}
+                <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="duration">インタビュー時間</Label>
+                  <Controller
+                    name="duration"
+                    control={control}
+                    rules={{ required: "インタビュー時間は必須です" }}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選択してください" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30分</SelectItem>
+                          <SelectItem value="60">60分</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.duration && <p className="text-red-500 text-sm mt-1">{errors.duration.message}</p>}
+                </div>
+                  <div>
+                    <Label htmlFor="maximumNumberOfInterviews">最大インタビュー数</Label>
+                    <Input
+                      {...register("maximumNumberOfInterviews", { 
+                        required: "最大インタビュー数は必須です",
+                        min: { value: 1, message: "1以上の数値を入力してください" }
+                      })}
+                      type="number"
+                      max="1000"
+                      min="1"
+                    />
+                    {errors.maximumNumberOfInterviews && <p className="text-red-500 text-sm mt-1">{errors.maximumNumberOfInterviews.message}</p>}
+                  </div>
+                </div>
 
-        <div className="flex items-center mb-2">
-          <label htmlFor="deadlineDate" className="mr-2">募集締切日:</label>
-          <input
-            {...register("deadlineDate", { required: "募集締切日は必須です" })}
-            type="date"
-            className="p-2 rounded-md text-black border border-gray-300 mr-2"
-          />
-          <input
-            {...register("deadlineTime")}
-            type="time"
-            className="p-2 rounded-md text-black border border-gray-300"
-          />
-        </div>
-        {errors.deadlineDate && <span className='text-red-500 mb-2'>{errors.deadlineDate.message}</span>}
+                <Separator />
 
-        <div className="flex items-center mb-2">
-          <label htmlFor="maximumNumberOfInterviews" className="mr-2">最大インタビュー数:</label>
-          <input
-            {...register("maximumNumberOfInterviews", { 
-              required: "最大インタビュー数は必須です",
-              min: { value: 1, message: "1以上の数値を入力してください" }
-            })}
-            type="number"
-            max="1000"
-            min="1"
-            className="p-2 rounded-md text-black border border-gray-300 w-20"
-          />
-        </div>
-        {errors.maximumNumberOfInterviews && <span className='text-red-500 mb-2'>{errors.maximumNumberOfInterviews.message}</span>}
+                <div>
+                  <Label htmlFor="deadlineDate">募集締切</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      {...register("deadlineDate", { required: "募集締切日は必須です" })}
+                      type="date"
+                    />
+                    <Input
+                      {...register("deadlineTime")}
+                      type="time"
+                    />
+                  </div>
+                  {errors.deadlineDate && <p className="text-red-500 text-sm mt-1">{errors.deadlineDate.message}</p>}
+                </div>
 
-        <div className="flex items-center mb-4">
-          <span className="mr-2">非公開</span>
-          <label className="toggle-switch">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={() => setIsPublic(!isPublic)}
-            />
-            <span className="slider round"></span>
-          </label>
-          <span className="ml-2">公開</span>
-        </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isPublic">公開設定</Label>
+                  <div className="flex items-center space-x-2">
+                    <span>{isPublic ? '公開' : '非公開'}</span>
+                    <Switch
+                      id="isPublic"
+                      checked={isPublic}
+                      onCheckedChange={setIsPublic}
+                    />
+                  </div>
+                </div>
+              </div>
 
-        <button
-            type="submit"
-            className='bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed'
-            disabled={isLoading}
-          >
-            {isLoading ? <LoadingIcons.Oval className="w-5 h-5 mr-2" /> : null}
-            テーマを追加
-          </button>
-        </fieldset>
-      </form>
+              <Button
+                type="submit"
+                className="w-full mt-6"
+                disabled={isLoading}
+              >
+                {isLoading ? <LoadingIcons.Oval className="w-5 h-5 mr-2" /> : null}
+                テーマを追加
+              </Button>
+            </fieldset>
+          </form>
+        </CardContent>
+      </Card>
       
       {showDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">

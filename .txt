@@ -1,132 +1,156 @@
-"use client";
 
-import type { Theme } from "@/stores/Theme"
-import LineChart from './components/lineChart';
-import BarChart from './components/barChart';
-import NetworkGraph from './components/networkGraph';
-import PieChart from './components/pieChart';
-import ScatterPlot from './components/scatterPlot';
 
-interface ComponentProps {
-  theme: Theme;
+'use client'
+
+import React, { useState } from 'react'
+import { useForm, SubmitHandler } from "react-hook-form"
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '../../../lib/firebase'
+import { useAppsContext } from '@/context/AppContext'
+import { QRCodeSVG } from 'qrcode.react';
+
+interface FormValues {
+    email: string;
+    password: string;
 }
 
-interface ChartContainerProps {
-  title: string;
-  children: React.ReactNode;
+type Inputs = {
+  email: string
+  password: string
+  totpCode: string
 }
 
-const ChartContainer = ({ title, children }: ChartContainerProps) => (
-  <div className="h-80 bg-white p-4 rounded-lg shadow">
-    <h3 className="text-lg font-semibold mb-4">{title}</h3>
-    {children}
-  </div>
-)
+const Login = () => {
+  const router = useRouter();
+  const { setIsUserAccount } = useAppsContext();
+  const [showTOTP, setShowTOTP] = useState<boolean>(false);
+  const [setupRequired, setSetupRequired] = useState<boolean>(false);
+  const [qrCodeData, setQrCodeData] = useState<string>('');
+  const [totpSecret, setTotpSecret] = useState<string>('');
+  const [userId, setUserId] = useState<string>('');
 
-const DashboardContent = ({ theme }: ComponentProps): JSX.Element => {
-  const networkData = {
-    nodes: [
-      { id: 'Node 1', size: 20, color: '#e41a1c' },
-      { id: 'Node 2', size: 15, color: '#377eb8' },
-      { id: 'Node 3', size: 25, color: '#4daf4a' },
-      { id: 'Node 4', size: 20, color: '#984ea3' },
-      { id: 'Node 5', size: 15, color: '#ff7f00' },
-      { id: 'Node 6', size: 30, color: '#ffff33' },
-      { id: 'Node 7', size: 25, color: '#a65628' },
-      { id: 'Node 8', size: 15, color: '#f781bf' },
-      { id: 'Node 9', size: 20, color: '#999999' },
-      { id: 'Node 10', size: 30, color: '#66c2a5' },
-      { id: 'Node 11', size: 20, color: '#fc8d62' },
-      { id: 'Node 12', size: 15, color: '#8da0cb' },
-      { id: 'Node 13', size: 25, color: '#e78ac3' },
-      { id: 'Node 14', size: 20, color: '#a6d854' },
-      { id: 'Node 15', size: 15, color: '#ffd92f' },
-    ],
-    links: [
-      { source: 'Node 1', target: 'Node 2', distance: 50 },
-      { source: 'Node 1', target: 'Node 3', distance: 50 },
-      { source: 'Node 1', target: 'Node 4', distance: 50 },
-      { source: 'Node 2', target: 'Node 5', distance: 50 },
-      { source: 'Node 2', target: 'Node 6', distance: 50 },
-      { source: 'Node 3', target: 'Node 7', distance: 50 },
-      { source: 'Node 3', target: 'Node 8', distance: 50 },
-      { source: 'Node 4', target: 'Node 9', distance: 50 },
-      { source: 'Node 4', target: 'Node 10', distance: 50 },
-      { source: 'Node 5', target: 'Node 11', distance: 50 },
-      { source: 'Node 6', target: 'Node 12', distance: 50 },
-      { source: 'Node 7', target: 'Node 13', distance: 50 },
-      { source: 'Node 8', target: 'Node 14', distance: 50 },
-      { source: 'Node 9', target: 'Node 15', distance: 50 },
-      { source: 'Node 10', target: 'Node 1', distance: 50 },
-      { source: 'Node 11', target: 'Node 3', distance: 50 },
-      { source: 'Node 12', target: 'Node 5', distance: 50 },
-      { source: 'Node 13', target: 'Node 7', distance: 50 },
-      { source: 'Node 14', target: 'Node 9', distance: 50 },
-      { source: 'Node 15', target: 'Node 2', distance: 50 },
-    ]
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Inputs>();
 
-  const barData = [
-    { category: 'A', value: 10 },
-    { category: 'B', value: 20 },
-    { category: 'C', value: 15 },
-  ]
+  const onSubmit: SubmitHandler<Inputs> = async (data) => {
+    try {
+      const response = await fetch('/api/auth/initial_auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
 
-  const lineData = [
-    {
-      id: 'series1',
-      data: [
-        { x: '2024-01', y: 12 },
-        { x: '2024-02', y: 18 },
-        { x: '2024-03', y: 15 },
-      ]
+      if (response.ok) {
+        const result = await response.json();
+        setUserId(result.userId);
+
+        if (result.requireTwoFactor) {
+          if (result.setupRequired) {
+            setSetupRequired(true);
+            setTotpSecret(result.totpSecret);
+            const qrCodeUrl = `otpauth://totp/YourApp:${data.email}?secret=${result.totpSecret}&issuer=YourApp`;
+            setQrCodeData(qrCodeUrl);
+          } else {
+            setShowTOTP(true);
+          }
+        } else {
+          await finalizeLogin(result.userId, data.email, data.password);
+        }
+      } else {
+        throw new Error('初期認証に失敗しました。');
+      }
+    } catch (error) {
+      console.error("認証エラー:", error);
+      alert(error instanceof Error ? error.message : "不明なエラーが発生しました。");
     }
-  ]
+  };
 
-  const pieData = [
-    { id: 'A', value: 35 },
-    { id: 'B', value: 45 },
-    { id: 'C', value: 20 },
-  ]
-
-  const scatterData = [
-    {
-      id: 'group1',
-      data: [
-        { x: 12, y: 32 },
-        { x: 18, y: 45 },
-        { x: 25, y: 28 },
-      ]
+  const finalizeLogin = async (userId: string, email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      const response = await fetch('/api/auth/complete_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        handleSuccessfulLogin(result.organizationId);
+      } else {
+        throw new Error('ログイン処理に失敗しました。');
+      }
+    } catch (error) {
+      console.error("ログインエラー:", error);
+      alert(error instanceof Error ? error.message : "不明なエラーが発生しました。");
     }
-  ]
+  };
+
+  const handleSuccessfulLogin = (organizationId: string) => {
+    setIsUserAccount(false);
+    router.push(`/client-view/${organizationId}/Report`);
+  };
+
+  const verifyTOTP = async (totpCode: string) => {
+    try {
+      const response = await fetch('/api/auth/verify_totp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, totpCode }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        await finalizeLogin(userId, result.email, result.password);
+      } else {
+        throw new Error('TOTP検証に失敗しました。');
+      }
+    } catch (error) {
+      console.error("2段階認証エラー:", error);
+      alert("2段階認証に失敗しました。");
+    }
+  };
 
   return (
-    <div className="mt-4 p-6">
-      <h2 className="text-2xl font-bold mb-6">分析ダッシュボード</h2>
-      
-      <ChartContainer title="ネットワーク分析">
-        <NetworkGraph data={networkData} />
-      </ChartContainer>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <ChartContainer title="カテゴリ別分布">
-          <BarChart data={barData} />
-        </ChartContainer>
-
-        <ChartContainer title="時系列推移">
-          <LineChart data={lineData} />
-        </ChartContainer>
-
-        <ChartContainer title="構成比率">
-          <PieChart data={pieData} />
-        </ChartContainer>
-
-        <ChartContainer title="相関分析">
-          <ScatterPlot data={scatterData} />
-        </ChartContainer>
-      </div>
+    <div>
+      <h1>ログイン(組織)</h1>
+      {!showTOTP && !setupRequired ? (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <label htmlFor="email">メールアドレス</label>
+          <input id="email" {...register("email", { required: "メールアドレスは必須です" })} />
+          {errors.email && <span>{errors.email.message}</span>}
+          <label htmlFor="password">パスワード</label>
+          <input id="password" type="password" {...register("password", { required: "パスワードは必須です" })} />
+          {errors.password && <span>{errors.password.message}</span>}
+          <button type="submit">ログイン</button>
+        </form>
+      ) : setupRequired ? (
+        <div>
+          <h2>TOTP設定</h2>
+          <p>以下のQRコードをスキャンして認証アプリに追加してください。</p>
+          <QRCodeSVG value={qrCodeData} />
+          <p>または、以下のコードを手動で入力してください: {totpSecret}</p>
+          <form onSubmit={handleSubmit(data => verifyTOTP(data.totpCode))}>
+            <label htmlFor="totpCode">認証コード</label>
+            <input id="totpCode" {...register("totpCode", { required: "認証コードは必須です" })} />
+            {errors.totpCode && <span>{errors.totpCode.message}</span>}
+            <button type="submit">設定を完了</button>
+          </form>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit(data => verifyTOTP(data.totpCode))}>
+          <label htmlFor="totpCode">認証コード</label>
+          <input id="totpCode" {...register("totpCode", { required: "認証コードは必須です" })} />
+          {errors.totpCode && <span>{errors.totpCode.message}</span>}
+          <button type="submit">認証</button>
+        </form>
+      )}
+      <Link href="/clients/register">新規登録ページへ</Link>
     </div>
-  )
-}
+  );
+};
 
-export default DashboardContent
+export default Login;

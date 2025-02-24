@@ -15,7 +15,7 @@ import {
 } from "@/context/components/ui/sidebar/sidebar"
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
-import { db } from "../../../../firebase"
+import { db } from "../../../lib/firebase"
 import { X } from 'lucide-react';
 import { collection, DocumentReference, doc as firestoreDoc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
