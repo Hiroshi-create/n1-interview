@@ -14,15 +14,17 @@ import { useEffect, useState } from "react"
 import { useEnterpriseSettings } from "../../page"
 import { Timestamp } from "firebase/firestore"
 import { User } from "@/stores/User"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/context/components/ui/dialog"
 
 type UserWithStringTimestamp = Omit<User, 'userBirthday'> & {
   userBirthday: string;
 };
 
 export function UserSettingsTab() {
-  const { userData, organizationData } = useEnterpriseSettings()
-  const [inOrganization, setInOrganization] = useState<boolean | null>(null)
-  const [formData, setFormData] = useState<UserWithStringTimestamp | null>(null)
+  const { userData, organizationData } = useEnterpriseSettings();
+  const [inOrganization, setInOrganization] = useState<boolean | null>(null);
+  const [formData, setFormData] = useState<UserWithStringTimestamp | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   useEffect(() => {
     if (userData) {
@@ -69,13 +71,74 @@ export function UserSettingsTab() {
         }),
       })
       if (response.ok) {
-        alert('設定が更新されました')
+        alert('設定が更新されました');
       } else {
-        throw new Error('設定の更新に失敗しました')
+        throw new Error('設定の更新に失敗しました');
       }
     } catch (error) {
-      console.error('エラー:', error)
-      alert('設定の更新中にエラーが発生しました')
+      console.error('エラー:', error);
+      alert('設定の更新中にエラーが発生しました');
+    }
+  }
+
+  const showDeleteConfirmation = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setUserToDelete(userData);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete || !organizationData) return;
+    if (userToDelete.inOrganization) {
+      alert('組織に属したアカウントはここから削除できません。');
+      setUserToDelete(null);
+      return;
+    }
+    try {
+      const response = await fetch('/api/auth/user_delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: userToDelete,
+        }),
+      });
+      
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert('ユーザーが削除されました');
+      } else {
+        if (response.status === 403) {
+          const failedConditions = data.failedConditions || [];
+          let errorMessage = '削除条件を満たしていません:\n';
+          failedConditions.forEach((condition: string) => {
+            switch (condition) {
+              case 'organizationMatch':
+                errorMessage += '- ユーザーの組織IDが一致しません\n';
+                break;
+              case 'notAdministrator':
+                errorMessage += '- このユーザーは管理者です\n';
+                break;
+              case 'inChildUserIds':
+                errorMessage += '- ユーザーが組織の子ユーザーリストに含まれていません\n';
+                break;
+              default:
+                errorMessage += `- ${condition}\n`;
+            }
+          });
+          alert(errorMessage);
+        } else if (response.status === 400) {
+          alert(`入力エラー: ${data.error}`);
+        } else {
+          throw new Error(data.error || 'ユーザーの削除に失敗しました');
+        }
+      }
+    } catch (error) {
+      console.error('エラー:', error);
+      alert(error instanceof Error ? error.message : 'ユーザーの削除中に予期せぬエラーが発生しました');
+    } finally {
+      setUserToDelete(null);
     }
   }
 
@@ -282,7 +345,7 @@ export function UserSettingsTab() {
             <CardDescription>アカウントに関する重要な操作</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <Button variant="outline" className="justify-start">
+            <Button variant="outline" className="justify-start" onClick={showDeleteConfirmation}>
               <Trash2 className="mr-2 h-4 w-4" />
               アカウントを削除
             </Button>
@@ -292,6 +355,29 @@ export function UserSettingsTab() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* 確認ダイアログの部分 */}
+        <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>ユーザーを削除</DialogTitle>
+            </DialogHeader>
+            {userToDelete?.inOrganization ? (
+              <>
+                <p>組織に属したアカウントはここから削除できません。</p>
+                <p>管理者がユーザー管理タブから行えます。</p>
+              </>
+            ) : (
+              <p>本当に {userToDelete?.userName.join(' ')} を削除しますか？この操作は取り消せません。</p>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setUserToDelete(null)}>キャンセル</Button>
+              {organizationData?.administratorId !== userToDelete?.userId && (
+                <Button variant="destructive" onClick={handleDeleteUser}>削除</Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline">

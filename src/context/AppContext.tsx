@@ -3,7 +3,7 @@
 import { multiFactor, onAuthStateChanged, User } from "firebase/auth";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { auth, db } from "../lib/firebase";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { doc, DocumentReference, getDoc } from "firebase/firestore";
 import { interview_phases, operation_check_phases } from "./components/lists";
 
@@ -145,6 +145,7 @@ export function AppProvider({ children }: AppProviderProps) {
       resetContext();
       router.push("/home/");
     } catch (error) {
+      router.push("/home/");
       console.error("ログアウトエラー:", error);
     }
   };
@@ -208,6 +209,7 @@ export function AppProvider({ children }: AppProviderProps) {
       if (newUser) {
         // ユーザーがログインしている場合の処理
         await checkMFAStatus(newUser);
+        // router.push(`/home`);
       } else {
         // ユーザーがログアウトしている場合の処理
         // router.push(`/home`);
@@ -222,19 +224,27 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const checkMFAStatus = async (newUser: User) => {
     try {
+      const lastVisitedUrl = getLastVisitedUrl();
       const mfaEnabled = multiFactor(newUser).enrolledFactors.length > 0;
       const currentPath = window.location.pathname;
       
       if (mfaEnabled) {
         // MFAが有効な場合、ユーザーを認証済みとして扱う
-        setUser(newUser);
-        setUserId(newUser ? newUser.uid : null);
-        if (currentPath.startsWith('/auto-interview')) {
-          setIsUserAccount(true);
-          router.push(`/auto-interview/${newUser.uid}`);
-        } else if (currentPath.startsWith('/client-view')) {
-          setIsUserAccount(false);
-          router.push(`/client-view/${newUser.uid}/Report`);
+        if (lastVisitedUrl) {
+          if (currentPath.startsWith('/auto-interview')) {
+            setIsUserAccount(true);
+          } else if (currentPath.startsWith('/client-view')) {
+            setIsUserAccount(false);
+          }
+          router.push(lastVisitedUrl);
+        } else {
+          const userDoc = await getDoc(doc(db, "users", newUser.uid));
+          const userData = userDoc.data();
+          if (userData && userData.inOrganization) {
+            // router.push(`/client-view/${newUser.uid}/Report`);
+          } else {
+            router.push(`/auto-interview/${newUser.uid}`);
+          }
         }
       } else {
         // MFAが無効な場合、TOTP設定画面に誘導

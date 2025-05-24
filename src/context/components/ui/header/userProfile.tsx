@@ -217,7 +217,7 @@ export default function UserProfile() {
                 )}
 
                 {/* アカウント操作メニュー */}
-                <div className="px-2 pt-2 pb-1">
+                <div className="px-2 pt-2 pb-2">
                     {/* <DropdownMenuItem className="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-md transition-colors duration-200">
                         <Plus className="h-5 w-5 text-gray-600" />
                         <span className="text-sm font-medium">別のアカウントを追加</span>

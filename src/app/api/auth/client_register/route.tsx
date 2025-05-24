@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { adminDb } from '@/lib/firebase-admin'
+import initStripe from "stripe";
 import { User } from '@/stores/User'
 import { Client } from '@/stores/Client';
 import { v4 as uuidv4 } from 'uuid'
+import stripe from '@/lib/stripe-server';
 
 interface clientData {
   organizationType: string;
   organizationName: string;
   administratorId: string;
-  childUsersCount: number;
   childUserIds: string[];
   employeeCount: number;
   country: string;
@@ -39,21 +40,28 @@ export async function POST(request: NextRequest) {
     const organizationId = uuidv4();
     const createdAt = FieldValue.serverTimestamp();
 
+    // stripeに顧客情報を作成
+    // const stripe = new initStripe(process.env.STRIPE_SECRET_KEY);
+    const customer = await stripe.customers.create({
+      email: userData.email,
+    });
+
     // Clientデータの作成
     const newClientData: Client = {
       organizationId: organizationId,
       organizationType: clientData.organizationType,
       organizationName: clientData.organizationName,
       administratorId: clientData.administratorId,
-      childUsersCount: 1,
       employeeCount: clientData.employeeCount,
       childUserIds: clientData.childUserIds,
       createdAt: createdAt,
       themesCount: 0,
       country: clientData.country,
       language: clientData.language,
-      subscriptionPlan: 'free',
-      subscriptionStatus: 'active',
+      stripeCustomerId: customer.id,
+      subscriptionProductId: null,
+      subscriptionStatus: 'inactive',
+      subscriptionInterval: null,
       subscriptionRenewalDate: createdAt,
       billingInfo: {
         companyName: clientData.organizationName,

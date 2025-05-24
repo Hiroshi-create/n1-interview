@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase"
 import { UserSettingsTab } from "./contents/tabs/userSettingsTab"
 import { User } from "@/stores/User"
 import { Client } from "@/stores/Client"
+import { useLastVisitedUrl } from "@/context/hooks/useLastVisitedUrl"
 
 type TabConfig = {
   value: string
@@ -54,7 +55,9 @@ const tabConfigs: TabConfig[] = [
 ]
 
 function EnterpriseSettingsContent() {
-  const { userData, loading, error } = useEnterpriseSettings()
+  const { userData, loading, error } = useEnterpriseSettings();
+  
+  useLastVisitedUrl();
 
   if (loading) return <div>読み込み中...</div>
   if (error) return <div>エラーが発生しました: {error.message}</div>

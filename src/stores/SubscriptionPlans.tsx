@@ -8,7 +8,7 @@ export type SubscriptionPlans = {
     price: number;                      // プランの価格（円）
     billingCycle: string;               // 請求サイクル（'monthly' | 'yearly'）
     features: string[];                 // プランの機能リスト
-    stripePriceId: string;              // Stripe上のプランID
+    subscriptionProductId: string;      // Stripe上の商品ID
     isActive: boolean;                  // プランが有効かどうか
     createdAt: FieldValue;              // プランの作成日時
     updatedAt: FieldValue;              // プランの最終更新日時

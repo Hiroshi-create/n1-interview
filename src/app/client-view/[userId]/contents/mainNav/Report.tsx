@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { isValidThemeData } from '@/context/components/isValidDataCheck';
 import ClientsideThemeCard from '@/context/components/ui/clientsideThemeCard';
 import { PlusCircle } from 'lucide-react';
+import { useLastVisitedUrl } from '@/context/hooks/useLastVisitedUrl';
 
 const Report = () => {
     const router = useRouter();
@@ -23,6 +24,8 @@ const Report = () => {
     const [themes, setThemes] = useState<Theme[]>([]);
     const [themeRefs, setThemeRefs] = useState<{[key: string]: DocumentReference}>({});
     const [isLoading, setIsLoading] = useState(true);
+
+    useLastVisitedUrl();
 
     useEffect(() => {
         if (user && userId) {

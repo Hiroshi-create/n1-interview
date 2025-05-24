@@ -30,7 +30,7 @@ export default function TabContentLayout({
             />
           </div>
           <SidebarInset className={`flex-1 w-full bg-blue-100/30 text-text overflow-auto ${isMenuOpen ? 'ml-72' : 'ml-0'}`}>
-            <main className="w-full mb-32 px-4 pt-8">
+            <main className="w-full mb-16 px-0 pt-8">
               {children}
             </main>
           </SidebarInset>

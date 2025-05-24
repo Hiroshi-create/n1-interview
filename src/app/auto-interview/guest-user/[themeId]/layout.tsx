@@ -31,11 +31,11 @@ export default function AutoInterviewLayout({
           />
         )}
         <div className="flex flex-1 overflow-hidden">
-          <div className={`absolute top-0 left-0 h-full z-20 transition-all duration-300 ${isMenuOpen ? 'w-64' : 'w-0'}`}>
+          <div className={`absolute top-0 left-0 h-full z-20 transition-all duration-300 ${isMenuOpen ? 'w-72' : 'w-0'}`}>
             <Sidebar toggleMenu={toggleMenu} />
           </div>
           <SidebarInset
-            className={`flex-1 w-full bg-background overflow-auto ${isInterviewPage ? 'ml-0' : `py-8 text-text ${isMenuOpen ? 'ml-64' : 'ml-0'}`}`}
+            className={`flex-1 w-full bg-background overflow-auto ${isInterviewPage ? 'ml-0' : `py-8 text-text ${isMenuOpen ? 'ml-72' : 'ml-0'}`}`}
           >
             {isInterviewPage ? (
               children

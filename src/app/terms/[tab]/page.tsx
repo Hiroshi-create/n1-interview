@@ -2,10 +2,13 @@
 
 import { useParams } from 'next/navigation';
 import { termsTabConfig } from '@/context/components/lists'
+import { useLastVisitedUrl } from '@/context/hooks/useLastVisitedUrl';
 
 const TabContent = () => {
   const params = useParams();
   const tab = (params.tab as string) || 'PrivacyPolicy';
+
+  useLastVisitedUrl();
 
   const getTabContent = () => {
     switch (tab) {

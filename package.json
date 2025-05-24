@@ -41,6 +41,7 @@
     "@react-three/postprocessing": "^2.16.2",
     "@readyplayerme/react-avatar-creator": "^0.5.0",
     "@readyplayerme/visage": "^6.6.0",
+    "@stripe/stripe-js": "^5.7.0",
     "@tabler/icons-react": "^3.29.0",
     "@tremor/react": "^3.18.7",
     "@vercel/kv": "^3.0.0",
@@ -50,10 +51,10 @@
     "cloudinary": "^2.5.1",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
-    "firebase": "^11.1.0",
-    "firebase-admin": "^12.0.0",
-    "firebase-frameworks": "^0.11.6",
-    "firebase-functions": "^6.2.0",
+    "firebase": "^11.8.1",
+    "firebase-admin": "^12.7.0",
+    "firebase-frameworks": "^0.11.7",
+    "firebase-functions": "^6.3.2",
     "formidable": "^3.5.2",
     "framer-motion": "^12.4.4",
     "highcharts": "^12.1.2",
@@ -83,6 +84,7 @@
     "resize-observer-polyfill": "^1.5.1",
     "shadcn": "^2.3.0",
     "speakeasy": "^2.0.0",
+    "stripe": "^17.6.0",
     "styled-components": "^6.1.14",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
@@ -112,6 +114,7 @@
   },
   "overrides": {
     "ajv": "^8.17.1",
-    "whatwg-url": "^14.0.0"
+    "whatwg-url": "^14.0.0",
+    "cookie": "0.7.1"
   }
 }

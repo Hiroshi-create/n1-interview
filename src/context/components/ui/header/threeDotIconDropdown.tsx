@@ -3,6 +3,10 @@
 import { LucideIcon, MoreVertical } from "lucide-react";
 import { Button } from "../button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { useAppsContext } from "@/context/AppContext";
+import { Settings } from "lucide-react"
+import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 
 interface MenuItem {
   items: {
@@ -18,9 +22,34 @@ interface ThreeDotIconDropdownProps {
 }
 
 export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdownProps) {
+  const router = useRouter();
+  const { user, userId } = useAppsContext();
+
+  const extendedMenuItems = useMemo(() => {
+    // 例: テスト用メールアドレス
+    const TEST_EMAIL = "hiroshi@kanseibunseki.com";
+    if (user?.email === TEST_EMAIL) {
+      return [
+        ...menuItems,
+        {
+          items: [
+            {
+              icon: Settings,
+              title: "テストチャット",
+              onClick: () => {
+                router.push(`/client-view/${userId}/test-chat`);
+              },
+            },
+          ],
+        },
+      ];
+    }
+    return menuItems;
+  }, [menuItems, user?.email]);
+
   const renderMenuItems = (items: MenuItem[]) => {
     return items.map((item, index) => (
-      <div key={index} className="py-1">
+      <div key={index}>
         {item.items.map((subItem, subIndex) => (
           <DropdownMenuItem
             key={subIndex}
@@ -39,8 +68,8 @@ export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdown
         ))}
         {index < items.length - 1 && <DropdownMenuSeparator className="my-1 h-px bg-gray-200" />}
       </div>
-    ))
-  }
+    ));
+  };
 
   return (
     <DropdownMenu>
@@ -57,7 +86,7 @@ export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdown
         align="end" 
         className="w-56 rounded-lg border border-gray-200 bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
       >
-        {renderMenuItems(menuItems)}
+        {renderMenuItems(extendedMenuItems)}
       </DropdownMenuContent>
     </DropdownMenu>
   )

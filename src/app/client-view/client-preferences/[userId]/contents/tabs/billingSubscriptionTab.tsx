@@ -13,22 +13,39 @@ import { Progress } from "@/context/components/ui/progress"
 import { Separator } from "@/context/components/ui/separator"
 import { useEnterpriseSettings } from "../../page"
 import { Client } from "@/stores/Client"
-import { Timestamp } from 'firebase/firestore'
+import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAppsContext } from '@/context/AppContext'
+import { db } from '@/lib/firebase'
 
 export function BillingSubscriptionTab() {
   const router = useRouter();
   const { userId } = useAppsContext();
-  const { organizationData } = useEnterpriseSettings()
-  const [formData, setFormData] = useState<Client | null>(null)
+  const { organizationData } = useEnterpriseSettings();
+  const [formData, setFormData] = useState<Client | null>(null);
+  const [planName, setPlanName] = useState('');
 
   useEffect(() => {
     if (organizationData) {
       setFormData(organizationData)
     }
-  }, [organizationData])
+  }, [organizationData]);
+
+  useEffect(() => {
+    const fetchPlanName = async () => {
+      if (formData && formData.subscriptionProductId) { // formDataがnullでないことを確認
+        const plansRef = collection(db, 'subscriptionPlans');
+        const q = query(plansRef, where('subscriptionProductId', '==', formData.subscriptionProductId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setPlanName(querySnapshot.docs[0].data().planName);
+        }
+      }
+    };
+  
+    fetchPlanName();
+  }, [formData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -94,7 +111,7 @@ export function BillingSubscriptionTab() {
         },
         body: JSON.stringify({
           organizationId: formData?.organizationId,
-          updatedData: formData
+          updatedData: formData,
         }),
       })
       if (response.ok) {
@@ -113,6 +130,33 @@ export function BillingSubscriptionTab() {
     e.stopPropagation();
     router.push(`/client-view/${userId}/subscriptions`);
   };
+
+  const cancellingSubscription = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (organizationData?.subscriptionStatus === "active") {
+      try {
+        const response = await fetch('/api/stripe_portal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userId,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          router.push(data.url);
+        } else {
+          throw new Error('サブスクリプションの更新に失敗しました');
+        }
+      } catch (error) {
+        console.error('エラー:', error);
+        alert('サブスクリプションの更新中にエラーが発生しました');
+      }
+    }
+  }
 
   if (!formData) {
     return <div>読み込み中...</div>
@@ -140,22 +184,35 @@ export function BillingSubscriptionTab() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-4 border rounded-lg">
               <div>
-                <h3 className="text-lg font-semibold">{formData.subscriptionPlan}</h3>
-                <p className="text-sm text-gray-500">
-                  年間契約 - 更新日: {
-                    formData.subscriptionRenewalDate instanceof Timestamp
-                    ? format(formData.subscriptionRenewalDate.toDate(), "yyyy/MM/dd")
-                    : 'N/A'
-                  }
-                </p>
+                <h3 className="text-lg font-semibold">
+                  {formData.subscriptionStatus === "active" ? planName + " プラン" : (formData.subscriptionProductId ? "読み込み中..." : "サブスクリプションにまだ加入していません")}
+                </h3>
+                {formData.subscriptionStatus === "active" && (
+                  <p className="text-sm text-gray-500">
+                    年間契約 - 更新日: {
+                      formData.subscriptionRenewalDate instanceof Timestamp
+                      ? format(formData.subscriptionRenewalDate.toDate(), "yyyy/MM/dd")
+                      : 'N/A'
+                    }
+                  </p>
+                )}
               </div>
               <div>
-                <span className="px-2 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                <span className={`px-2 py-1 text-sm font-semibold rounded-full
+                  ${formData.subscriptionStatus === "active" ? "bg-green-100 text-green-800" :
+                    formData.subscriptionStatus === "inactive" ? "bg-orange-100 text-orange-800" : ""}`}
+                >
                   {formData.subscriptionStatus}
                 </span>
               </div>
             </div>
-            <Button variant="outline" onClick={handlePlanChange}>プランを変更</Button>
+            <Button
+              onClick={handlePlanChange}
+              variant={`${formData.subscriptionStatus === "active" ? "outline" :
+                          formData.subscriptionStatus === "inactive" ? "destructive" : "outline"}`}
+            >
+              {formData.subscriptionStatus === "active" ? "プランを変更" : formData.subscriptionStatus === "inactive" ? "プランに加入" : ""}
+            </Button>
           </CardContent>
         </Card>
 
@@ -168,10 +225,10 @@ export function BillingSubscriptionTab() {
           <CardContent className="space-y-4">
             <div>
               <div className="flex justify-between mb-2">
-                <span>ユーザー数: {formData.childUsersCount} / {formData.usageQuota?.users}</span>
-                <span>{Math.round((formData.childUsersCount / formData.usageQuota?.users) * 100)}% 使用中</span>
+                <span>ユーザー数: {formData.childUserIds.length} / {formData.usageQuota?.users}</span>
+                <span>{Math.round((formData.childUserIds.length / formData.usageQuota?.users) * 100)}% 使用中</span>
               </div>
-              <Progress value={(formData.childUsersCount / formData.usageQuota?.users) * 100} className="w-full" />
+              <Progress value={(formData.childUserIds.length / formData.usageQuota?.users) * 100} className="w-full" />
             </div>
             <div>
               <div className="flex justify-between mb-2">
@@ -185,6 +242,16 @@ export function BillingSubscriptionTab() {
 
         {/* 請求情報 */}
         <Card>
+            <CardHeader>
+              <CardTitle>請求情報</CardTitle>
+              <CardDescription>請求先情報と支払い方法</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* <p>キャンセル後も、顧客は請求期間の終了まではサブスクリプションを更新できます。</p> */}
+              <Button variant="outline" onClick={cancellingSubscription}>請求情報を編集</Button>
+            </CardContent>
+          </Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               請求情報
@@ -237,7 +304,7 @@ export function BillingSubscriptionTab() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* 支払い履歴 */}
         <Card>
@@ -274,16 +341,18 @@ export function BillingSubscriptionTab() {
         </Card>
 
         {/* 解約予告 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>解約予告</CardTitle>
-            <CardDescription>契約解約に関する情報</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>契約を解約する場合は、更新日の30日前までにご連絡ください。</p>
-            <Button variant="destructive">解約手続きを開始</Button>
-          </CardContent>
-        </Card>
+        {organizationData?.subscriptionStatus === "active" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>解約予告</CardTitle>
+              <CardDescription>契約解約に関する情報</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>キャンセル後も、顧客は請求期間の終了まではサブスクリプションを更新できます。</p>
+              <Button variant="destructive" onClick={cancellingSubscription}>解約手続きを開始</Button>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline">

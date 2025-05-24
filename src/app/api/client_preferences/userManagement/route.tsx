@@ -11,7 +11,6 @@ type UpdatedUser = {
 };
 
 type UpdatedOrganization = {
-  childUsersCount: number;
   childUserIds: string[];
 };
 

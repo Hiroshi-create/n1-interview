@@ -1,8 +1,8 @@
 import * as React from "react";
 import { cn } from "@/context/lib/utils";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAppsContext } from "@/context/AppContext";
-import { LogOut, Menu, MoreVertical } from 'lucide-react';
+import { Brain, LogOut, Menu, MoreVertical } from 'lucide-react';
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../button";
@@ -15,7 +15,8 @@ const Header = React.forwardRef<
   React.ComponentProps<"div"> & { handleLogoClickPath: string }
 >(({ className, handleLogoClickPath, ...props }, ref) => {
   const router = useRouter();
-  const { user, userId, isMenuOpen, setIsMenuOpen } = useAppsContext();
+  const pathname = usePathname();
+  const { handleLogout, user, userId, isMenuOpen, setIsMenuOpen } = useAppsContext();
 
   const menuItems = [
     // {
@@ -61,24 +62,36 @@ const Header = React.forwardRef<
     {
       items: [
         { 
+          icon: CreditCard,
+          title: "サブスクリプション", 
+          onClick: () => {
+            router.push(`/client-view/${userId}/subscriptions`);
+          }
+        }
+      ]
+    },
+    {
+      items: [
+        { 
           icon: Settings, 
           title: "設定", 
           onClick: () => {
-            console.log("設定ページへ遷移");
+            handleLogout;
+          }
+        }
+      ]
+    },
+    {
+      items: [
+        { 
+          icon: Settings, 
+          title: "ログアウト", 
+          onClick: () => {
             router.push(`/client-view/client-preferences/${userId}`);
           }
         }
       ]
     },
-    // {
-    //   items: [
-    //     { 
-    //       icon: LogOut,
-    //       title: "Sign Out", 
-    //       onClick: handleLogout,
-    //     }
-    //   ]
-    // }
   ];
 
   const toggleMenu = () => {
@@ -101,14 +114,21 @@ const Header = React.forwardRef<
         <div className="flex items-center">
           {user && (
             <button
-            onClick={toggleMenu}
-            className="p-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300"
-          >
-            <Menu size={24} />
-          </button>
+              onClick={toggleMenu}
+              className="p-2 mr-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300"
+            >
+              <Menu size={24} />
+            </button>
           )}
+
+          <div className="flex gap-6 md:gap-10">
+            <Link href={handleLogoClickPath} className="flex items-center space-x-2">
+              <Brain className="h-6 w-6 text-black" />
+              <span className="inline-block text-xl font-bold">Auto N1 Interview</span>
+            </Link>
+          </div>
           
-          <Image
+          {/* <Image
             src="/logo/logo_yoko.svg"
             alt="感性分析 Logo"
             width={120}
@@ -118,7 +138,7 @@ const Header = React.forwardRef<
             style={{ userSelect: "none" }}
             onClick={handleLogoClick}
             priority
-          />
+          /> */}
         </div>
 
         {/* 右側のリンクとボタン */}
@@ -127,14 +147,6 @@ const Header = React.forwardRef<
           {!user ? (
             <>
               <div className="flex items-center gap-4 text-sm md:text-base text-text">
-                <Link href="#" className="hover-underline-animation">
-                  Contact
-                </Link>
-                <span>|</span>
-                <Link href="#" className="hover-underline-animation">
-                  Support
-                </Link>
-                <span>|</span>
                 <Link href="/users/login" className="hover-underline-animation">
                   Login
                 </Link>
@@ -149,10 +161,14 @@ const Header = React.forwardRef<
             // ログインしている場合
             <>
               <div className="flex items-center gap-4 text-sm md:text-base text-text">
-                <Link href={`/client-view/${userId}/dashboard`} className="hover-underline-animation">
-                  Dashboard
-                </Link>
-                <span>|</span>
+                {pathname.startsWith('/client-view') && (
+                  <>
+                    <Link href={`/client-view/${userId}/dashboard`} className="hover-underline-animation">
+                      Dashboard
+                    </Link>
+                    <span>|</span>
+                  </>
+                )}
                 <UserProfile />
               </div>
               <ThreeDotIconDropdown menuItems={menuItems} />

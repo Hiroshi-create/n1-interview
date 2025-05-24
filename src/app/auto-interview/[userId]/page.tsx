@@ -1,20 +1,11 @@
 "use client"
 
-import React, { useEffect } from 'react'
-import { usePathname } from 'next/navigation';
+import React from 'react'
 import InterviewHome from '@/app/components/users/InterviewHome';
+import { useLastVisitedUrl } from '@/context/hooks/useLastVisitedUrl';
 
 const AutoInterview = () => {
-  const pathname = usePathname();
-  
-  useEffect(() => {
-    const saveLastVisitedUrl = (url: string) => {
-      localStorage.setItem('lastVisitedUrl', url);
-    };
-    if (pathname) {
-      saveLastVisitedUrl(pathname);
-    }
-  }, [pathname]);
+  useLastVisitedUrl();
 
   return (
     <div className="h-full flex flex-col p-4 mb-32">

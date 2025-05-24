@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
     const clientRef = adminDb.doc(`clients/${organizationId}`);
     await clientRef.update({
       childUserIds: FieldValue.arrayUnion(userId),
-      childUsersCount: FieldValue.increment(1)
     });
 
     return NextResponse.json({ message: 'ユーザーが正常に登録されました', user: userDoc }, { status: 201 });

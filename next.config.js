@@ -29,9 +29,6 @@ const nextConfig = {
     return config;
   },
   transpilePackages: ['@algolia/autocomplete-js', '@algolia/autocomplete-theme-classic'],
-  env: {
-    ROOT_DOMAIN: process.env.ROOT_DOMAIN || 'http://localhost:3000'
-  }
 };
 
 module.exports = nextConfig;

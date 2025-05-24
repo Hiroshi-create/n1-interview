@@ -268,7 +268,7 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
     // endTimerSpeechClient();  // timer
 
     if (!process.env.GCP_PROJECT_ID || !process.env.GCP_PRIVATE_KEY || !process.env.GCP_CLIENT_EMAIL) {
-      throw new Error('Google Cloud 認証情報が不足しています。環境変数を確認してください。');
+      throw new Error('Google Cloud 認証情報が不足しています。確認してください。');
     }
 
     // 音声認識

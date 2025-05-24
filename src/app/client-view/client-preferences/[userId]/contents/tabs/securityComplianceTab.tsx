@@ -16,8 +16,8 @@ import { Timestamp } from 'firebase/firestore'
 import { format } from 'date-fns'
 
 export function SecurityComplianceTab() {
-  const { organizationData } = useEnterpriseSettings()
-  const [formData, setFormData] = useState<Client | null>(null)
+  const { organizationData } = useEnterpriseSettings();
+  const [formData, setFormData] = useState<Client | null>(null);
 
   useEffect(() => {
     if (organizationData) {
@@ -186,7 +186,7 @@ export function SecurityComplianceTab() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <Label className="text-base flex items-center gap-2">
                 <Activity className="h-4 w-4" />
                 セキュリティスコア
@@ -198,7 +198,7 @@ export function SecurityComplianceTab() {
                 </div>
                 <Progress value={formData.securityScore} className="w-full" />
               </div>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 

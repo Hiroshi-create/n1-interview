@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signInWithEmailAndPassword, multiFactor, TotpMultiFactorGenerator, TotpSecret, sendEmailVerification, User, MultiFactorResolver, getMultiFactorResolver, MultiFactorError } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
@@ -19,6 +19,8 @@ type Inputs = {
 }
 
 const Login = () => {
+  const searchParams = useSearchParams();
+  const planType = searchParams.get('') || null;
   const router = useRouter();
   const { setIsUserAccount, checkMFAStatus } = useAppsContext();
   const [totpSecret, setTotpSecret] = useState<TotpSecret | null>(null);
@@ -83,7 +85,6 @@ const Login = () => {
 
   const verifyTOTP = async (totpCode: string) => {
     try {
-      console.log("クライアント時刻:", new Date().toISOString());
       if (isNewMFASetup) {
         if (!auth.currentUser) {
           throw new Error("ユーザーが認証されていません");
@@ -101,7 +102,11 @@ const Login = () => {
         const userCredential = await multiFactorResolver.resolveSignIn(credential);
         alert("TOTP認証が正常に完了しました。");
         await handleSuccessfulLogin(userCredential.user);
-        router.push(`/client-view/${userCredential.user.uid}/Report`);
+        if (planType === null) {
+          router.push(`/client-view/${userCredential.user.uid}/Report`);
+        } else {
+          router.push(`/client-view/${userCredential.user.uid}/subscriptions?=${planType}`);
+        }
       } else {
         throw new Error("多要素認証の情報がありません。");
       }
@@ -166,7 +171,6 @@ const Login = () => {
     } catch (error) {
       if (error instanceof FirebaseError) {
         if (error.code === 'auth/multi-factor-auth-required') {
-          console.log("2回目以降")
           const multiFactorError = error as unknown as MultiFactorError;
           const resolver = getMultiFactorResolver(auth, multiFactorError);
           setMultiFactorResolver(resolver);

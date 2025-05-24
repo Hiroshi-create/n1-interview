@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const { nodes, preference, themeId, userId }: RequestBody = await request.json();
     
-    const response = await fetch('http://localhost:8000/cluster', {
+    const response = await fetch(`${process.env.NEXT_SERVER_BASE_URL}/cluster`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

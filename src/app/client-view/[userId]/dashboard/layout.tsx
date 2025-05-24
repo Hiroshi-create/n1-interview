@@ -24,10 +24,10 @@ export default function DashboardContentLayout({
           handleLogoClickPath={`/client-view/${userId}/Report`}
         />
         <div className="flex flex-1 overflow-hidden">
-          <div className={`absolute top-0 left-0 h-full z-20 transition-all duration-300 ${isMenuOpen ? 'w-64' : 'w-0'}`}>
+          <div className={`absolute top-0 left-0 h-full z-20 transition-all duration-300 ${isMenuOpen ? 'w-72' : 'w-0'}`}>
             <Sidebar toggleMenu={toggleMenu} />
           </div>
-          <SidebarInset className={`flex-1 w-full bg-purple-100/80 text-text overflow-auto py-4 ${isMenuOpen ? 'ml-64' : 'ml-0'}`}>
+          <SidebarInset className={`flex-1 w-full bg-purple-100/80 text-text overflow-auto py-4 ${isMenuOpen ? 'ml-72' : 'ml-0'}`}>
             <main className="px-8 mb-16">
               {children}
             </main>

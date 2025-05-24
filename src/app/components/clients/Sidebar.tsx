@@ -17,6 +17,7 @@ import { analysisNav, mainNav } from "@/context/components/lists"
 import { auth } from "../../../lib/firebase"
 import { useRouter } from "next/navigation"
 import { MdClose } from "react-icons/md"
+import { Brain } from "lucide-react"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   toggleMenu: () => void;
@@ -40,21 +41,17 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
         <SidebarHeader className="h-14 border-b border-slate-700 flex flex-row items-center justify-start">
           <button 
             onClick={toggleMenu}
-            className="px-4 text-slate-300 hover:text-slate-100 transition-colors duration-200"
+            className="pl-4 pr-0 text-slate-300 hover:text-slate-100 transition-colors duration-200"
           >
             <MdClose size={24} />
           </button>
           <div className="flex-grow flex justify-center">
-            <Image
-              src="/logo/logo_yoko.svg"
-              alt="感性分析 Logo"
-              width={120}
-              height={40}
-              className="select-none cursor-pointer"
-              draggable="false"
-              style={{ userSelect: 'none' }}
-              onClick={handleLogoClick}
-            />
+            <div className="flex gap-6">
+              <Link href={`/client-view/${userId}/Report`} className="flex items-center space-x-2">
+                <Brain className="h-6 w-6 text-white text-black" />
+                <span className="text-white text-xl font-bold">Auto N1 Interview</span>
+              </Link>
+            </div>
           </div>
         </SidebarHeader>
         <SidebarContent className="px-3 py-4">

@@ -20,8 +20,6 @@ export async function POST(request: NextRequest) {
     // tenantIdをdecodedTokenから直接取得
     const tenantId = decodedToken.firebase?.tenant || null;
 
-    console.log('Decoded token:', { userId, tenantId });
-
     let auth: TenantAwareAuth | Auth = getAuth();
     if (tenantId) {
       auth = auth.tenantManager().authForTenant(tenantId);

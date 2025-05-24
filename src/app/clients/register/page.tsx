@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { countries, languages, organizationTypes, positions } from '@/context/components/lists'
 import { Timestamp } from 'firebase/firestore'
@@ -37,12 +37,14 @@ type UserInputs = {
 type FormInputs = ClientInputs & UserInputs
 
 const Register = () => {
-  const router = useRouter()
+  const searchParams = useSearchParams();
+  const planType = searchParams.get('') || null;
+  const router = useRouter();
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormInputs>()
+  } = useForm<FormInputs>();
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
@@ -57,7 +59,6 @@ const Register = () => {
 
       auth.tenantId = tenantId;
 
-      console.log("作成するユーザーのテナントチェック : " + auth.tenantId)
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const userId = userCredential.user.uid;
 
@@ -66,7 +67,6 @@ const Register = () => {
         organizationType: data.organizationType,
         organizationName: data.organizationName,
         administratorId: userId,
-        childUsersCount: 1,
         childUserIds: [userId],
         employeeCount: data.employeeCount,
         country: data.country,
@@ -93,20 +93,24 @@ const Register = () => {
         },
         body: JSON.stringify({
           client: clientData,
-          user: userData
+          user: userData,
         }),
       })
 
       if (response.ok) {
-        const result = await response.json()
-        localStorage.setItem('token', result.token)
-        router.push("/clients/login")
+        const result = await response.json();
+        localStorage.setItem('token', result.token);
+        if (planType === null) {
+          router.push(`/clients/login`);
+        } else {
+          router.push(`/clients/login?=${planType}`);
+        }
       } else {
-        const errorData = await response.json()
-        alert(errorData.message || '登録に失敗しました。')
+        const errorData = await response.json();
+        alert(errorData.message || '登録に失敗しました。');
       }
     } catch (error) {
-      console.error('登録エラー:', error)
+      console.error('登録エラー:', error);
       setError('登録処理中にエラーが発生しました。');
     }
   }
@@ -379,7 +383,7 @@ const Register = () => {
 
           <div className="text-center mt-4">
             <span className="text-gray-600">既にアカウントをお持ちですか？</span>
-            <Link href="/clients/login" className="text-blue-600 hover:underline ml-2">
+            <Link href={planType === null ? "/clients/login" : `/clients/login?=${planType}`} className="text-blue-600 hover:underline ml-2">
               ログインページ
             </Link>
           </div>

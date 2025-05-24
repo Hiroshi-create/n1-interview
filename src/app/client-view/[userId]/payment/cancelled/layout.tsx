@@ -5,7 +5,7 @@ import { Header } from '@/context/components/ui/header/header';
 import { SidebarInset, SidebarProvider } from '@/context/components/ui/sidebar/sidebar';
 import { useAppsContext } from "@/context/AppContext";
 
-export default function TabContentLayout({
+export default function SubscriptionsCancelledContentLayout({
   children,
 }: {
   children: React.ReactNode
@@ -25,14 +25,10 @@ export default function TabContentLayout({
         />
         <div className="flex flex-1 overflow-hidden">
           <div className={`absolute top-0 left-0 h-full z-20 transition-all duration-300 ${isMenuOpen ? 'w-72' : 'w-0'}`}>
-            <Sidebar
-              toggleMenu={toggleMenu}
-            />
+            <Sidebar toggleMenu={toggleMenu} />
           </div>
           <SidebarInset className={`flex-1 w-full bg-blue-100/30 text-text overflow-auto ${isMenuOpen ? 'ml-72' : 'ml-0'}`}>
-            <main className="w-full mb-32 px-4 pt-8">
-              {children}
-            </main>
+            {children}
           </SidebarInset>
         </div>
       </div>
