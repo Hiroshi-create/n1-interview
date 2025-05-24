@@ -87,9 +87,9 @@
     "styled-components": "^6.1.14",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "three": "^0.166.1",
     "@types/three": "^0.176.0",
     "reagraph": "^4.22.0",
+    "glodrei": "^0.0.2",
     "uuid": "^11.0.3",
     "zustand": "^5.0.2"
   },
