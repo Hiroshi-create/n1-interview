@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/context/components/ui/switch"
 import { Label } from "@/context/components/ui/label"
 import { Separator } from "@/context/components/ui/separator"
-import { useEnterpriseSettings } from "../../page"
 import { Client } from "@/stores/Client"
 import { Progress } from '@/context/components/ui/progress'
 import { Timestamp } from 'firebase/firestore'
 import { format } from 'date-fns'
+import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
 
 export function SecurityComplianceTab() {
   const { organizationData } = useEnterpriseSettings();

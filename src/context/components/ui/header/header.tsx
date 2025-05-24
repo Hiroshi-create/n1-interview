@@ -76,7 +76,7 @@ const Header = React.forwardRef<
           icon: Settings, 
           title: "設定", 
           onClick: () => {
-            handleLogout;
+            router.push(`/client-view/client-preferences/${userId}`);
           }
         }
       ]
@@ -87,7 +87,7 @@ const Header = React.forwardRef<
           icon: Settings, 
           title: "ログアウト", 
           onClick: () => {
-            router.push(`/client-view/client-preferences/${userId}`);
+            handleLogout;
           }
         }
       ]

@@ -11,10 +11,10 @@ import { Label } from "@/context/components/ui/label"
 import { format } from "date-fns"
 import { Separator } from "@/context/components/ui/separator"
 import { useEffect, useState } from "react"
-import { useEnterpriseSettings } from "../../page"
 import { Timestamp } from "firebase/firestore"
 import { User } from "@/stores/User"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/context/components/ui/dialog"
+import { useEnterpriseSettings } from "../../contexts/enterpriseSettingsContext"
 
 type UserWithStringTimestamp = Omit<User, 'userBirthday'> & {
   userBirthday: string;

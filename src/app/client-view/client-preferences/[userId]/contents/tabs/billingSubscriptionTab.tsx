@@ -11,13 +11,13 @@ import { Label } from "@/context/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/context/components/ui/table"
 import { Progress } from "@/context/components/ui/progress"
 import { Separator } from "@/context/components/ui/separator"
-import { useEnterpriseSettings } from "../../page"
 import { Client } from "@/stores/Client"
 import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAppsContext } from '@/context/AppContext'
 import { db } from '@/lib/firebase'
+import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
 
 export function BillingSubscriptionTab() {
   const router = useRouter();

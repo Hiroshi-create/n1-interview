@@ -10,13 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/context/components/ui/table"
 import { Switch } from "@/context/components/ui/switch"
 import { Label } from "@/context/components/ui/label"
-import { useEnterpriseSettings } from "../../page"
 import { User } from "@/stores/User"
 import { format } from "date-fns"
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Separator } from "@/context/components/ui/separator"
 import AddUserDialog from '../components/addUserDialog'
+import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
 
 export function UserManagementTab() {
   const { userData, organizationData } = useEnterpriseSettings();
