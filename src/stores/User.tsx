@@ -7,7 +7,7 @@ export type User = {
     createdAt: Timestamp | FieldValue; // ユーザーアカウント作成日時
     userId: string;                 // ユーザーの一意識別子
     gender: string;                 // ユーザーの性別
-    userBirthday: Timestamp | null; // ユーザーの生年月日
+    userBirthday: Timestamp | FieldValue; // ユーザーの生年月日
     interviewCount: number;         // ユーザーが実施したインタビュー数
     organizationId: string;         // ユーザーが所属する組織のID（未所属の場合はnullまたは空文字列）
     organizationPosition: string;   // 組織内での役職（未所属の場合はnullまたは空文字列）
