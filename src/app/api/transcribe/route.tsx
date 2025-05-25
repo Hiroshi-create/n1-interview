@@ -97,7 +97,10 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json()
     console.log('Whisper API response:', data)
-    return NextResponse.json({ ...data, themeId });
+    return NextResponse.json({
+      ...(typeof data === "object" && data !== null ? data : {}),
+      themeId
+    });
   } catch (error) {
     console.error('Error:', error)
     return setCorsHeaders(NextResponse.json({ error: 'Whisper APIの呼び出しに失敗しました' }, { status: 500 }))
