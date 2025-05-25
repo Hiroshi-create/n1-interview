@@ -9,7 +9,7 @@ import { SubscriptionPlans } from "@/stores/SubscriptionPlans"
 import { useAppsContext } from "@/context/AppContext"
 import { Client } from "@/stores/Client"
 import { useRouter, useSearchParams } from "next/navigation"
-import stripe from "@/lib/stripe"
+import { getStripe } from "@/lib/stripe"
 
 const SelectSubscriptionPlans: React.FC = () => {
     const searchParams = useSearchParams();
@@ -132,7 +132,13 @@ const SelectSubscriptionPlans: React.FC = () => {
         });
         if (response.ok) {
           const data = await response.json();
-          await stripe?.redirectToCheckout({ sessionId: data.id });
+          const stripe = await getStripe();
+          if (stripe) {
+            await stripe.redirectToCheckout({ sessionId: data.id });
+          } else {
+            console.error('Stripe failed to initialize. Check your publishable key.');
+            alert('決済サービスの初期化に失敗しました。設定を確認してください。');
+          }
         } else {
           throw new Error('サブスクリプションの更新に失敗しました');
         }

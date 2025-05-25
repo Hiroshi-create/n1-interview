@@ -6,6 +6,9 @@ import { ArrowRight, Badge, BarChart3, Calendar, CheckCircle, Users, Zap } from 
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/context/components/ui/card"
 import SelectSubscriptionPlans from "../client-view/[userId]/subscriptions/components/selectSubsctiptionPlans"
+import { Suspense } from "react"
+
+const Loading = () => <div>読み込み中...</div>;
 
 const Home = () => {
   const router = useRouter()
@@ -393,5 +396,10 @@ const Home = () => {
   )
 }
 
-export default Home
-
+export default function HomePage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Home />
+    </Suspense>
+  );
+}

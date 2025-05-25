@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -17,6 +17,8 @@ type Inputs = {
   password: string
   totpCode?: string
 }
+
+const Loading = () => <div>読み込み中...</div>;
 
 const Login = () => {
   const searchParams = useSearchParams();
@@ -311,4 +313,10 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Login />
+    </Suspense>
+  );
+}

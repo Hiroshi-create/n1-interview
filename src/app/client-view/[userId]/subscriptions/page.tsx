@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/context/components/ui/card"
 import { Button } from "@/context/components/ui/button"
 import Link from "next/link"
-import stripe from "@/lib/stripe"
 import { headers } from "next/headers"
 import SelectSubscriptionPlans from "./components/selectSubsctiptionPlans"
 

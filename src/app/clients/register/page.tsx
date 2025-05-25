@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useForm, SubmitHandler } from "react-hook-form"
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -33,6 +33,8 @@ type UserInputs = {
   password: string
   phoneNumber: string
 }
+
+const Loading = () => <div>読み込み中...</div>;
 
 type FormInputs = ClientInputs & UserInputs
 
@@ -393,4 +395,10 @@ const Register = () => {
   )
 }
 
-export default Register
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Register />
+    </Suspense>
+  );
+}
