@@ -1,11 +1,20 @@
 "use client"
 
-import { GraphCanvas } from "reagraph";
+import dynamic from 'next/dynamic'
+
+// GraphCanvasコンポーネントを動的にインポートし、サーバーサイドレンダリング(SSR)を無効にする
+const DynamicGraphCanvas = dynamic(
+  () => import('reagraph').then(mod => mod.GraphCanvas),
+  {
+    ssr: false, // サーバーサイドレンダリングを無効にする
+    loading: () => <p>Loading graph...</p> // ローディング中の表示
+  }
+)
 
 export default function Home() {
   return (
     <div className="App">
-      <GraphCanvas
+      <DynamicGraphCanvas
         nodes={[
           {
             id: "n-1",
