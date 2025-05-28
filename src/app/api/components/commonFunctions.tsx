@@ -257,6 +257,8 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
       return lipSyncCache.get(fileName)!;
     }
 
+    // $ echo $GCP_PRIVATE_KEY コマンドで、環境変数が.env外で設定されていないか確認
+    // されている場合は $ unset GCP_PRIVATE_KEY で一時的に無効化可能
     // const endTimerSpeechClient = startTimer('Speech Client Creation');  // timer
     const client = new SpeechClient({
       projectId: process.env.GCP_PROJECT_ID,
@@ -265,6 +267,7 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
         client_email: process.env.GCP_CLIENT_EMAIL,
       },
     });
+
     // endTimerSpeechClient();  // timer
 
     if (!process.env.GCP_PROJECT_ID || !process.env.GCP_PRIVATE_KEY || !process.env.GCP_CLIENT_EMAIL) {
