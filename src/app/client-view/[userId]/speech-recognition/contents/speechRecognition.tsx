@@ -70,7 +70,6 @@ const SpeechRecognition = (): JSX.Element => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  const resultsEndRef = useRef<HTMLDivElement>(null);
 
   const cleanup = () => {
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -93,32 +92,47 @@ const SpeechRecognition = (): JSX.Element => {
     } else {
       setAnalysisResults([]);
       setInterimTranscript("");
+
       try {
         wsRef.current = new WebSocket(WEBSOCKET_URL);
-        wsRef.current.onopen = () => setIsListening(true);
-        wsRef.current.onclose = () => { cleanup(); setIsListening(false); };
-        wsRef.current.onerror = () => { cleanup(); setIsListening(false); };
 
-        // ▼▼▼【修正箇所】▼▼▼
+        wsRef.current.onopen = () => {
+          setIsListening(true);
+          console.log("WebSocket connected.");
+        };
+
+        wsRef.current.onclose = () => {
+          console.log("WebSocket disconnected.");
+          cleanup();
+          setIsListening(false);
+        };
+
+        wsRef.current.onerror = (error) => {
+          console.error("WebSocket Error:", error);
+          cleanup();
+          setIsListening(false);
+        };
+
         wsRef.current.onmessage = (event) => {
           const message = JSON.parse(event.data);
           if (message.type === 'final_analysis') {
-            // サーバーから送られてくる全データで状態を上書きする
-            setAnalysisResults(message.data);
+            setAnalysisResults(prev => [...prev, ...message.data]);
             setInterimTranscript("");
           } else if (message.type === 'interim_transcript') {
             setInterimTranscript(message.transcript);
           }
         };
-        // ▲▲▲【修正箇所】▲▲▲
 
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaStreamRef.current = stream;
+        
         const context = new AudioContext({ sampleRate: SAMPLE_RATE });
         audioContextRef.current = context;
+
         const source = context.createMediaStreamSource(stream);
         const processor = context.createScriptProcessor(BUFFER_SIZE, 1, 1);
         scriptProcessorRef.current = processor;
+
         processor.onaudioprocess = (e) => {
           const inputData = e.inputBuffer.getChannelData(0);
           const int16Array = new Int16Array(inputData.length);
@@ -129,21 +143,22 @@ const SpeechRecognition = (): JSX.Element => {
             wsRef.current.send(int16Array.buffer);
           }
         };
+
         source.connect(processor);
         processor.connect(context.destination);
+
       } catch (error) {
-        alert("マイクへのアクセスに失敗しました。");
+        console.error("Error accessing microphone:", error);
+        alert("マイクへのアクセスに失敗しました。ブラウザの設定を確認してください。");
       }
     }
   };
-  
-  useEffect(() => {
-    resultsEndRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'end' });
-  }, [analysisResults]);
 
   useEffect(() => {
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
       cleanup();
     };
   }, []);
@@ -156,14 +171,10 @@ const SpeechRecognition = (): JSX.Element => {
       fontFamily: 'sans-serif',
       background: '#f4f4f9'
     }}>
-      
-      <main style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        overflowX: 'auto',
-        padding: '1rem',
-      }}>
+
+      <main style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+        <h2 style={{ marginTop: 0, color: '#555' }}>分析結果</h2>
+        {/* カードを並べるためのコンテナ */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
           {analysisResults.map((result, index) => (
             <div key={index} style={{
@@ -193,15 +204,13 @@ const SpeechRecognition = (): JSX.Element => {
               </div>
             </div>
           ))}
-          <div ref={resultsEndRef} />
+          {interimTranscript && (
+            <div style={{ padding: '0 1rem 1rem 1rem', color: '#888', fontStyle: 'italic', flexShrink: 0, textAlign: 'center' }}>
+              認識中: {interimTranscript}
+            </div>
+          )}
         </div>
       </main>
-      
-      {interimTranscript && (
-          <div style={{ padding: '0 1rem 1rem 1rem', color: '#888', fontStyle: 'italic', flexShrink: 0, textAlign: 'center' }}>
-            認識中: {interimTranscript}
-          </div>
-      )}
 
       <footer style={{
         padding: '1rem',
