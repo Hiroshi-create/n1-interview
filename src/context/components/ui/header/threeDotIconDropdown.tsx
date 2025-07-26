@@ -40,6 +40,13 @@ export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdown
                 router.push(`/client-view/${userId}/test-chat`);
               },
             },
+            {
+              icon: Settings,
+              title: "音声認識",
+              onClick: () => {
+                router.push(`/client-view/${userId}/speech-recognition`);
+              },
+            },
           ],
         },
       ];
