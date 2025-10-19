@@ -98,8 +98,8 @@ const PrivacyPolicy: React.FC = () => {
     return (
         <div className="px-6">
             <div className="prose max-w-none text-gray-700">
-                <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]} 
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
                     components={{
                         h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-8 mb-4 pb-2 border-b border-gray-200" {...props} />,
                         h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-6 mb-3" {...props} />,
