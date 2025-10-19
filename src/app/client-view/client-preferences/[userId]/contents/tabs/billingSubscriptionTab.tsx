@@ -18,13 +18,18 @@ import { useRouter } from 'next/navigation'
 import { useAppsContext } from '@/context/AppContext'
 import { db } from '@/lib/firebase'
 import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 export function BillingSubscriptionTab() {
   const router = useRouter();
   const { userId } = useAppsContext();
   const { organizationData } = useEnterpriseSettings();
+  const toast = useToast();
   const [formData, setFormData] = useState<Client | null>(null);
   const [planName, setPlanName] = useState('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   useEffect(() => {
     if (organizationData) {
@@ -103,6 +108,7 @@ export function BillingSubscriptionTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true);
     try {
       const response = await fetch('/api/client_preferences/billingSubscription', {
         method: 'POST',
@@ -115,13 +121,15 @@ export function BillingSubscriptionTab() {
         }),
       })
       if (response.ok) {
-        alert('請求と契約設定が更新されました')
+        toast.success('請求と契約設定が更新されました')
       } else {
         throw new Error('設定の更新に失敗しました')
       }
     } catch (error) {
       console.error('エラー:', error)
-      alert('設定の更新中にエラーが発生しました')
+      toast.error('設定の更新中にエラーが発生しました')
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -135,6 +143,7 @@ export function BillingSubscriptionTab() {
     e.preventDefault();
     e.stopPropagation();
     if (organizationData?.subscriptionStatus === "active") {
+      setIsCancelling(true);
       try {
         const response = await fetch('/api/stripe_portal', {
           method: 'POST',
@@ -153,7 +162,9 @@ export function BillingSubscriptionTab() {
         }
       } catch (error) {
         console.error('エラー:', error);
-        alert('サブスクリプションの更新中にエラーが発生しました');
+        toast.error('サブスクリプションの更新中にエラーが発生しました');
+      } finally {
+        setIsCancelling(false);
       }
     }
   }
@@ -358,7 +369,7 @@ export function BillingSubscriptionTab() {
           <Button type="button" variant="outline">
             変更を破棄
           </Button>
-          <Button type="submit">設定を保存</Button>
+          <LoadingButton type="submit" loading={isLoading} loadingText="保存中...">設定を保存</LoadingButton>
         </div>
       </form>
     </div>

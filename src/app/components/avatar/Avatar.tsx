@@ -1,12 +1,35 @@
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { button, useControls } from "leva";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { useChat } from "../users/Chat";
 import { useAppsContext } from "@/context/AppContext";
+import type { LipSync } from "@/stores/Message";
 
-const facialExpressions = {
+// Three.js型拡張
+interface SkinnedMesh extends THREE.SkinnedMesh {
+  morphTargetDictionary?: { [key: string]: number };
+  morphTargetInfluences?: number[];
+}
+
+interface AvatarProps {
+  [key: string]: any;
+}
+
+interface FacialExpressionConfig {
+  [key: string]: number;
+}
+
+interface FacialExpressions {
+  [expression: string]: FacialExpressionConfig;
+}
+
+interface CorrespondingMapping {
+  [key: string]: string;
+}
+
+const facialExpressions: FacialExpressions = {
   default: {},
   smile: {
     browInnerUp: 0.17,
@@ -94,7 +117,7 @@ const facialExpressions = {
 //   U: "viseme_U",
 //   E: "viseme_AA",
 // };
-const corresponding = {
+const corresponding: CorrespondingMapping = {
   A: "viseme_PP",
   I: "viseme_I",
   U: "viseme_U",
@@ -125,7 +148,7 @@ const corresponding = {
 
 let setupMode = false;
 
-export function Avatar(props) {
+export const Avatar = React.memo(function Avatar(props: AvatarProps) {
   const { micPermission, requestMicPermission, hasInteracted, audioContext, initializeAudioContext } = useAppsContext();
   const { nodes, materials, scene } = useGLTF(
     "/models/64f1a714fe61576b46f27ca2.glb"
@@ -250,38 +273,50 @@ export function Avatar(props) {
     }
   }, [animation]);
 
-  const lerpMorphTarget = (target, value, speed = 0.1) => {
+  const lerpMorphTarget = useCallback((target: string, value: number, speed = 0.1) => {
     scene.traverse((child) => {
-      if (child.isSkinnedMesh && child.morphTargetDictionary) {
-        const index = child.morphTargetDictionary[target];
-        if (
-          index === undefined ||
-          child.morphTargetInfluences[index] === undefined
-        ) {
-          return;
-        }
-        child.morphTargetInfluences[index] = THREE.MathUtils.lerp(
-          child.morphTargetInfluences[index],
-          value,
-          speed
-        );
+      if ((child as any).isSkinnedMesh) {
+        const skinnedMesh = child as SkinnedMesh;
+        if (skinnedMesh.morphTargetDictionary) {
+          const index = skinnedMesh.morphTargetDictionary[target];
+          if (
+            index === undefined ||
+            !skinnedMesh.morphTargetInfluences ||
+            skinnedMesh.morphTargetInfluences[index] === undefined
+          ) {
+            return;
+          }
+          skinnedMesh.morphTargetInfluences[index] = THREE.MathUtils.lerp(
+            skinnedMesh.morphTargetInfluences[index],
+            value,
+            speed
+          );
 
-        if (!setupMode) {
-          try {
-            set({
-              [target]: value,
-            });
-          } catch (e) {}
+          if (!setupMode) {
+            try {
+              set({
+                [target]: value,
+              });
+            } catch (e) {}
+          }
         }
       }
     });
-  };
+  }, [scene, set]);
 
   const [blink, setBlink] = useState(false);
   const [winkLeft, setWinkLeft] = useState(false);
   const [winkRight, setWinkRight] = useState(false);
   const [facialExpression, setFacialExpression] = useState("");
-  const [audio, setAudio] = useState();
+  const [audio, setAudio] = useState<HTMLAudioElement | undefined>();
+
+  // iOS検出をメモ化
+  const isIOS = useMemo(() => {
+    return typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }, []);
+
+  // モーフターゲット値をメモ化
+  const correspondingValues = useMemo(() => Object.values(corresponding), []);
 
   useFrame(() => {
     // 表情制御の部分は変更なし
@@ -306,8 +341,6 @@ export function Avatar(props) {
       return;
     }
 
-    // iOS検出
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const appliedMorphTargets = [];
 
     if (message && lipsync && audio) {
@@ -347,14 +380,14 @@ export function Avatar(props) {
 
       // 適用されていないモーフターゲットをリセット
       if (!appliedMorphTarget) {
-        Object.values(corresponding).forEach(value => {
+        correspondingValues.forEach(value => {
           lerpMorphTarget(value, 0, isIOS ? 0.15 : 0.1);
         });
       }
     }
 
     // 未使用のモーフターゲットをリセット
-    Object.values(corresponding).forEach((value) => {
+    correspondingValues.forEach((value) => {
       if (appliedMorphTargets.includes(value)) {
         return;
       }
@@ -514,7 +547,7 @@ export function Avatar(props) {
       />
     </group>
   );
-}
+});
 
 useGLTF.preload("/models/64f1a714fe61576b46f27ca2.glb");
 useGLTF.preload("/models/animations.glb");

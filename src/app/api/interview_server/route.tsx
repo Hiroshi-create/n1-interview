@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '../../../lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
-import OpenAI from 'openai';
 import { Phase } from '@/context/interface/Phase';
+import { logger } from '../../../lib/logger';
+import { handleApiError, parseRequestBody } from '../../../lib/api-utils';
+import { SafeOpenAIClient } from '../../../lib/external-api';
+import { ValidationError, NotFoundError, withTimeout } from '../../../lib/error-handler';
+import { UsageTracker } from '../../../lib/subscription/usage-tracker';
+import { getOrganizationId } from '../../../lib/subscription/helpers';
+import { generateIndividualReport } from '../../../lib/report/auto-report-generator';
 
 interface RequestBody {
   message: string;
@@ -13,9 +19,8 @@ interface RequestBody {
   isInterviewEnded: boolean
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
-});
+// OpenAI API client with retry and circuit breaker
+const openaiClient = new SafeOpenAIClient();
 
 interface Message {
   text: string;
@@ -84,21 +89,37 @@ AI「具体的にどのサイズ（例: 直径40mm以下）なら許容できま
 };
 
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  
   try {
-    const { message: userMessage, selectThemeName, interviewRefPath, phases, isInterviewEnded }: RequestBody = await request.json();
+    // リクエストボディの安全な解析
+    const requestBody = await parseRequestBody<RequestBody>(request);
+    const { message: userMessage, selectThemeName, interviewRefPath, phases, isInterviewEnded } = requestBody;
+
+    // 入力データの検証（改善されたエラーハンドリング）
+    if (!interviewRefPath) {
+      throw new ValidationError('インタビューが指定されていません', { field: 'interviewRefPath' });
+    }
+
+    if (!selectThemeName) {
+      throw new ValidationError('テーマが指定されていません', { field: 'selectThemeName' });
+    }
 
     const interviewRef = adminDb.doc(interviewRefPath);
-    if (!interviewRef) {
-      console.error('インタビューが指定されていません');
-      return NextResponse.json({ error: 'インタビューが指定されていません' }, { status: 400 });
-    }
+    logger.debug('interview_server: 処理開始', { 
+      themeName: selectThemeName,
+      userMessage: userMessage ? 'provided' : 'empty',
+      phasesCount: phases.length 
+    });
 
     let context = "";
     let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
     let totalQuestionCount = 0;
 
     if (currentPhaseIndex >= phases.length) {
-      console.log("全てのフェーズが完了しました(1)");
+      logger.info("interview_server: 全てのフェーズが完了しました");
+      const duration = Date.now() - startTime;
+      logger.api('POST', '/api/interview_server', 200, duration);
       return NextResponse.json({ 
         message: "インタビューが完了しました。ありがとうございました。",
         isInterviewComplete: true 
@@ -112,7 +133,7 @@ export async function POST(request: Request) {
       const snapshot = await botMessagesQuery.count().get();
       totalQuestionCount = snapshot.data().count;
     } catch (error) {
-      console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
+      logger.error('interview_server: Firebaseからのデータ取得エラー', error as Error);
       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
     }
 
@@ -125,7 +146,7 @@ export async function POST(request: Request) {
         }
       });
     } catch (error) {
-      console.error('コンテキストの取得中にエラーが発生しました:', error);
+      logger.error('interview_server: コンテキスト取得エラー', error as Error);
       return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
     }
 
@@ -140,21 +161,53 @@ export async function POST(request: Request) {
         }];
         return NextResponse.json({ messages });
       } catch (error) {
-        console.error('初期メッセージの生成中にエラーが発生しました:', error);
+        logger.error('interview_server: 初期メッセージ生成エラー', error as Error);
         return NextResponse.json({ error: '初期メッセージの生成に失敗しました' }, { status: 500 });
       }
     }
 
-    console.log("現フェーズのindex番号 : " + currentPhaseIndex);
-    console.log("現フェーズのtheme : " + selectThemeName);
+    logger.debug('interview_server: フェーズ情報', { 
+      currentPhaseIndex,
+      themeName: selectThemeName 
+    });
     let currentPhase = phases[currentPhaseIndex];
     if (isInterviewEnded) {
       phases[currentPhaseIndex].isChecked = true;
       currentPhaseIndex++;
+      
+      // ========== インタビュー終了時の同時実行数デクリメント ==========
+      try {
+        // インタビューのintervieweeIdを取得
+        const interviewDoc = await interviewRef.get();
+        if (interviewDoc.exists) {
+          const interviewData = interviewDoc.data();
+          const intervieweeId = interviewData?.intervieweeId;
+          
+          if (intervieweeId) {
+            const organizationId = await getOrganizationId(intervieweeId);
+            
+            if (organizationId) {
+              const usageTracker = new UsageTracker();
+              await usageTracker.decrementConcurrent(organizationId, 'interviews');
+              logger.info('interview_server: インタビュー終了・同時実行数デクリメント', {
+                organizationId,
+                interviewRefPath,
+                intervieweeId
+              });
+            }
+          }
+        }
+      } catch (error) {
+        logger.error('interview_server: 同時実行数のデクリメントに失敗', error as Error, {
+          interviewRefPath
+        });
+        // エラーが発生してもインタビュー処理は継続
+      }
+      // ========== 同時実行数デクリメント終了 ==========
     }
 
     if (currentPhaseIndex >= phases.length) {
-      console.log("全てのフェーズが完了しました(2)");
+      logger.info('interview_server: 全てのフェーズが完了しました');
       return NextResponse.json({ 
         message: "インタビューが完了しました。ありがとうございました。",
         isInterviewComplete: true 
@@ -162,7 +215,7 @@ export async function POST(request: Request) {
     }
 
     currentPhase = phases[currentPhaseIndex];
-    console.log("何個目の質問か(サーバーサイド) : " + currentPhaseIndex);
+    logger.debug('interview_server: 質問番号', { questionIndex: currentPhaseIndex });
 
     const currentTemplate = currentPhase.template;
     const prompt = templates[currentTemplate as keyof typeof templates]
@@ -184,21 +237,93 @@ export async function POST(request: Request) {
           await interviewRef.update({
             interviewCollected: true
           });
+          
+          // ========== インタビュー完了時の同時実行数デクリメント ==========
+          try {
+            const interviewDoc = await interviewRef.get();
+            if (interviewDoc.exists) {
+              const interviewData = interviewDoc.data();
+              const intervieweeId = interviewData?.intervieweeId;
+              
+              if (intervieweeId) {
+                const organizationId = await getOrganizationId(intervieweeId);
+                
+                if (organizationId) {
+                  const usageTracker = new UsageTracker();
+                  await usageTracker.decrementConcurrent(organizationId, 'interviews');
+                  logger.info('interview_server: インタビュー完了・同時実行数デクリメント', {
+                    organizationId,
+                    interviewRefPath,
+                    template: 'thank_you'
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            logger.error('interview_server: 完了時の同時実行数デクリメントに失敗', error as Error);
+          }
+          // ========== 同時実行数デクリメント終了 ==========
+          
+          // ========== 自動レポート生成 ==========
+          try {
+            logger.info('interview_server: 自動レポート生成を開始', {
+              interviewRefPath,
+              theme: selectThemeName
+            });
+            
+            // 非同期でレポート生成（インタビュー終了を遅延させない）
+            generateIndividualReport(
+              interviewRefPath,
+              selectThemeName,
+              { skipIfExists: true }
+            ).then(result => {
+              if (result.success) {
+                logger.info('interview_server: 自動レポート生成成功', {
+                  interviewRefPath,
+                  reportId: result.reportId
+                });
+              } else {
+                logger.error('interview_server: 自動レポート生成失敗', undefined, {
+                  interviewRefPath,
+                  error: result.error
+                });
+              }
+            }).catch(error => {
+              logger.error('interview_server: 自動レポート生成エラー', error as Error, {
+                interviewRefPath
+              });
+            });
+          } catch (error) {
+            // レポート生成のエラーはインタビュー終了に影響させない
+            logger.error('interview_server: レポート生成開始エラー', error as Error, {
+              interviewRefPath
+            });
+          }
+          // ========== 自動レポート生成終了 ==========
+          
           return templates.thank_you;
         }
-        const gptResponse = await openai.chat.completions.create({
+        const gptResponse = await openaiClient.createChatCompletion({
           messages: [
             { role: "system", content: prompt },
             { role: "user", content: userMessage }
           ],
           model: "gpt-4"
-        });
+        }, { timeout: 30000, maxRetries: 3 });
         return gptResponse.choices[0].message.content ?? null;
       },
       templates
     );
 
     const responseData = await response.json();
+
+    const duration = Date.now() - startTime;
+    logger.api('POST', '/api/interview_server', 200, duration);
+    logger.debug('interview_server: 処理完了', {
+      messagesCount: responseData.messages.length,
+      currentPhaseIndex,
+      totalQuestionCount
+    });
 
     return NextResponse.json({
       messages: responseData.messages,
@@ -207,239 +332,8 @@ export async function POST(request: Request) {
       phases: phases
     });
   } catch (error) {
-    console.error('予期せぬエラーが発生しました:', error);
-    return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });
+    const duration = Date.now() - startTime;
+    logger.api('POST', '/api/interview_server', 500, duration);
+    return handleApiError(error, 'interview_server');
   }
 }
-
-
-
-
-
-
-
-// import { NextResponse } from 'next/server';
-// import { addDoc, collection, doc, serverTimestamp, getDocs, query, orderBy, where, getCountFromServer, getDoc } from 'firebase/firestore';
-// import { db } from '../../../../firebase';
-// import { Theme } from '@/stores/Theme';
-// import { handleUserMessage, audioFileToBase64, readJsonTranscript } from '../components/commonFunctions';
-// import OpenAI from 'openai';
-// import { Phase } from '@/context/interface/Phase';
-// import { interview_phases } from '@/context/components/lists';
-// import { constants } from 'node:fs/promises';
-
-// const openai = new OpenAI({
-//   apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
-// });
-
-// interface Message {
-//   text: string;
-//   audio: string;
-//   lipsync: any;
-//   facialExpression: string;
-//   animation: string;
-// }
-
-// const templates = {
-//   interview_prompt: `
-// あなたは、0-1の商品アイデアを発想するためのインタビューを行うAIアシスタントです。
-// 以下のアルゴリズムに従って、ユーザーにインタビューを行い、ニーズを深掘りしてください。
-
-// これまでの会話コンテキスト: {context}
-
-// ## インタビューアルゴリズム
-// 1. ユーザにテーマを聞く
-// 2. 「これから{theme}を買う場合、どんな特徴を持った{theme}を求めますか？」と質問する
-// 3. ユーザの回答から特徴を抽出する
-// 4. 「他社製品にそれを満たす{theme}があるか知っていますか？（yes/no）」と質問する
-// 5. yesの場合
-//    - 知っている{theme}の他社製品を挙げてもらう
-//    - 「それを購入する予定はありますか？（yes/no）」と質問する
-//      - yesの場合 -> 2.に戻る
-//      - noの場合 -> 「なぜ購入しないのか、理由をすべて教えてください」と質問する
-//        - 理由を聞き、それぞれ「なぜ◯◯と思うのか？」と深掘りする
-//        - 2.に戻る
-// 6. noの場合
-//    - （AIが他社製品に特徴を満たすテーマがあるか調べる）
-//    - 存在する場合
-//      - 商品を紹介する
-//      - 「購入したいと思うか？（yes/no）」と質問する
-//        - yesの場合 -> 2.に戻る
-//        - noの場合 -> 「なぜ購入しないのか、理由をすべて教えてください」と質問する
-//          - 理由を聞き、それぞれ「なぜ◯◯と思うのか？」と深掘りする
-//          - 2.に戻る
-//    - 存在しない場合
-//      - 抽出した特徴ごとに「△△の特徴について、要望を具体的に教えてください」と質問する
-//      - 「なぜ、その特徴が必要か、理由を全て答えてください」と質問する
-//      - 理由を聞き、それぞれ「なぜ◯◯と思うのか？」と深掘りする
-//      - 2.に戻る
-
-// ## インタビュー例
-// 質問者: これからスマートウォッチを買う場合、どんな特徴を持ったスマートウォッチを求めますか？
-
-// ユーザー: うーん、そうですね…健康管理ができるのはもちろんですが、やっぱりデザインがおしゃれなものがいいです。毎日身につけるものですし、服装に合わせやすいものがいいなと思います。
-
-// 質問者: （ユーザーは「デザイン」を重視している。 ->  次に、他社製品の有無を確認）なるほど、デザイン性重視ですね。他社製品にそれを満たすスマートウォッチがあるか知っていますか？
-
-// ユーザー: ええ、いくつか知っています。Apple WatchとかGARMINとか…
-
-// 質問者: （ユーザーは既存のスマートウォッチを認識している。 -> 次に、購入意向を確認）それらのスマートウォッチを購入する予定はありますか？
-
-// ユーザー: いえ、今のところはないです。
-
-// 質問者: （ユーザーに購入意向がない -> 次に、その理由を聞く）なぜ購入しないのでしょうか？理由をすべて教えてください。
-// ...
-
-// ## その他
-// - ユーザの回答から「特徴」を抽出する際には、名詞や形容詞をキーワードとして抽出してください。
-// - 必要に応じて、質問の順番や表現を変更しても構いません。
-// - ユーザのニーズを深掘りすることを意識して、インタビューを進めてください。
-//   `,
-//   thank_you: `インタビューにご協力いただき、ありがとうございました。貴重なご意見を頂戴し、大変参考になりました。`
-// };
-
-// export async function POST(request: Request) {
-//   try {
-//     const { message: userMessage, interviewRefPath, phases }: {
-//       message: string;
-//       interviewRefPath: string;
-//       phases: Phase[];
-//     } = await request.json();
-
-//     const interviewRef = doc(db, interviewRefPath);
-//     if (!interviewRef) {
-//       console.error('インタビューが指定されていません');
-//       return NextResponse.json({ error: 'インタビューが指定されていません' }, { status: 400 });
-//     }
-
-//     let context = "";
-//     let currentPhaseIndex = phases.findIndex(phase => !phase.isChecked);
-//     let totalQuestionCount = 0;
-
-//     // フェーズが全て完了しているかチェック
-//     if (currentPhaseIndex >= phases.length) {
-//       console.log("全てのフェーズが完了しました");
-//       return NextResponse.json({ 
-//         message: "インタビューが完了しました。ありがとうございました。",
-//         isInterviewComplete: true 
-//       });
-//     }
-
-//     const themeDocSnap = await getDoc(interviewRef);
-//     if (!themeDocSnap.exists()) {
-//       console.error('指定されたテーマIDのドキュメントが存在しません');
-//       return NextResponse.json({ error: '指定されたテーマIDのドキュメントが存在しません' }, { status: 404 });
-//     }
-
-//     const themeData = themeDocSnap.data() as Theme;
-//     const theme = themeData.theme;
-//     console.log("theme : " + theme);
-
-//     const messageCollectionRef = collection(interviewRef, "messages");
-
-//     try {
-//       const botMessagesQuery = query(
-//         messageCollectionRef,
-//         where("type", "==", "interview"),
-//         where("sender", "==", "bot")
-//       );
-//       const snapshot = await getCountFromServer(botMessagesQuery);
-//       totalQuestionCount = snapshot.data().count;
-//     } catch (error) {
-//       console.error('Firebaseからのデータ取得中にエラーが発生しました:', error);
-//       return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 500 });
-//     }
-
-//     try {
-//       const q = query(messageCollectionRef, orderBy("createdAt", "asc"));
-//       const querySnapshot = await getDocs(q);
-//       querySnapshot.forEach((doc) => {
-//         const data = doc.data();
-//         context += `\n${data.sender === "bot" ? "Bot" : "User"}: ${data.text}`;
-//       });
-//     } catch (error) {
-//       console.error('コンテキストの取得中にエラーが発生しました:', error);
-//       return NextResponse.json({ error: 'コンテキストの取得に失敗しました' }, { status: 500 });
-//     }
-
-//     if (!userMessage) {
-//       try {
-//         const messages: Message[] = [{
-//           text: 'インタビューを始めます。まずはあなたの基本的なプロフィールについて教えてください。',
-//           audio: await audioFileToBase64('intro_0.wav'),
-//           lipsync: await readJsonTranscript(totalQuestionCount),
-//           facialExpression: 'smile',
-//           animation: 'Talking_1',
-//         }];
-//         return NextResponse.json({ messages });
-//       } catch (error) {
-//         console.error('初期メッセージの生成中にエラーが発生しました:', error);
-//         return NextResponse.json({ error: '初期メッセージの生成に失敗しました' }, { status: 500 });
-//       }
-//     }
-
-//     const currentPhase = phases[currentPhaseIndex];
-//     // if ((currentPhase.type === "two_choices" && userMessage.toLowerCase() === "はい") ||
-//     //     (currentPhase.type === "free_response" && userMessage.trim() !== "")) {
-//     //   phases[currentPhaseIndex].isChecked = true;
-//     //   currentPhaseIndex++;
-//     // }
-
-//     // 次のフェーズが存在するかチェック
-//     if (currentPhaseIndex >= phases.length) {
-//       console.log("全てのフェーズが完了しました");
-//       return NextResponse.json({ 
-//         message: "インタビューが完了しました。ありがとうございました。",
-//         isInterviewComplete: true 
-//       });
-//     }
-
-//     // currentPhase = phases[currentPhaseIndex];
-//     // console.log("何個目の質問か(サーバーサイド) : " + currentPhaseIndex);
-
-//     const currentTemplate = currentPhase.template;
-//     const prompt = templates[currentTemplate as keyof typeof templates]
-//       .replace("{theme}", theme)
-//       .replace("{context}", context);
-
-//     console.log("プロンプト : " + prompt)
-
-//     const response = await handleUserMessage(
-//       userMessage,
-//       "interview",
-//       "interviewEnd",
-//       interviewRef,
-//       messageCollectionRef,
-//       context,
-//       totalQuestionCount,
-//       currentPhaseIndex,
-//       phases,
-//       async (updatedContext, userMessage) => {
-//         if (currentTemplate === "thank_you") {
-//           return templates.thank_you;
-//         }
-//         const gptResponse = await openai.chat.completions.create({
-//           messages: [
-//             { role: "system", content: prompt },
-//             { role: "user", content: userMessage }
-//           ],
-//           model: "gpt-4o-mini-2024-07-18"
-//         });
-//         return gptResponse.choices[0].message.content ?? null;
-//       },
-//       templates
-//     );
-
-//     const responseData = await response.json();
-
-//     return NextResponse.json({
-//       messages: responseData.messages,
-//       currentPhaseIndex: currentPhaseIndex,
-//       totalQuestionCount: totalQuestionCount,
-//       phases: phases
-//     });
-//   } catch (error) {
-//     console.error('予期せぬエラーが発生しました:', error);
-//     return NextResponse.json({ error: '予期せぬエラーが発生しました' }, { status: 500 });
-//   }
-// }

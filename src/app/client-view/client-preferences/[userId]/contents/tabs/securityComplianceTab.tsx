@@ -14,10 +14,14 @@ import { Progress } from '@/context/components/ui/progress'
 import { Timestamp } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 export function SecurityComplianceTab() {
   const { organizationData } = useEnterpriseSettings();
+  const toast = useToast();
   const [formData, setFormData] = useState<Client | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (organizationData) {
@@ -56,6 +60,7 @@ export function SecurityComplianceTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true);
     try {
       const response = await fetch('/api/client_preferences/securityCompliance', {
         method: 'POST',
@@ -68,13 +73,15 @@ export function SecurityComplianceTab() {
         }),
       })
       if (response.ok) {
-        alert('セキュリティとコンプライアンス設定が更新されました')
+        toast.success('セキュリティとコンプライアンス設定が更新されました')
       } else {
         throw new Error('設定の更新に失敗しました')
       }
     } catch (error) {
       console.error('エラー:', error)
-      alert('設定の更新中にエラーが発生しました')
+      toast.error('設定の更新中にエラーが発生しました')
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -206,7 +213,7 @@ export function SecurityComplianceTab() {
           <Button type="button" variant="outline">
             変更を破棄
           </Button>
-          <Button type="submit">設定を保存</Button>
+          <LoadingButton type="submit" loading={isLoading} loadingText="保存中...">設定を保存</LoadingButton>
         </div>
       </form>
     </div>

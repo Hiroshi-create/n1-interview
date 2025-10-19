@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore'
+import { logger } from './logger';
 
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
@@ -10,12 +11,12 @@ const serviceAccount = {
 
 let adminApp;
 if (getApps().length === 0) {
-  console.log('サーバーサイド Firebase 初期化');
+  logger.info('サーバーサイド Firebase 初期化');
   adminApp = initializeApp({
     credential: cert(serviceAccount),
   });
 } else {
-  console.log('サーバーサイド Firebase 初期化済');
+  logger.info('サーバーサイド Firebase 初期化済');
   adminApp = getApps()[0];
 }
 
@@ -35,10 +36,10 @@ export const enableTOTPMFA = async () => {
         }]
       }
     });
-    console.log('プロジェクトレベルで TOTP MFA を有効化しました。', result);
+    logger.info('プロジェクトレベルで TOTP MFA を有効化しました。');
     return result;
   } catch (error) {
-    console.error('プロジェクトレベルで TOTP MFA の有効化に失敗しました:', error);
+    logger.error('プロジェクトレベルで TOTP MFA の有効化に失敗しました', error as Error);
     throw error;
   }
 };

@@ -342,20 +342,29 @@ export const useChat = () => {
   return context;
 };
 
-const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = ({ message, style }) => {
+const MessageBox: React.FC<{ message: Message; style: React.CSSProperties }> = React.memo(({ message, style }) => {
+  const containerClass = useMemo(() => 
+    `mb-4 flex ${message.sender === "user" ? "justify-start" : "justify-end"}`, 
+    [message.sender]
+  );
+  
+  const bubbleProps = useMemo(() => ({
+    direction: message.sender === "user" ? ("bottom-l" as const) : ("bottom-r" as const),
+    backgroundColor: message.sender === "user" ? "rgb(34, 197, 94)" : "rgb(59, 130, 246)",
+    textColor: "white",
+    maxWidth: "300px"
+  }), [message.sender]);
+
   return (
-    <div className={`mb-4 flex ${message.sender === "user" ? "justify-start" : "justify-end"}`}>
-      <Bubble
-        direction={message.sender === "user" ? "bottom-l" : "bottom-r"}
-        backgroundColor={message.sender === "user" ? "rgb(34, 197, 94)" : "rgb(59, 130, 246)"}
-        textColor="white"
-        maxWidth="300px"
-      >
+    <div className={containerClass}>
+      <Bubble {...bubbleProps}>
         {message.text}
       </Bubble>
     </div>
   );
-};
+});
+
+MessageBox.displayName = 'MessageBox';
 
 const Chat: React.FC = () => {
   const router = useRouter();
@@ -425,12 +434,12 @@ const Chat: React.FC = () => {
     }
   }, [showConfirmation]);
 
-  const handleConfirmation = () => {
+  const handleConfirmation = useCallback(() => {
     setShowConfirmation(!showConfirmation);
-  };
+  }, [showConfirmation]);
 
   // ホームに戻る
-  const handleConfirmationResponse = (response: 'yes' | 'no') => {
+  const handleConfirmationResponse = useCallback((response: 'yes' | 'no') => {
     if (response === 'yes' && isInterviewCollected) {
       if (user) {
         router.push(`/auto-interview/${userId}`);
@@ -445,29 +454,29 @@ const Chat: React.FC = () => {
       }
     }
     setShowConfirmation(false);
-  };
+  }, [isInterviewCollected, user, router, userId, setUserId, setSelectThemeName, setSelectedInterviewId, setSelectedInterviewRef, setSelectedThemeId, setSelectedThemeRef]);
 
   // 選択ボタン
-  const handleSelect = (option: string) => {
+  const handleSelect = useCallback((option: string) => {
     if (option === "はい" || option === "いいえ") {
       chat(option);
     } else if (option === "開始") {
       setIsOperationCheck(true);
     }
     setShowSingleSelect(false);
-  };
+  }, [chat, setIsOperationCheck, setShowSingleSelect]);
 
-  const copyToClipboard = () => {
+  const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(temporaryId).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 3000);
     });
-  };
+  }, [temporaryId]);
 
-  const handleCopyClick = (e: React.MouseEvent) => {
+  const handleCopyClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     copyToClipboard();
-  };
+  }, [copyToClipboard]);
 
   return (
     <div className="h-full flex flex-col">

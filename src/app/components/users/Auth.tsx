@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/context/components/ui/button'
@@ -8,6 +8,8 @@ import { Card } from '@/context/components/ui/card'
 import { useAppsContext } from '@/context/AppContext'
 import { doc } from 'firebase/firestore'
 import { db } from '../../../lib/firebase'
+import { LoadingButton } from '@/context/components/ui/loading'
+import { useToast } from '@/context/ToastContext'
 
 interface AuthProps {
   acceptingGuestUsers?: boolean
@@ -25,6 +27,8 @@ interface InitializeGuestUserInterviewResponse {
 const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const toast = useToast();
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
   const {
     setUserId,
     setSelectThemeName,
@@ -37,7 +41,7 @@ const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
     const uuidRegex = /\/guest-user\/([0-9a-fA-F-]{36})/;
     const match = pathname.match(uuidRegex);
     if (!match) {
-      alert('インタビューの情報取得エラー');
+      toast.error('エラー', 'インタビュー情報の取得に失敗しました。URLを確認してください。');
       return "";
     }
     setSelectedThemeId(match[1]);
@@ -64,6 +68,7 @@ const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
 
   const handleGuestLogin = async () => {
     const themeId = getThemeId();
+    setIsGuestLoading(true);
     try {
       const response = await fetch('/api/initialize_guest_user_interview', {
         method: 'POST',
@@ -93,7 +98,9 @@ const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
       }
     } catch (error) {
       console.error('ゲストユーザーログインエラー:', error);
-      alert('ゲストユーザーログインエラー');
+      toast.error('ログインエラー', 'ゲストユーザーログインに失敗しました');
+    } finally {
+      setIsGuestLoading(false);
     }
   }
 
@@ -115,13 +122,14 @@ const Auth: React.FC<AuthProps> = ({ acceptingGuestUsers = false }) => {
               </Button>
               
               {acceptingGuestUsers && (
-                <Button
-                  variant="outline"
+                <LoadingButton
+                  loading={isGuestLoading}
+                  loadingText="ゲストユーザー作成中..."
                   className="w-full py-7 text-lg font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 transition-colors duration-300 rounded-lg shadow-sm hover:shadow-md flex items-center justify-center"
                   onClick={handleGuestLogin}
                 >
                   <span>ゲストユーザーでインタビューに回答</span>
-                </Button>
+                </LoadingButton>
               )}
               
               <div className="relative my-8">

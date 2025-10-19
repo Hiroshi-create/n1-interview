@@ -4,6 +4,12 @@
             "includeFiles": "bin/**",
             "maxDuration": 60
         }
-    }
+    },
+    "crons": [
+        {
+            "path": "/api/cron/generate-missing-reports",
+            "schedule": "*/10 * * * *"
+        }
+    ]
 }
   

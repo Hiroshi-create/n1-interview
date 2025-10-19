@@ -11,6 +11,8 @@ import { auth } from '@/lib/firebase'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { getTenantIdForDomain } from '@/context/lib/getTenantIdForDomain'
 import { NextResponse } from 'next/server'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type ClientInputs = {
   organizationType: string
@@ -42,14 +44,17 @@ const Register = () => {
   const searchParams = useSearchParams();
   const planType = searchParams.get('') || null;
   const router = useRouter();
+  const toast = useToast();
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<FormInputs>();
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const onSubmit: SubmitHandler<FormInputs> = async (data) => {
+    setIsLoading(true);
     try {
       const domain = data.email.split('@')[1];
       const tenantId = await getTenantIdForDomain(domain);
@@ -109,11 +114,14 @@ const Register = () => {
         }
       } else {
         const errorData = await response.json();
-        alert(errorData.message || '登録に失敗しました。');
+        toast.error('登録に失敗しました', errorData.message || '予期せぬエラーが発生しました。');
       }
     } catch (error) {
       console.error('登録エラー:', error);
+      toast.error('登録処理中にエラーが発生しました');
       setError('登録処理中にエラーが発生しました。');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -376,12 +384,14 @@ const Register = () => {
             </div>
           )}
 
-          <button
+          <LoadingButton
             type="submit"
+            loading={isLoading}
+            loadingText="登録中..."
             className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
           >
             新規登録
-          </button>
+          </LoadingButton>
 
           <div className="text-center mt-4">
             <span className="text-gray-600">既にアカウントをお持ちですか？</span>

@@ -8,6 +8,8 @@ import { signInWithEmailAndPassword } from 'firebase/auth'
 import { useAppsContext } from '@/context/AppContext'
 import { auth } from '../../../../lib/firebase'
 import { Header } from '@/context/components/ui/header/header'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type Inputs = {
     email: string
@@ -18,6 +20,8 @@ const Login = () => {
     const router = useRouter();
     const { selectedThemeId } = useAppsContext();
     const { setIsUserAccount } = useAppsContext();
+    const toast = useToast();
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
     const {
         register,
@@ -26,21 +30,22 @@ const Login = () => {
     } = useForm<Inputs>();
 
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
-        await signInWithEmailAndPassword(auth, data.email, data.password).then(
-            (userCredential) => {
-                const user = userCredential.user;
-                setIsUserAccount(true);
-
-                // router.push(`/auto-interview/${user.uid}/${selectedThemeId}/${interviewId}/description`);
-                router.push(`/auto-interview/${user.uid}/${selectedThemeId}`);
-            }
-        ).catch((error) => {
+        setIsLoading(true);
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+            const user = userCredential.user;
+            setIsUserAccount(true);
+            toast.success("ログイン成功");
+            router.push(`/auto-interview/${user.uid}/${selectedThemeId}`);
+        } catch (error: any) {
             if(error.code === "auth/invalid-credential") {
-                alert("ユーザーが登録されていません。")
+                toast.error("ユーザーが登録されていません");
             } else {
-                alert(error.message)
+                toast.error("ログインエラー", error.message);
             }
-        });
+        } finally {
+            setIsLoading(false);
+        }
     }
 
     return (
@@ -90,11 +95,14 @@ const Login = () => {
                         {errors.password && <span className='text-red-600 text-sm'>{errors.password.message}</span>}
                     </div>
                     <div className='flex justify-end'>
-                        <button
-                        type='submit'  // フォームで送信されると認識
-                        className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'>
+                        <LoadingButton
+                            type='submit'
+                            loading={isLoading}
+                            loadingText="ログイン中..."
+                            className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'
+                        >
                             ログイン
-                        </button>
+                        </LoadingButton>
                     </div>
                     <div className='mt-4'>
                         <span className='text-gray-600 text-sm'>

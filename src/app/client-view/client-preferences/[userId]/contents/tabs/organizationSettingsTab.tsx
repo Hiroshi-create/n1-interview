@@ -16,11 +16,15 @@ import { format } from "date-fns"
 import { Separator } from "@/context/components/ui/separator"
 import { Client } from '@/stores/Client';
 import { organizationTypes } from '@/context/components/lists';
+import { useToast } from '@/context/ToastContext';
+import { LoadingButton } from '@/context/components/ui/loading';
 
 export function OrganizationSettingsTab() {
   const { userId } = useAppsContext();
+  const toast = useToast();
   const [inOrganization, setInOrganization] = useState<boolean | null>(null);
   const [formData, setFormData] = useState<Client | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const checkUserOrganization = async () => {
@@ -69,6 +73,7 @@ export function OrganizationSettingsTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
       const response = await fetch('/api/client_preferences/organizationSettings', {
         method: 'POST',
@@ -81,13 +86,15 @@ export function OrganizationSettingsTab() {
         }),
       });
       if (response.ok) {
-        alert('組織設定が更新されました');
+        toast.success('組織設定が更新されました');
       } else {
         throw new Error('組織設定の更新に失敗しました');
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert('組織設定の更新中にエラーが発生しました');
+      toast.error('組織設定の更新中にエラーが発生しました');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -227,7 +234,7 @@ export function OrganizationSettingsTab() {
           <Button type="button" variant="outline">
             変更を破棄
           </Button>
-          <Button type="submit">設定を保存</Button>
+          <LoadingButton type="submit" loading={isLoading} loadingText="保存中...">設定を保存</LoadingButton>
         </div>
       </form>
     </div>

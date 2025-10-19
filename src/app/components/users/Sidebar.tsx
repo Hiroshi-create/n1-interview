@@ -16,7 +16,7 @@ import {
 import Link from "next/link"
 import { useAppsContext } from "@/context/AppContext"
 import { db } from "../../../lib/firebase"
-import { Brain, X } from 'lucide-react';
+import { Brain, X, Loader2 } from 'lucide-react';
 import { collection, DocumentReference, doc as firestoreDoc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useRouter } from 'next/navigation'
 import { isValidThemeData } from '@/context/components/isValidDataCheck'
@@ -35,6 +35,8 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     setSelectedThemeRef,
     setSelectThemeName,
   } = useAppsContext();
+  const [loadingThemeId, setLoadingThemeId] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
   const getHref = (href: string) => {
     return userId ? href.replace('[userId]', userId) : '#';
@@ -103,11 +105,21 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
     }
   }, [user, userId]);
 
-  const selectTheme = (themeNav: ThemeNav) => {
+  const selectTheme = async (themeNav: ThemeNav) => {
     const theme = themeNav.theme;
+    setLoadingThemeId(theme.themeId);
+    
+    // ナビゲーション前にローディング表示
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
     setSelectedThemeRef(themeRefs[theme.themeId]);
     setSelectedThemeId(theme.themeId);
     setSelectThemeName(theme.theme);
+    
+    // ナビゲーション後にクリア
+    setTimeout(() => {
+      setLoadingThemeId(null);
+    }, 500);
   }
 
   return (
@@ -115,10 +127,20 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
       <div className='flex-grow' {...props}>
         <SidebarHeader className="h-14 border-b border-slate-700 flex flex-row items-center justify-start">
           <button 
-            onClick={toggleMenu}
-            className="px-4 text-slate-300 hover:text-slate-100 transition-colors duration-200"
+            onClick={async () => {
+              setIsClosing(true);
+              await new Promise(resolve => setTimeout(resolve, 200));
+              toggleMenu();
+              setTimeout(() => setIsClosing(false), 300);
+            }}
+            disabled={isClosing}
+            className="px-4 text-slate-300 hover:text-slate-100 transition-colors duration-200 disabled:opacity-50"
           >
-            <X size={24} />
+            {isClosing ? (
+              <Loader2 size={24} className="animate-spin" />
+            ) : (
+              <X size={24} />
+            )}
           </button>
           <div className="flex-grow flex justify-center">
             <div className="flex gap-6">
@@ -140,10 +162,21 @@ export function Sidebar({ toggleMenu, ...props }: SidebarProps) {
                     <Link
                       href={getHref(themeNav.href)}
                       className="w-full transition-all duration-200 ease-in-out hover:bg-slate-700 rounded-md p-2 flex items-center space-x-3"
-                      onClick={() => selectTheme(themeNav)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        selectTheme(themeNav);
+                        router.push(getHref(themeNav.href));
+                      }}
                     >
                       <div className="flex items-center space-x-2 px-2">
-                      <span className="text-slate-300 text-base font-medium">{themeNav.theme.theme}</span>
+                        {loadingThemeId === themeNav.theme.themeId ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin text-slate-300" />
+                            <span className="text-slate-300 text-base font-medium">{themeNav.theme.theme}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-300 text-base font-medium">{themeNav.theme.theme}</span>
+                        )}
                       </div>
                     </Link>
                   </SidebarMenuButton>

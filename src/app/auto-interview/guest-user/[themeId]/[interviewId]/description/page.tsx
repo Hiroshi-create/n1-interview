@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import LoadingIcons from 'react-loading-icons';
 import InterviewDescription from '@/app/components/users/InterviewDescription';
 import { getDoc } from 'firebase/firestore';
+import { useToast } from '@/context/ToastContext';
 
 interface InitializeInterviewResponse {
   message: string;
@@ -25,6 +26,7 @@ const DescriptionDetail = () => {
     resetOperationCheckPhases,
     resetInterviewPhases  // 仮
   } = useAppsContext();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -106,7 +108,7 @@ const DescriptionDetail = () => {
     } catch (error) {
       console.error('エラー:', error);
       // エラーが発生した場合でもユーザーに通知した上でインタビューページに遷移
-      alert('メッセージの削除中にエラーが発生しましたが、インタビューを開始します。');
+      toast.warning('メッセージの削除中にエラーが発生しました', 'インタビューを開始します。');
       router.push(`/auto-interview/guest-user/${selectedThemeId}/${selectedInterviewId}/interview`);
     } finally {
       setIsLoading(false);

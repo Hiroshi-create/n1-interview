@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/context/components/ui/dialog";
 import { Button } from "@/context/components/ui/button";
+import { LoadingButton } from "@/context/components/ui/loading";
 import { Input } from "@/context/components/ui/input";
 import { Label } from "@/context/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/context/components/ui/select";
@@ -28,9 +29,10 @@ interface AddUserDialogProps {
     userPhoneNumber: string;
   }>>;
   handleAddUser: () => void;
+  isLoading?: boolean;
 }
 
-const AddUserDialog: React.FC<AddUserDialogProps> = ({ isOpen, onClose, newUser, setNewUser, handleAddUser }) => {
+const AddUserDialog: React.FC<AddUserDialogProps> = ({ isOpen, onClose, newUser, setNewUser, handleAddUser, isLoading = false }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -135,7 +137,17 @@ const AddUserDialog: React.FC<AddUserDialogProps> = ({ isOpen, onClose, newUser,
           </div>
         </div>
         <DialogFooter>
-          <Button type="submit" onClick={handleAddUser}>追加</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+            キャンセル
+          </Button>
+          <LoadingButton 
+            type="submit" 
+            onClick={handleAddUser}
+            loading={isLoading}
+            loadingText="追加中..."
+          >
+            追加
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

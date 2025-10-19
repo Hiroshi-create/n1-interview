@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/context/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppsContext } from "@/context/AppContext";
-import { Brain, LogOut, Menu, MoreVertical } from 'lucide-react';
+import { Brain, LogOut, Menu, MoreVertical, Loader2 } from 'lucide-react';
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../button";
@@ -17,6 +17,7 @@ const Header = React.forwardRef<
   const router = useRouter();
   const pathname = usePathname();
   const { handleLogout, user, userId, isMenuOpen, setIsMenuOpen } = useAppsContext();
+  const [isMenuLoading, setIsMenuLoading] = React.useState(false);
 
   const menuItems = [
     // {
@@ -94,8 +95,13 @@ const Header = React.forwardRef<
     },
   ];
 
-  const toggleMenu = () => {
+  const toggleMenu = async () => {
+    setIsMenuLoading(true);
     setIsMenuOpen(!isMenuOpen);
+    // メニューのアニメーション待機
+    setTimeout(() => {
+      setIsMenuLoading(false);
+    }, 300);
   };
 
   const handleLogoClick = () => {
@@ -115,9 +121,14 @@ const Header = React.forwardRef<
           {user && (
             <button
               onClick={toggleMenu}
-              className="p-2 mr-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300"
+              disabled={isMenuLoading}
+              className="p-2 mr-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300 disabled:opacity-50"
             >
-              <Menu size={24} />
+              {isMenuLoading ? (
+                <Loader2 size={24} className="animate-spin" />
+              ) : (
+                <Menu size={24} />
+              )}
             </button>
           )}
 

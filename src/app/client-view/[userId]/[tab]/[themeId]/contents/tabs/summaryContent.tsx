@@ -1,16 +1,39 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Theme } from "@/stores/Theme"
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Components } from 'react-markdown/lib';
+import { collection, doc, onSnapshot, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import LoadingIcons from 'react-loading-icons';
+import { FileText, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { LoadingButton, Skeleton } from '@/context/components/ui/loading';
 
 interface ComponentProps {
   theme: Theme;
 }
 
-const summaryReport = `
+interface SummaryReport {
+  summaryReportId: string;
+  report: string;
+  features: FeatureGroup[];
+  totalInterviews: number;
+  personaDistribution: { persona: string; count: number }[];
+  createdAt: any;
+}
+
+interface FeatureGroup {
+  title: string;
+  priority: number;
+  details: string;
+  mentionCount: number;
+  personas: string[];
+  quotes: string[];
+}
+
+const defaultSummaryReport = `
 # 高級宿泊施設ヴィラに関するインタビュー結果まとめ
 
 ## 求められている特徴
@@ -58,55 +81,287 @@ const summaryReport = `
 
 const SummaryContent = ({ theme }: ComponentProps): JSX.Element => {
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
+  const [summaryReport, setSummaryReport] = useState<SummaryReport | null>(null);
+  const [reportText, setReportText] = useState<string>(defaultSummaryReport);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [individualReportCount, setIndividualReportCount] = useState(0);
+
+  // Firestoreからサマリーレポートを取得
+  useEffect(() => {
+    if (!theme.themeId) return;
+
+    const themeRef = doc(db, 'themes', theme.themeId);
+    const summaryReportRef = collection(themeRef, 'summaryReport');
+    
+    const unsubscribe = onSnapshot(summaryReportRef, 
+      (snapshot) => {
+        setIsLoading(false);
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data() as SummaryReport;
+          setSummaryReport(data);
+          setReportText(data.report);
+        } else {
+          setSummaryReport(null);
+          setReportText('');
+        }
+      },
+      (error) => {
+        console.error('サマリーレポート取得エラー:', error);
+        setError('レポートの取得に失敗しました');
+        setIsLoading(false);
+      }
+    );
+
+    // 個別レポート数をカウント
+    const interviewsRef = collection(themeRef, 'interviews');
+    const unsubscribeInterviews = onSnapshot(interviewsRef, async (snapshot) => {
+      let reportCount = 0;
+      for (const interviewDoc of snapshot.docs) {
+        const reportRef = collection(interviewDoc.ref, 'individualReport');
+        const reportSnapshot = await getDocs(reportRef);
+        if (!reportSnapshot.empty) {
+          reportCount++;
+        }
+      }
+      setIndividualReportCount(reportCount);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeInterviews();
+    };
+  }, [theme.themeId]);
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  // サマリーレポートを生成
+  const generateSummaryReport = async () => {
+    if (!theme.themeId || !theme.theme) return;
+    
+    setIsGenerating(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/report/summaryReport', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          themeId: theme.themeId,
+          themeName: theme.theme,
+          forceRegenerate: true,
+          useGPT4: false
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'レポート生成に失敗しました');
+      }
+
+      const result = await response.json();
+      // Firestoreのリスナーが自動的に更新を検知
+      
+    } catch (error) {
+      console.error('サマリーレポート生成エラー:', error);
+      setError((error as Error).message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const components: Components = {
-    h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-6" {...props} />,
-    h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-8 mb-4 pb-2 border-b border-gray-200" {...props} />,
+    h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-6 text-gray-900" {...props} />,
+    h2: ({node, children, ...props}) => {
+      return <h2 className="text-2xl font-semibold mt-8 mb-4 pb-2 border-b-2 border-blue-200 text-gray-800" {...props}>{children}</h2>;
+    },
     h3: ({node, children, ...props}) => {
       const sectionKey = children?.toString() || '';
+      // H3はアコーディオンとして表示
       return (
-        <div className="mt-8 mb-4">
+        <div className="mt-6 mb-4">
           <button 
             onClick={() => toggleSection(sectionKey)}
-            className="flex justify-between items-center w-full text-xl font-semibold text-left bg-gray-100 hover:bg-gray-200 transition-colors duration-200 px-4 py-2 rounded-md shadow-sm"
+            className="flex justify-between items-center w-full text-lg font-semibold text-left bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 px-4 py-3 rounded-lg shadow-sm border border-blue-200"
           >
-            <span>{children}</span>
-            <span className={`text-gray-500 ${openSections[sectionKey] ? 'rotate-180' : ''} transition-transform duration-200`}>
+            <span className="text-gray-800">{children}</span>
+            <span className={`text-blue-500 ${openSections[sectionKey] ? 'rotate-180' : ''} transition-transform duration-200`}>
               ▼
             </span>
           </button>
         </div>
       );
     },
-    p: ({node, ...props}) => <p className="mb-4" {...props} />,
+    p: ({node, ...props}) => {
+      return <p className="mb-4 text-gray-700 leading-relaxed" {...props} />;
+    },
     ul: ({ node, children, ...props }) => {
-      const parentHeader = node?.position?.start.line ? 
-        summaryReport.split('\n')[node.position.start.line - 2] : '';
-      const sectionKey = parentHeader.replace('### ', '');
-      if (openSections[sectionKey]) {
-        return <ul className="list-none pl-5 mb-4" {...props}>{children}</ul>;
+      // 親要素を確認
+      const parentNode = node?.position;
+      if (parentNode) {
+        const lines = reportText.split('\n');
+        let isInAccordion = false;
+        let sectionKey = '';
+        
+        // 現在の位置から上に遡って、直近の見出しを探す
+        for (let i = parentNode.start.line - 2; i >= 0; i--) {
+          const line = lines[i];
+          if (line && line.startsWith('### ')) {
+            sectionKey = line.replace('### ', '').trim();
+            isInAccordion = true;
+            break;
+          } else if (line && line.startsWith('## ')) {
+            // H2セクションに到達したら、アコーディオンではない
+            break;
+          }
+        }
+        
+        if (isInAccordion && !openSections[sectionKey]) {
+          return null; // アコーディオンが閉じている場合は非表示
+        }
       }
-      return null;
+      return <ul className="list-disc pl-6 mb-4 space-y-2 text-gray-700" {...props}>{children}</ul>;
+    },
+    li: ({node, ...props}) => {
+      return <li className="text-gray-700 leading-relaxed" {...props} />;
     },
     ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
-    li: ({node, ...props}) => <li className="mb-2" {...props} />,
     blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 py-2 mb-4" {...props} />,
     a: ({node, ...props}) => <a className="text-blue-600 hover:underline" {...props} />,
   };
   
 
+  // ローディング中の表示
+  if (isLoading) {
+    return (
+      <div className="space-y-4 p-6">
+        {/* ヘッダーのスケルトン */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <Skeleton className="h-8 w-1/3 mb-4" />
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+        
+        {/* コンテンツのスケルトン */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <Skeleton className="h-6 w-1/2 mb-4" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <div className="mt-6">
+            <Skeleton className="h-6 w-1/3 mb-3" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        </div>
+        
+        {/* グラフのスケルトン */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // エラーメッセージの表示
+  if (error) {
+    return (
+      <div className="px-6 py-4">
+        <div className="bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="flex">
+            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+            <div>
+              <p className="text-sm text-red-700">エラー: {error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // サマリーレポートがまだ生成されていない場合
+  if (!summaryReport && !isGenerating) {
+    return (
+      <div className="px-6 py-8">
+        <div className="bg-gray-50 rounded-lg p-8 text-center">
+          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2">サマリーレポート未生成</h3>
+          <p className="text-gray-600 mb-4">
+            現在{individualReportCount}件の個別レポートがあります。
+            {individualReportCount >= 3 ? (
+              <>サマリーレポートを生成できます。</>
+            ) : (
+              <>サマリー生成には最低3件のレポートが必要です。</>
+            )}
+          </p>
+          {individualReportCount >= 3 && (
+            <LoadingButton
+              onClick={generateSummaryReport}
+              loading={isGenerating}
+              loadingText="生成中..."
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-md transition-colors"
+            >
+              サマリーレポートを生成
+            </LoadingButton>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 生成中の表示
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <LoadingIcons.SpinningCircles className="w-12 h-12 text-primary" />
+        <p className="mt-4 text-lg">サマリーレポートを生成中...</p>
+        <p className="text-sm text-gray-600 mt-2">しばらくお待ちください</p>
+      </div>
+    );
+  }
+
+  // サマリーレポートの表示
   return (
     <div className="px-6">
+      {/* ヘッダー情報 */}
+      {summaryReport && (
+        <div className="bg-blue-50 rounded-lg p-4 mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-sm text-gray-600">
+                インタビュー数: {summaryReport.totalInterviews}件
+              </p>
+              <p className="text-sm text-gray-600">
+                ペルソナ分布: {summaryReport.personaDistribution?.map(p => `${p.persona}(${p.count})`).join(', ')}
+              </p>
+            </div>
+            <button
+              onClick={generateSummaryReport}
+              className="text-gray-600 hover:text-gray-800 transition-colors"
+              title="レポートを再生成"
+            >
+              <RefreshCw className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* マークダウンコンテンツ */}
       <div className="prose max-w-none text-gray-700">
         <ReactMarkdown 
           remarkPlugins={[remarkGfm]} 
           components={components}
         >
-          {summaryReport}
+          {reportText}
         </ReactMarkdown>
       </div>
     </div>

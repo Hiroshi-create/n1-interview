@@ -47,6 +47,7 @@ const ThemeDetailPage = () => {
     const [interviewIds, setInterviewIds] = useState<string[]>([]);
     const [temporaryIds, setTemporaryIds] = useState<(string | null)[]>([]);
     const [confirmedUserIds, setConfirmedUserIds] = useState<string[]>([]);
+    const [interviewData, setInterviewData] = useState<any[]>([]);
 
     const [isReportListOpen, setIsReportListOpen] = useState(true);
 
@@ -70,9 +71,17 @@ const ThemeDetailPage = () => {
                     const q = query(interviewsCollectionRef);
         
                     const unsubscribe = onSnapshot(q, async (snapshot) => {
+                        const allInterviewData: any[] = [];
                         const individualReportPromises = snapshot.docs.map(async (interviewDoc) => {
-                            const temporaryId = interviewDoc.data().temporaryId as string | null;
-                            const confirmedUserId = interviewDoc.data().confirmedUserId as string | null;
+                            const interviewInfo = interviewDoc.data();
+                            const temporaryId = interviewInfo.temporaryId as string | null;
+                            const confirmedUserId = interviewInfo.confirmedUserId as string | null;
+                            
+                            // インタビューデータを保存
+                            allInterviewData.push({
+                                ...interviewInfo,
+                                id: interviewDoc.id
+                            });
 
                             const individualReportCollectionRef = collection(interviewDoc.ref, "individualReport");
                             const individualReportSnapshot = await getDocs(individualReportCollectionRef);
@@ -89,18 +98,27 @@ const ThemeDetailPage = () => {
                                         interviewId: interviewDoc.id,
                                         temporaryId: temporaryId,
                                         confirmedUserId: confirmedUserId,
+                                        interviewData: interviewInfo,
                                     };
                                 }
                             }
-                            return null;
+                            // レポートがない場合でもインタビューデータは返す
+                            return {
+                                individualReport: null,
+                                interviewId: interviewDoc.id,
+                                temporaryId: temporaryId,
+                                confirmedUserId: confirmedUserId,
+                                interviewData: interviewInfo,
+                            };
                         });
                         const individualReportResults = await Promise.all(individualReportPromises);
-                        const validResults = individualReportResults.filter((result): result is NonNullable<typeof result> => result !== null);
                         
-                        setIndividualReports(validResults.map(result => result.individualReport));
-                        setInterviewIds(validResults.map(result => result.interviewId));
-                        setTemporaryIds(validResults.map(result => result.temporaryId));
-                        setConfirmedUserIds(validResults.map(result => result.confirmedUserId || ''));
+                        // すべてのインタビューを含む（レポートがなくても）
+                        setIndividualReports(individualReportResults.map(result => result?.individualReport).filter((r): r is IndividualReport => r !== null));
+                        setInterviewIds(individualReportResults.map(result => result.interviewId));
+                        setTemporaryIds(individualReportResults.map(result => result.temporaryId));
+                        setConfirmedUserIds(individualReportResults.map(result => result.confirmedUserId || ''));
+                        setInterviewData(individualReportResults.map(result => result.interviewData));
                     });
                     return () => unsubscribe();
                 }
@@ -249,13 +267,14 @@ const ThemeDetailPage = () => {
                             </div>
                         )}
                         {isReportListOpen && (
-                            mockIndividualReports.length > 0 ? (
+                            interviewIds.length > 0 ? (
                                 <IndividualReportList
-                                    individualReports={mockIndividualReports}
-                                    interviewIds={mockInterviewIds}
+                                    individualReports={individualReports}
+                                    interviewIds={interviewIds}
                                     theme={theme}
-                                    temporaryIds={mockTemporaryIds}
-                                    confirmedUserIds={mockConfirmedUserIds}
+                                    temporaryIds={temporaryIds}
+                                    confirmedUserIds={confirmedUserIds}
+                                    interviewData={interviewData}
                                 />
                             ) : (
                                 <div className="p-4 text-center">

@@ -1,12 +1,12 @@
 "use client"
 
-import { LucideIcon, MoreVertical } from "lucide-react";
+import { LucideIcon, MoreVertical, Loader2 } from "lucide-react";
 import { Button } from "../button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { useAppsContext } from "@/context/AppContext";
 import { Settings } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface MenuItem {
   items: {
@@ -24,6 +24,8 @@ interface ThreeDotIconDropdownProps {
 export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdownProps) {
   const router = useRouter();
   const { user, userId } = useAppsContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingItem, setLoadingItem] = useState<string | null>(null);
 
   const extendedMenuItems = useMemo(() => {
     // 例: テスト用メールアドレス
@@ -60,17 +62,33 @@ export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdown
         {item.items.map((subItem, subIndex) => (
           <DropdownMenuItem
             key={subIndex}
-            className="flex items-center justify-between px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-            onSelect={(event) => {
+            className="flex items-center justify-between px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none disabled:opacity-50"
+            onSelect={async (event) => {
               event.preventDefault();
+              setLoadingItem(subItem.title);
+              setIsLoading(true);
+              
+              // ナビゲーション前にローディング表示
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
               subItem.onClick();
+              
+              // ナビゲーション後にクリア
+              setTimeout(() => {
+                setIsLoading(false);
+                setLoadingItem(null);
+              }, 500);
             }}
           >
             <div className="flex items-center">
-              {subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-gray-500" />}
+              {loadingItem === subItem.title ? (
+                <Loader2 className="mr-2 h-4 w-4 text-gray-500 animate-spin" />
+              ) : (
+                subItem.icon && <subItem.icon className="mr-2 h-4 w-4 text-gray-500" />
+              )}
               <span>{subItem.title}</span>
             </div>
-            {subItem.secondaryIcon && <subItem.secondaryIcon className="ml-2 h-4 w-4 text-gray-500" />}
+            {subItem.secondaryIcon && !loadingItem && <subItem.secondaryIcon className="ml-2 h-4 w-4 text-gray-500" />}
           </DropdownMenuItem>
         ))}
         {index < items.length - 1 && <DropdownMenuSeparator className="my-1 h-px bg-gray-200" />}
@@ -84,9 +102,14 @@ export default function ThreeDotIconDropdown({ menuItems }: ThreeDotIconDropdown
         <Button 
           variant="ghost" 
           size="icon" 
-          className="p-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-0"
+          disabled={isLoading}
+          className="p-2 text-slate-600 hover:text-slate-800 transition-colors duration-200 rounded-full hover:bg-gray-300 focus:outline-none focus:ring-0 disabled:opacity-50"
         >
-          <MoreVertical size={24} />
+          {isLoading ? (
+            <Loader2 size={24} className="animate-spin" />
+          ) : (
+            <MoreVertical size={24} />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 

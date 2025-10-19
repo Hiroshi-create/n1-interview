@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb, enableTOTPMFA } from '../../../../lib/firebase-admin';
 import { Auth, getAuth, TenantAwareAuth } from 'firebase-admin/auth';
+import { logger } from '../../../../lib/logger';
+import { handleApiError, validateAuthHeader, createSuccessResponse, ApiError } from '../../../../lib/api-utils';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
-    // // TOTP MFAをプロジェクトレベルで有効化
-    // await enableTOTPMFA();
-
-    console.log("サーバー時刻:", new Date().toISOString());
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ message: '認証トークンが不足しています。' }, { status: 401 });
+    // 認証トークンの検証
+    const idToken = validateAuthHeader(request);
+    if (!idToken) {
+      logger.warn('client_login: 認証トークンが不足');
+      throw new ApiError(401, '認証トークンが不足しています。');
     }
 
-    const idToken = authHeader.split('Bearer ')[1];
+    // トークンの検証
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const userId = decodedToken.uid;
+    
+    logger.debug('client_login: ユーザー認証開始', { userId });
     
     // tenantIdをdecodedTokenから直接取得
     const tenantId = decodedToken.firebase?.tenant || null;
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await auth.getUser(userId);
-    console.log('User found:', user.uid);
+    logger.debug('client_login: ユーザー情報取得完了');
 
     const userRef = adminDb.collection('users').doc(userId);
     const userSnap = await userRef.get();
@@ -39,33 +43,28 @@ export async function POST(request: NextRequest) {
       if (userData?.inOrganization === true) {
         const organizationId = userData.organizationId;
         if (organizationId) {
-          return NextResponse.json({ 
+          const duration = Date.now() - startTime;
+          logger.api('POST', '/api/auth/client_login', 200, duration);
+          logger.info('client_login: ログイン成功', { userId, organizationId });
+          
+          return createSuccessResponse({ 
             organizationId, 
             mfaEnabled, 
             requireMFA 
-          }, { status: 200 });
+          });
         }
       }
-      return NextResponse.json({ 
-        message: '組織に所属していません。', 
-        mfaEnabled, 
-        requireMFA 
-      }, { status: 403 });
+      
+      logger.warn('client_login: 組織に所属していないユーザー', { userId });
+      throw new ApiError(403, '組織に所属していません。', { mfaEnabled, requireMFA });
+      
     } else {
-      return NextResponse.json({ message: 'ユーザーが見つかりません。' }, { status: 404 });
+      logger.warn('client_login: ユーザーデータが見つかりません', { userId });
+      throw new ApiError(404, 'ユーザーが見つかりません。');
     }
   } catch (error) {
-    console.error('エラー:', error);
-    if (error instanceof Error) {
-      return NextResponse.json({ 
-        message: 'サーバーエラーが発生しました。', 
-        error: error.message 
-      }, { status: 500 });
-    } else {
-      return NextResponse.json({ 
-        message: 'サーバーエラーが発生しました。', 
-        error: '不明なエラー' 
-      }, { status: 500 });
-    }
+    const duration = Date.now() - startTime;
+    logger.api('POST', '/api/auth/client_login', 500, duration);
+    return handleApiError(error, 'client_login');
   }
 }

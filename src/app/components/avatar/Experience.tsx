@@ -5,11 +5,15 @@ import {
   Text,
 } from "@react-three/drei";
 import CameraControlsImpl from 'camera-controls';
-import { Suspense, useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
 import { useChat } from "../users/Chat";
 
-const Dots = (props) => {
+interface DotsProps {
+  [key: string]: any;
+}
+
+const Dots: React.FC<DotsProps> = (props) => {
   const { loading } = useChat();
   const [loadingText, setLoadingText] = useState("");
   useEffect(() => {
@@ -38,8 +42,8 @@ const Dots = (props) => {
   );
 };
 
-export const Experience = () => {
-  const cameraControls = useRef();
+export const Experience: React.FC = () => {
+  const cameraControls = useRef<CameraControlsImpl>();
   const { cameraZoomed } = useChat();
 
   useEffect(() => {

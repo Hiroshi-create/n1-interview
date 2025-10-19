@@ -12,8 +12,9 @@ interface RequestBody {
   phases: Phase[];
 }
 
+// OpenAI API with secure key management
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
+  apiKey: process.env.OPENAI_API_KEY || '',
 });
 
 interface Message {

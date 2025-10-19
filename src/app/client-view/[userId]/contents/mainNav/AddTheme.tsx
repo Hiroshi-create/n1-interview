@@ -11,6 +11,7 @@ import { Switch } from '@/context/components/ui/switch';
 import { Separator } from '@/context/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/context/components/ui/select';
 import { Button } from '@/context/components/ui/button';
+import { LoadingButton } from '@/context/components/ui/loading';
 
 type FormData = {
   theme: string;
@@ -186,14 +187,14 @@ const AddTheme = () => {
                 </div>
               </div>
 
-              <Button
+              <LoadingButton
                 type="submit"
                 className="w-full mt-6"
-                disabled={isLoading}
+                loading={isLoading}
+                loadingText="テーマ作成中..."
               >
-                {isLoading ? <LoadingIcons.Oval className="w-5 h-5 mr-2" /> : null}
                 テーマを追加
-              </Button>
+              </LoadingButton>
             </fieldset>
           </form>
         </CardContent>

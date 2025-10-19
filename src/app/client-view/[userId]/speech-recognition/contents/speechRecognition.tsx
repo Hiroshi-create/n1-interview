@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaMicrophone, FaMicrophoneSlash, FaTrash, FaRegChartBar, FaTachometerAlt, FaVial, FaStream, FaPauseCircle, FaHourglassHalf } from "react-icons/fa";
+import { useToast } from '@/context/ToastContext';
 
 // --- 定数と型定義 ---
 const WEBSOCKET_URL = "ws://127.0.0.1:8000/ws";
@@ -135,6 +136,7 @@ const BaselineDisplay = ({ groupedResults }: { groupedResults: GroupedAnalysis[]
 
 // --- メインコンポーネント ---
 export default function SpeechRecognition() {
+  const toast = useToast();
   const [isRecording, setIsRecording] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<BunsetsuData[]>([]);
   const [interimTranscript, setInterimTranscript] = useState("");
@@ -181,7 +183,7 @@ export default function SpeechRecognition() {
       source.connect(processor);
       processor.connect(context.destination);
       setIsRecording(true);
-    } catch (error) { console.error("マイクへのアクセスに失敗しました:", error); alert("マイクへのアクセス許可が必要です。"); }
+    } catch (error) { console.error("マイクへのアクセスに失敗しました:", error); toast.error("マイクへのアクセス許可が必要です"); }
   };
 
   const stopRecording = () => {

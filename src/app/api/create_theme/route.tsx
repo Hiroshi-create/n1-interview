@@ -4,6 +4,10 @@ import { DocumentData, DocumentReference, FieldValue, Timestamp } from 'firebase
 import { v4 as uuidv4 } from 'uuid';
 import { Interviews } from '@/stores/Interviews';
 import { Theme } from '@/stores/Theme';
+import { LimitChecker } from '@/lib/subscription/limit-checker';
+import { UsageTracker } from '@/lib/subscription/usage-tracker';
+import { createLimitError, getFeatureDisplayName } from '@/lib/subscription/helpers';
+import { logger } from '@/lib/logger';
 
 interface ServerAnswerInterviews {
   createdAt: FieldValue;
@@ -27,8 +31,17 @@ interface RequestBody {
 }
 
 export async function POST(request: Request) {
+  let theme: string | undefined;
+  let isCustomer: boolean | undefined;
+  let isTest: boolean | undefined;
+  let userId: string | undefined;
+  let duration: number | undefined;
+  let isPublic: boolean | undefined;
+  let deadline: string | undefined;
+  let maximumNumberOfInterviews: number | undefined;
+
   try {
-    const { theme, isCustomer, isTest, userId, duration, isPublic, deadline, maximumNumberOfInterviews }: RequestBody = await request.json();
+    ({ theme, isCustomer, isTest, userId, duration, isPublic, deadline, maximumNumberOfInterviews } = await request.json() as RequestBody);
 
     if (!theme || !userId || !duration || !deadline || !maximumNumberOfInterviews) {
       return NextResponse.json({ error: "無効なデータです" }, { status: 400 });
@@ -45,6 +58,47 @@ export async function POST(request: Request) {
     if (!organizationId) {
         return NextResponse.json({ error: '組織IDが見つかりません' }, { status: 400 });
     }
+
+    // ========== サブスクリプション制限チェック開始 ==========
+    const limitChecker = new LimitChecker();
+    const usageTracker = new UsageTracker();
+    
+    // 現在のテーマ数を取得
+    const themesQuery = await adminDb.collection('themes')
+      .where('clientId', '==', organizationId)
+      .count()
+      .get();
+    const currentThemeCount = themesQuery.data().count;
+    
+    // テーマ数制限チェック
+    const themeLimit = await limitChecker.getPlanLimit(organizationId, 'theme_max');
+    
+    if (themeLimit !== -1 && currentThemeCount >= themeLimit) {
+      logger.warn('create_theme: テーマ作成数制限超過', {
+        organizationId,
+        current: currentThemeCount,
+        limit: themeLimit,
+        userId
+      });
+      
+      return NextResponse.json(
+        createLimitError(
+          'テーマ作成数',
+          themeLimit,
+          currentThemeCount,
+          0
+        ),
+        { status: 429 }
+      );
+    }
+    
+    logger.info('create_theme: 制限チェック通過', {
+      organizationId,
+      currentThemes: currentThemeCount,
+      themeLimit,
+      userId
+    });
+    // ========== サブスクリプション制限チェック終了 ==========
 
     const parsedMaximumNumberOfInterviews = Number(maximumNumberOfInterviews);
     if (isNaN(parsedMaximumNumberOfInterviews) || parsedMaximumNumberOfInterviews <= 0) {
@@ -89,7 +143,7 @@ export async function POST(request: Request) {
         questionCount: 0,
         reportCreated: false,
         interviewCollected: false,
-        interviewDurationMin: duration,
+        interviewDurationMin: duration || 30,
         themeId: newThemeId,
         temporaryId: null,
         confirmedUserId: null,
@@ -117,9 +171,31 @@ export async function POST(request: Request) {
 
     await Promise.all(promises);
 
-    return NextResponse.json({ success: true, newThemeId, interviewUrl });
+    // ========== 使用量記録 ==========
+    await usageTracker.incrementUsage(organizationId, 'themes');
+    logger.info('create_theme: テーマ作成成功・使用量記録', {
+      organizationId,
+      themeId: newThemeId,
+      theme,
+      userId
+    });
+    // ========== 使用量記録終了 ==========
+
+    return NextResponse.json({ 
+      success: true, 
+      newThemeId, 
+      interviewUrl,
+      // 制限情報も返す
+      usage: {
+        themesUsed: currentThemeCount + 1,
+        themesLimit: themeLimit
+      }
+    });
   } catch (error) {
-    console.error('インタビューの作成中にエラーが発生しました:', error);
-    return NextResponse.json({ error: 'インタビューの作成に失敗しました' }, { status: 500 });
+    logger.error('create_theme: テーマの作成中にエラーが発生しました', error as Error, {
+      userId: userId,
+      theme: theme
+    });
+    return NextResponse.json({ error: 'テーマの作成に失敗しました' }, { status: 500 });
   }
 }

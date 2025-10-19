@@ -7,11 +7,16 @@ import { kv } from '@vercel/kv';
 import { cleanOperationMessages } from './cleanOperationMessages';
 import { v4 as uuidv4 } from 'uuid';
 import { adminDb } from '@/lib/firebase-admin';
+import { audioCache, lipSyncCache, phonemeCache } from '@/lib/lru-cache';
+import { memoryCache } from '@/lib/cache-compatibility';
+import { parallelMap, DependencyExecutor } from '@/lib/async-optimizer';
+import { InterviewParallelProcessor } from '@/lib/parallel-processor';
 
 type ISpeechRecognitionResult = protos.google.cloud.speech.v1.ISpeechRecognitionResult;
 
+// OpenAI API key - サーバーサイド専用
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
+  apiKey: process.env.OPENAI_API_KEY || '',
 });
 
 interface LipSync {
@@ -28,13 +33,10 @@ interface Message {
   animation: string;
 }
 
-const memoryCache: {
-  audioFiles: Map<string, Buffer>;
-  lipSyncData: Map<string, LipSync>;
-} = {
-  audioFiles: new Map(),
-  lipSyncData: new Map()
-};
+// LRUキャッシュに移行済み - lru-cache.tsを参照
+// メモリリーク防止のため、無制限のMapは使用しない
+// 音素キャッシュ（小規模なのでMapで保持）
+const memoryPhonemeCache = new Map<string, string[]>();
 
 
 const japanesePhonemeToViseme: { [key: string]: string } = {
@@ -113,9 +115,8 @@ const japanesePhonemeToViseme: { [key: string]: string } = {
   'ッ': 'TS', 'ャ': 'I', 'ュ': 'U', 'ョ': 'O',
 };
 
-const audioCache = new Map<string, Buffer>();
-const lipSyncCache = new Map<string, LipSync>();
-const memoryPhonemeCache = new Map<string, string[]>();
+// LRUキャッシュをインポートして使用
+// audioCache, lipSyncCache, phonemeCacheは@/lib/lru-cacheから提供
 
 const generateLipSyncFromTranscription = async (results: ISpeechRecognitionResult[]): Promise<LipSync> => {
     const lipSyncData: LipSync = {
@@ -127,12 +128,15 @@ const generateLipSyncFromTranscription = async (results: ISpeechRecognitionResul
   
     const words = results.flatMap(result => result.alternatives?.[0]?.words || []);
     // const endTimerPhonemes = startTimer('Japanese Phonemes Generation');  // timer
-    const phonemePromises = words.map(async (word, index) => {
-      const phonemes = await getJapanesePhonemes(word.word || '');
-      return { index, word, phonemes };
-    });
-    // endTimerPhonemes();  // timer
-    const phonemeResults = await Promise.all(phonemePromises);
+    // 並列処理の最適化 - 最大5件同時実行
+    const phonemeResults = await parallelMap(
+      words.map((word, index) => ({ word, index })),
+      async ({ word, index }) => {
+        const phonemes = await getJapanesePhonemes(word.word || '');
+        return { index, word, phonemes };
+      },
+      5  // 最大同時実行数
+    );
     phonemeResults.sort((a, b) => a.index - b.index);
   
     for (const { word, phonemes } of phonemeResults) {
@@ -253,8 +257,9 @@ const lipSyncMessage = async (message: number): Promise<LipSync> => {
     }
 
     // キャッシュの確認
-    if (lipSyncCache.has(fileName)) {
-      return lipSyncCache.get(fileName)!;
+    const cachedLipSync = lipSyncCache.get(fileName);
+    if (cachedLipSync !== undefined) {
+      return cachedLipSync;
     }
 
     // $ echo $GCP_PRIVATE_KEY コマンドで、環境変数が.env外で設定されていないか確認
@@ -319,8 +324,9 @@ const generateAudio = async (text: string, fileName: string): Promise<void> => {
     // const endTimerGenerateAudio = startTimer('Generate Audio');  // timer
     try {
       // 音声データのキャッシュを実装して、同じテキストの音声を再利用
-      if (audioCache.has(text)) {
-        memoryCache.audioFiles.set(fileName, audioCache.get(text)!);
+      const cachedAudio = audioCache.get(text);
+      if (cachedAudio !== undefined) {
+        memoryCache.audioFiles.set(fileName, cachedAudio);
         console.log(`Audio data retrieved from cache for ${fileName}`);
         return;
       }
@@ -417,13 +423,29 @@ export const handleUserMessage = async (
 
       if (botResponseText) {
         const fileName = `message_${totalQuestionCount}.mp3`;
-        await generateAudio(botResponseText, fileName);
-        await lipSyncMessage(totalQuestionCount);
+        
+        // 並列処理でオーディオとリップシンクを同時生成
+        const parallelProcessor = new InterviewParallelProcessor();
+        const parallelResults = await parallelProcessor.processInterviewResponse({
+          audioGeneration: async () => {
+            await generateAudio(botResponseText, fileName);
+            return memoryCache.audioFiles.get(fileName)!;
+          },
+          lipSyncGeneration: async () => {
+            // オーディオ生成完了を待つ必要がある場合
+            let retries = 0;
+            while (!memoryCache.audioFiles.get(fileName) && retries < 10) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+              retries++;
+            }
+            return await lipSyncMessage(totalQuestionCount);
+          }
+        });
 
         const botMessage: Message = {
           text: botResponseText,
-          audio: await audioFileToBase64(fileName),
-          lipsync: await readJsonTranscript(totalQuestionCount),
+          audio: parallelResults.audio ? parallelResults.audio.toString('base64') : await audioFileToBase64(fileName),
+          lipsync: parallelResults.lipSync || await readJsonTranscript(totalQuestionCount),
           facialExpression: 'smile',
           animation: 'Talking_1',
         };
@@ -454,3 +476,6 @@ export const handleUserMessage = async (
     return NextResponse.json({ error: 'メッセージの処理に失敗しました' }, { status: 500 });
   }
 };
+
+// 追加のエクスポート（stream/route.tsで使用）
+export { generateAudio, lipSyncMessage };

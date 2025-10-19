@@ -15,6 +15,8 @@ import { Timestamp } from "firebase/firestore"
 import { User } from "@/stores/User"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/context/components/ui/dialog"
 import { useEnterpriseSettings } from "../../contexts/enterpriseSettingsContext"
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type UserWithStringTimestamp = Omit<User, 'userBirthday'> & {
   userBirthday: string;
@@ -22,9 +24,12 @@ type UserWithStringTimestamp = Omit<User, 'userBirthday'> & {
 
 export function UserSettingsTab() {
   const { userData, organizationData } = useEnterpriseSettings();
+  const toast = useToast();
   const [inOrganization, setInOrganization] = useState<boolean | null>(null);
   const [formData, setFormData] = useState<UserWithStringTimestamp | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     if (userData) {
@@ -57,6 +62,7 @@ export function UserSettingsTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true);
     try {
       const response = await fetch('/api/client_preferences/userSettings', {
         method: 'POST',
@@ -71,13 +77,15 @@ export function UserSettingsTab() {
         }),
       })
       if (response.ok) {
-        alert('設定が更新されました');
+        toast.success('設定が更新されました');
       } else {
         throw new Error('設定の更新に失敗しました');
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert('設定の更新中にエラーが発生しました');
+      toast.error('設定の更新中にエラーが発生しました');
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -89,10 +97,11 @@ export function UserSettingsTab() {
   const handleDeleteUser = async () => {
     if (!userToDelete || !organizationData) return;
     if (userToDelete.inOrganization) {
-      alert('組織に属したアカウントはここから削除できません。');
+      toast.error('組織に属したアカウントはここから削除できません');
       setUserToDelete(null);
       return;
     }
+    setIsDeleting(true);
     try {
       const response = await fetch('/api/auth/user_delete', {
         method: 'POST',
@@ -107,7 +116,7 @@ export function UserSettingsTab() {
       const data = await response.json();
   
       if (response.ok) {
-        alert('ユーザーが削除されました');
+        toast.success('ユーザーが削除されました');
       } else {
         if (response.status === 403) {
           const failedConditions = data.failedConditions || [];
@@ -127,17 +136,18 @@ export function UserSettingsTab() {
                 errorMessage += `- ${condition}\n`;
             }
           });
-          alert(errorMessage);
+          toast.error('削除条件を満たしていません', errorMessage);
         } else if (response.status === 400) {
-          alert(`入力エラー: ${data.error}`);
+          toast.error('入力エラー', data.error);
         } else {
           throw new Error(data.error || 'ユーザーの削除に失敗しました');
         }
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert(error instanceof Error ? error.message : 'ユーザーの削除中に予期せぬエラーが発生しました');
+      toast.error('ユーザーの削除中にエラーが発生しました', error instanceof Error ? error.message : '予期せぬエラーが発生しました');
     } finally {
+      setIsDeleting(false);
       setUserToDelete(null);
     }
   }
@@ -373,7 +383,7 @@ export function UserSettingsTab() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setUserToDelete(null)}>キャンセル</Button>
               {organizationData?.administratorId !== userToDelete?.userId && (
-                <Button variant="destructive" onClick={handleDeleteUser}>削除</Button>
+                <LoadingButton variant="destructive" loading={isDeleting} loadingText="削除中..." onClick={handleDeleteUser}>削除</LoadingButton>
               )}
             </DialogFooter>
           </DialogContent>
@@ -383,7 +393,7 @@ export function UserSettingsTab() {
           <Button type="button" variant="outline">
             変更を破棄
           </Button>
-          <Button type="submit">設定を保存</Button>
+          <LoadingButton type="submit" loading={isLoading} loadingText="保存中...">設定を保存</LoadingButton>
         </div>
       </form>
     </div>

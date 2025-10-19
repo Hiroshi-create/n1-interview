@@ -8,7 +8,7 @@ const AutoInterview = () => {
   useLastVisitedUrl();
 
   return (
-    <div className="h-full flex flex-col p-4 mb-32">
+    <div className="h-full flex flex-col">
       <InterviewHome />
     </div>
   )

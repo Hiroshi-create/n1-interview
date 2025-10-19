@@ -9,6 +9,8 @@ import { auth } from '@/lib/firebase'
 import { getTenantIdForDomain } from '@/context/lib/getTenantIdForDomain'
 import { NextResponse } from 'next/server'
 import { Header } from '@/context/components/ui/header/header'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type Inputs = {
     email: string
@@ -23,7 +25,9 @@ type Inputs = {
 
 const Register = () => {
     const router = useRouter();
+    const toast = useToast();
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
 
     const {
@@ -33,6 +37,7 @@ const Register = () => {
     } = useForm<Inputs>();
 
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
+        setIsLoading(true);
         try {
             const domain = data.email.split('@')[1];
             const tenantId = await getTenantIdForDomain(domain);
@@ -68,14 +73,26 @@ const Register = () => {
             if (response.ok) {
                 const result = await response.json();
                 localStorage.setItem('token', result.token);
+                toast.success('登録完了', 'ユーザー登録が完了しました。ログインページに移動します。');
                 router.push("/users/login");
             } else {
                 const errorData = await response.json();
-                alert(errorData.message || 'ユーザー登録に失敗しました。');
+                toast.error('登録エラー', errorData.message || 'ユーザー登録に失敗しました。');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('登録エラー:', error);
+            if (error.code === 'auth/email-already-in-use') {
+                toast.error('登録エラー', 'このメールアドレスは既に使用されています。');
+            } else if (error.code === 'auth/weak-password') {
+                toast.error('登録エラー', 'パスワードは6文字以上で設定してください。');
+            } else if (error.code === 'auth/invalid-email') {
+                toast.error('登録エラー', 'メールアドレスの形式が正しくありません。');
+            } else {
+                toast.error('登録エラー', '登録処理中にエラーが発生しました。');
+            }
             setError('登録処理中にエラーが発生しました。');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -186,12 +203,14 @@ const Register = () => {
                         </div>
                     )}
                     <div className='flex justify-end'>
-                        <button
+                        <LoadingButton
                             type='submit'
+                            loading={isLoading}
+                            loadingText="登録中..."
                             className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'
                         >
                             新規登録
-                        </button>
+                        </LoadingButton>
                     </div>
                     <div className='mt-4'>
                         <span className='text-gray-600 text-sm'>

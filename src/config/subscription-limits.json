@@ -1,0 +1,62 @@
+{
+  "free": {
+    "name": "無料プラン",
+    "limits": {
+      "interview_monthly": 3,
+      "interview_concurrent": 1,
+      "interview_duration_seconds": 600,
+      "theme_max": 1,
+      "user_max": 1,
+      "export_monthly": 3,
+      "report_individual_monthly": 3,
+      "report_summary_monthly": 0,
+      "clustering_monthly": 0,
+      "data_retention_days": 30
+    }
+  },
+  "prod_basic": {
+    "name": "ベーシック",
+    "limits": {
+      "interview_monthly": 20,
+      "interview_concurrent": 2,
+      "interview_duration_seconds": 1800,
+      "theme_max": 5,
+      "user_max": 5,
+      "export_monthly": 20,
+      "report_individual_monthly": 20,
+      "report_summary_monthly": 5,
+      "clustering_monthly": 5,
+      "data_retention_days": 90
+    }
+  },
+  "prod_pro": {
+    "name": "プロ",
+    "limits": {
+      "interview_monthly": 100,
+      "interview_concurrent": 5,
+      "interview_duration_seconds": 3600,
+      "theme_max": 20,
+      "user_max": 20,
+      "export_monthly": 100,
+      "report_individual_monthly": 100,
+      "report_summary_monthly": 50,
+      "clustering_monthly": 50,
+      "data_retention_days": 365
+    }
+  },
+  "prod_enterprise": {
+    "name": "エンタープライズ",
+    "limits": {
+      "interview_monthly": -1,
+      "interview_concurrent": -1,
+      "interview_duration_seconds": -1,
+      "theme_max": -1,
+      "user_max": -1,
+      "export_monthly": -1,
+      "report_individual_monthly": -1,
+      "report_summary_monthly": -1,
+      "clustering_monthly": -1,
+      "data_retention_days": -1
+    }
+  }
+}

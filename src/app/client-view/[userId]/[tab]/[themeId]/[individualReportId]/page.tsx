@@ -12,6 +12,7 @@ import ReactMarkdown, { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SubmitHandler, useForm } from "react-hook-form";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { useToast } from '@/context/ToastContext';
 
 type Inputs = {
     email: string
@@ -119,6 +120,7 @@ const IndividualReportDetailPage = () => {
   const { selectedInterviewId } = useAppsContext();
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
 
   const [theme, setTheme] = useState<Theme | null>(null);
   const [individualReport, setIndividualReport] = useState<IndividualReport | null>(null);
@@ -200,7 +202,7 @@ const IndividualReportDetailPage = () => {
         return true;
     } catch (error) {
         console.error("再認証エラー:", error);
-        alert(error instanceof Error ? error.message : '予期せぬエラーが発生しました');
+        toast.error('再認証エラー', error instanceof Error ? error.message : '予期せぬエラーが発生しました');
         return false;
     }
   };

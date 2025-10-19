@@ -10,6 +10,8 @@ import { auth } from '@/lib/firebase'
 import { NextResponse } from 'next/server'
 import { getTenantIdForDomain } from '@/context/lib/getTenantIdForDomain'
 import { Header } from '@/context/components/ui/header/header'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type Inputs = {
     email: string
@@ -25,7 +27,9 @@ type Inputs = {
 const Register = () => {
     const router = useRouter();
     const { selectedThemeId } = useAppsContext();
+    const toast = useToast();
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const {
         register,
@@ -34,6 +38,7 @@ const Register = () => {
     } = useForm<Inputs>();
 
     const onSubmit: SubmitHandler<Inputs> = async (data) => {
+        setIsLoading(true);
         try {
             const domain = data.email.split('@')[1];
             const tenantId = await getTenantIdForDomain(domain);
@@ -72,11 +77,14 @@ const Register = () => {
                 router.push(`/users/login/${selectedThemeId}`);
             } else {
                 const errorData = await response.json();
-                alert(errorData.message || 'ユーザー登録に失敗しました。');
+                toast.error('ユーザー登録に失敗しました', errorData.message || '予期せぬエラーが発生しました。');
             }
         } catch (error) {
             console.error('登録エラー:', error);
+            toast.error('登録処理中にエラーが発生しました');
             setError('登録処理中にエラーが発生しました。');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -187,12 +195,14 @@ const Register = () => {
                         </div>
                     )}
                     <div className='flex justify-end'>
-                        <button
+                        <LoadingButton
                             type='submit'
+                            loading={isLoading}
+                            loadingText="登録中..."
                             className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'
                         >
                             新規登録
-                        </button>
+                        </LoadingButton>
                     </div>
                     <div className='mt-4'>
                         <span className='text-gray-600 text-sm'>

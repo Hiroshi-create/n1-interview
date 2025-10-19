@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import Highcharts from 'highcharts'
 import dynamic from 'next/dynamic'
 
@@ -42,10 +42,20 @@ interface BarChartProps {
 }
 
 
-const BarChart: React.FC<BarChartProps> = ({ data, windowSize }) => {
+const BarChart: React.FC<BarChartProps> = React.memo(({ data, windowSize }) => {
     const [isClient, setIsClient] = useState(false)
     const [chartSize, setChartSize] = useState({ width: 0, height: 0 })
     const containerRef = useRef<HTMLDivElement>(null)
+
+    const updateSize = useCallback(() => {
+        if (containerRef.current) {
+            const { offsetWidth, offsetHeight } = containerRef.current
+            setChartSize({ 
+                width: Math.min(offsetWidth, windowSize.width),
+                height: Math.min(offsetHeight, windowSize.height * 0.8)
+            })
+        }
+    }, [windowSize])
 
     useEffect(() => {
         setIsClient(true)
@@ -55,22 +65,12 @@ const BarChart: React.FC<BarChartProps> = ({ data, windowSize }) => {
             }).catch(error => console.error('Error loading Highcharts module:', error))
         }
 
-        const updateSize = () => {
-            if (containerRef.current) {
-                const { offsetWidth, offsetHeight } = containerRef.current
-                setChartSize({ 
-                    width: Math.min(offsetWidth, windowSize.width),
-                    height: Math.min(offsetHeight, windowSize.height * 0.8)
-                })
-            }
-        }
-
         updateSize()
         window.addEventListener('resize', updateSize)
         return () => window.removeEventListener('resize', updateSize)
-    }, [windowSize])
+    }, [updateSize])
 
-    const options: Highcharts.Options = {
+    const options: Highcharts.Options = useMemo(() => ({
         chart: {
             type: 'column',
             backgroundColor: 'transparent',
@@ -138,7 +138,7 @@ const BarChart: React.FC<BarChartProps> = ({ data, windowSize }) => {
                 }
             }]
         }
-    };
+    }), [data, chartSize]);
 
     if (!isClient) return null
 
@@ -150,6 +150,8 @@ const BarChart: React.FC<BarChartProps> = ({ data, windowSize }) => {
             />
         </div>
     )
-}
+})
+
+BarChart.displayName = 'BarChart';
 
 export default BarChart

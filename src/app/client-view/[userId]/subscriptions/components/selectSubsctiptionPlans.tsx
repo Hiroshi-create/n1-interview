@@ -10,12 +10,14 @@ import { useAppsContext } from "@/context/AppContext"
 import { Client } from "@/stores/Client"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getStripe } from "@/lib/stripe"
+import { useToast } from '@/context/ToastContext'
 
 const SelectSubscriptionPlans: React.FC = () => {
     const searchParams = useSearchParams();
     const planType = searchParams.get('') || null;
     const router = useRouter();
     const { user, userId } = useAppsContext();
+    const toast = useToast();
     const [plans, setPlans] = useState<SubscriptionPlans[]>([])
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
     const [inOrganization, setInOrganization] = useState<boolean | null>(null);
@@ -137,14 +139,14 @@ const SelectSubscriptionPlans: React.FC = () => {
             await stripe.redirectToCheckout({ sessionId: data.id });
           } else {
             console.error('Stripe failed to initialize. Check your publishable key.');
-            alert('決済サービスの初期化に失敗しました。設定を確認してください。');
+            toast.error('決済サービスの初期化に失敗しました', '設定を確認してください。');
           }
         } else {
           throw new Error('サブスクリプションの更新に失敗しました');
         }
       } catch (error) {
         console.error('エラー:', error);
-        alert('サブスクリプションの更新中にエラーが発生しました');
+        toast.error('サブスクリプションの更新中にエラーが発生しました');
       }
     };
     
@@ -167,7 +169,7 @@ const SelectSubscriptionPlans: React.FC = () => {
             }
         } catch (error) {
             console.error('エラー:', error);
-            alert('サブスクリプションの更新中にエラーが発生しました');
+            toast.error('サブスクリプションの更新中にエラーが発生しました');
         }
     }
     

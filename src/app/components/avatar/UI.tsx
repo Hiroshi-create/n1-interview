@@ -5,6 +5,8 @@ import BallTriangle from 'react-loading-icons';
 import Timer, { TimerHandle } from "@/context/components/ui/timer";
 import { getDoc } from "firebase/firestore";
 import { FaMicrophoneAlt } from "react-icons/fa";
+import { logger } from '@/lib/logger';
+import { devLog } from '@/lib/console-override';
 
 interface UIProps {
   hidden?: boolean;
@@ -27,7 +29,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
             }
           }
         } catch (error) {
-          console.error("Error getting document:", error);
+          logger.error("Error getting document", error as Error);
         }
       }
     };
@@ -62,17 +64,17 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
   }, []);
 
   const sendMessage = () => {
-    console.log("メッセージの時" + themeId);
+    devLog("メッセージの時", themeId);
     if (input.current && !isLoading && !message) {
       const text = input.current.value;
-      console.log(text);
+      devLog("Sending message:", text);
       chat(text);
       input.current.value = "";
     }
   };
 
   const sendAudioToWhisper = useCallback(async (audioBlob: Blob, currentThemeId: string) => {
-    console.log("音声入力の時" + currentThemeId);
+    devLog("音声入力の時", currentThemeId);
     setIsProcessingAudio(true);
     const formData = new FormData();
     formData.append('file', audioBlob, `audio.${isIOS ? 'mp4' : 'webm'}`);
@@ -90,17 +92,16 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       }
   
       const data = await response.json();
-      console.log('Whisper API response received in frontend:', data);
+      devLog('Whisper API response received in frontend:', data);
   
       if (data.text) {
-        console.log(data.text);
+        devLog('Transcribed text:', data.text);
         chat(data.text);
-        console.log('Transcribed text:', data.text);
       } else {
-        console.error('No transcribed text in the response');
+        logger.error('No transcribed text in the response');
       }
     } catch (error) {
-      console.error('Error sending audio to Whisper:', error);
+      logger.error('Error sending audio to Whisper', error as Error);
     } finally {
       setIsProcessingAudio(false);
       setIsRecording(false);
@@ -118,7 +119,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         chunksRef.current.push(event.data);
-        console.log("音声チャンクサイズ:", event.data.size);
+        devLog("音声チャンクサイズ:", event.data.size);
       }
     };
 
@@ -127,7 +128,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const audioBlob = new Blob(chunksRef.current, { type: isIOS ? 'audio/mp4' : 'audio/webm' });
-      console.log("総音声サイズ:", audioBlob.size);
+      devLog("総音声サイズ:", audioBlob.size);
       await sendAudioToWhisper(audioBlob, themeId || '');
     };
 
@@ -139,7 +140,7 @@ export const UI: React.FC<UIProps> = ({ hidden }) => {
     });
 
     setIsRecording(true);
-    console.log("録音が開始されました");
+    devLog("録音が開始されました");
   };
 
   const startRecording = useCallback(async () => {

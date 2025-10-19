@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react'
 import { ResponsiveNetwork } from '@nivo/network'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import interact from 'interactjs';
@@ -28,7 +29,7 @@ interface WindowSize {
   height: number;
 }
 
-const NetworkGraph = ({ data, windowSize }: { data: NetworkData; windowSize: WindowSize }) => {
+const NetworkGraph = React.memo(({ data, windowSize }: { data: NetworkData; windowSize: WindowSize }) => {
   const [nodes, setNodes] = useState<NetworkNode[]>(data.nodes)
   const containerRef = useRef<HTMLDivElement>(null)
   const interactRef = useRef<any>(null);
@@ -119,6 +120,7 @@ const NetworkGraph = ({ data, windowSize }: { data: NetworkData; windowSize: Win
       />
     </div>
   )
-}
+})
 
+NetworkGraph.displayName = 'NetworkGraph';
 export default NetworkGraph

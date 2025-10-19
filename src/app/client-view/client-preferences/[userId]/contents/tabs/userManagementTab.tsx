@@ -6,6 +6,8 @@ import { Users, UserPlus, UserMinus, Shield, Search, Trash2 } from "lucide-react
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/context/components/ui/card"
 import { Input } from "@/context/components/ui/input"
 import { Button } from "@/context/components/ui/button"
+import { LoadingButton } from "@/context/components/ui/loading"
+import { useToast } from '@/context/ToastContext'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/context/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/context/components/ui/table"
 import { Switch } from "@/context/components/ui/switch"
@@ -20,11 +22,15 @@ import { useEnterpriseSettings } from '../../contexts/enterpriseSettingsContext'
 
 export function UserManagementTab() {
   const { userData, organizationData } = useEnterpriseSettings();
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [newUser, setNewUser] = useState<{
     email: string;
     password: string;
@@ -80,6 +86,7 @@ export function UserManagementTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const response = await fetch('/api/client_preferences/userManagement', {
         method: 'POST',
@@ -101,13 +108,15 @@ export function UserManagementTab() {
         }),
       });
       if (response.ok) {
-        alert('ユーザー管理設定が更新されました');
+        toast.success('更新完了', 'ユーザー管理設定が更新されました');
       } else {
         throw new Error('ユーザー管理設定の更新に失敗しました');
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert('ユーザー管理設定の更新中にエラーが発生しました');
+      toast.error('更新エラー', 'ユーザー管理設定の更新中にエラーが発生しました');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -132,13 +141,13 @@ export function UserManagementTab() {
           user.userId === updatedUser.userId ? updatedUser : user
         ));
         setSelectedUser(null);
-        alert('ユーザー設定が更新されました');
+        toast.success('更新完了', 'ユーザー設定が更新されました');
       } else {
         throw new Error('ユーザー設定の更新に失敗しました');
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert('ユーザー設定の更新中にエラーが発生しました');
+      toast.error('更新エラー', 'ユーザー設定の更新中にエラーが発生しました');
     }
   };
 
@@ -148,6 +157,7 @@ export function UserManagementTab() {
   );
 
   const handleAddUser = async () => {
+    setIsAddingUser(true);
     try {
       if (!organizationData || !organizationData.organizationId) {
         throw new Error('組織データが見つかりません');
@@ -168,9 +178,12 @@ export function UserManagementTab() {
       const addedUser = await response.json();
       setUsers(prevUsers => [...prevUsers, addedUser.user]);
       closeAddUserDialog();
+      toast.success('追加完了', 'ユーザーが正常に追加されました');
     } catch (error) {
       console.error('ユーザー追加エラー:', error);
-      // エラー処理を実装（例：エラーメッセージの表示）
+      toast.error('追加エラー', 'ユーザーの追加に失敗しました');
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
@@ -181,10 +194,11 @@ export function UserManagementTab() {
   const handleDeleteUser = async () => {
     if (!userToDelete || !organizationData) return;
     if (organizationData?.administratorId === userToDelete.userId) {
-      alert('管理者アカウントは削除できません。');
+      toast.warning('削除不可', '管理者アカウントは削除できません');
       setUserToDelete(null);
       return;
     }
+    setIsDeletingUser(true);
     try {
       const response = await fetch('/api/auth/user_delete', {
         method: 'POST',
@@ -201,7 +215,7 @@ export function UserManagementTab() {
   
       if (response.ok) {
         setUsers(prevUsers => prevUsers.filter(user => user.userId !== userToDelete.userId));
-        alert('ユーザーが削除されました');
+        toast.success('削除完了', 'ユーザーが削除されました');
       } else {
         if (response.status === 403) {
           const failedConditions = data.failedConditions || [];
@@ -221,17 +235,18 @@ export function UserManagementTab() {
                 errorMessage += `- ${condition}\n`;
             }
           });
-          alert(errorMessage);
+          toast.error('削除エラー', errorMessage);
         } else if (response.status === 400) {
-          alert(`入力エラー: ${data.error}`);
+          toast.error('入力エラー', data.error);
         } else {
           throw new Error(data.error || 'ユーザーの削除に失敗しました');
         }
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert(error instanceof Error ? error.message : 'ユーザーの削除中に予期せぬエラーが発生しました');
+      toast.error('削除エラー', error instanceof Error ? error.message : 'ユーザーの削除中に予期せぬエラーが発生しました');
     } finally {
+      setIsDeletingUser(false);
       setUserToDelete(null);
     }
   }
@@ -276,10 +291,14 @@ export function UserManagementTab() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button type="button" onClick={openAddUserDialog}>
+            <LoadingButton 
+              type="button" 
+              onClick={openAddUserDialog}
+              loading={false}
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               ユーザーを追加
-            </Button>
+            </LoadingButton>
 
             <AddUserDialog
               isOpen={isDialogOpen}
@@ -287,6 +306,7 @@ export function UserManagementTab() {
               newUser={newUser}
               setNewUser={setNewUser}
               handleAddUser={handleAddUser}
+              isLoading={isAddingUser}
             />
           </CardContent>
         </Card>
@@ -366,7 +386,14 @@ export function UserManagementTab() {
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setUserToDelete(null)}>キャンセル</Button>
                       {organizationData?.administratorId !== userToDelete?.userId && (
-                        <Button variant="destructive" onClick={handleDeleteUser}>削除</Button>
+                        <LoadingButton 
+                          variant="destructive" 
+                          onClick={handleDeleteUser}
+                          loading={isDeletingUser}
+                          loadingText="削除中..."
+                        >
+                          削除
+                        </LoadingButton>
                       )}
                     </DialogFooter>
                   </DialogContent>
@@ -473,7 +500,13 @@ export function UserManagementTab() {
           <Button type="button" variant="outline">
             変更を破棄
           </Button>
-          <Button type="submit">設定を保存</Button>
+          <LoadingButton 
+            type="submit"
+            loading={isSubmitting}
+            loadingText="保存中..."
+          >
+            設定を保存
+          </LoadingButton>
         </div>
       </form>
     </div>

@@ -11,6 +11,8 @@ import { FirebaseError } from 'firebase/app'
 import { QRCodeSVG } from 'qrcode.react'
 import { getTenantIdForDomain } from '@/context/lib/getTenantIdForDomain'
 import { Header } from '@/context/components/ui/header/header'
+import { useToast } from '@/context/ToastContext'
+import { LoadingButton } from '@/context/components/ui/loading'
 
 type Inputs = {
   email: string
@@ -25,12 +27,15 @@ const Login = () => {
   const planType = searchParams.get('') || null;
   const router = useRouter();
   const { setIsUserAccount, checkMFAStatus } = useAppsContext();
+  const toast = useToast();
   const [totpSecret, setTotpSecret] = useState<TotpSecret | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isMFARequired, setIsMFARequired] = useState<boolean>(false);
   const [isNewMFASetup, setIsNewMFASetup] = useState<boolean>(false);
   const [multiFactorResolver, setMultiFactorResolver] = useState<MultiFactorResolver | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isTotpLoading, setIsTotpLoading] = useState<boolean>(false);
 
   const {
     register,
@@ -41,9 +46,9 @@ const Login = () => {
   const setupTOTP = async () => {
     try {
       if (!auth.currentUser?.emailVerified) {
-        alert("メールアドレスの確認が必要です。確認メールを送信します。");
+        toast.warning("メールアドレスの確認が必要です", "確認メールを送信します。");
         if (auth.currentUser) {
-          alert("確認メールを送信しました。メールボックス（迷惑メールフォルダも含む）を確認し、リンクをクリックして認証を完了してください。");
+          toast.info("確認メールを送信しました", "メールボックス（迷惑メールフォルダも含む）を確認し、リンクをクリックして認証を完了してください。");
         } else {
           console.error("authにcurrentUserがありません。")
         }
@@ -81,11 +86,12 @@ const Login = () => {
         console.error("Firebase error code:", error.code);
         console.error("Firebase error message:", error.message);
       }
-      alert("TOTP 設定に失敗しました。もう一度お試しください。");
+      toast.error("TOTP 設定に失敗しました", "もう一度お試しください。");
     }
   };
 
   const verifyTOTP = async (totpCode: string) => {
+    setIsTotpLoading(true);
     try {
       if (isNewMFASetup) {
         if (!auth.currentUser) {
@@ -97,12 +103,12 @@ const Login = () => {
         const multiFactorUser = multiFactor(auth.currentUser);
         const credential = TotpMultiFactorGenerator.assertionForEnrollment(totpSecret, totpCode);
         await multiFactorUser.enroll(credential, "TOTP");
-        alert("TOTP認証が正常に設定されました。");
+        toast.success("TOTP認証が正常に設定されました");
       } else if (multiFactorResolver) {
         const selectedHint = multiFactorResolver.hints[0];
         const credential = TotpMultiFactorGenerator.assertionForSignIn(selectedHint.uid, totpCode);
         const userCredential = await multiFactorResolver.resolveSignIn(credential);
-        alert("TOTP認証が正常に完了しました。");
+        toast.success("TOTP認証が正常に完了しました");
         await handleSuccessfulLogin(userCredential.user);
         if (planType === null) {
           router.push(`/client-view/${userCredential.user.uid}/Report`);
@@ -116,13 +122,15 @@ const Login = () => {
       console.error("TOTP認証に失敗しました:", error);
       if (error instanceof FirebaseError) {
         if (error.code === 'auth/invalid-verification-code') {
-          alert("無効な認証コードです。もう一度お試しください。");
+          toast.error("無効な認証コードです", "もう一度お試しください。");
         } else {
-          alert(`TOTP認証に失敗しました: ${error.message}`);
+          toast.error("TOTP認証に失敗しました", error.message);
         }
       } else {
-        alert("TOTP認証中に予期せぬエラーが発生しました。");
+        toast.error("TOTP認証中に予期せぬエラーが発生しました");
       }
+    } finally {
+      setIsTotpLoading(false);
     }
   };
 
@@ -145,7 +153,7 @@ const Login = () => {
           // await checkMFAStatus(user);
           // router.push(`/client-view/${user.uid}/Report`);
         } else {
-          alert("組織に所属していません。");
+          toast.error("組織に所属していません");
         }
       } else {
         const errorData = await response.json();
@@ -153,11 +161,12 @@ const Login = () => {
       }
     } catch (error) {
       console.error('ログイン処理中にエラーが発生しました:', error);
-      alert('ログイン処理中にエラーが発生しました。');
+      toast.error('ログイン処理中にエラーが発生しました');
     }
   };
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
+    setIsLoading(true);
     try {
       const domain = data.email.split('@')[1];
       const tenantId = await getTenantIdForDomain(domain);
@@ -180,18 +189,20 @@ const Login = () => {
         } else {
           switch (error.code) {
             case 'auth/wrong-password':
-              alert("パスワードが間違っています。");
+              toast.error("パスワードが間違っています");
               break;
             case 'auth/user-not-found':
-              alert("メールアドレスまたはパスワードが間違っています。指定されたテナントにユーザーが存在するか確認してください。");
+              toast.error("メールアドレスまたはパスワードが間違っています", "指定されたテナントにユーザーが存在するか確認してください。");
               break;
             default:
-              alert(error.message);
+              toast.error("ログインエラー", error.message);
           }
         }
       } else {
-        alert("不明なエラーが発生しました。");
+        toast.error("不明なエラーが発生しました");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -247,12 +258,14 @@ const Login = () => {
               </div>
             )}
             <div className='flex justify-end'>
-              <button
+              <LoadingButton
                 type='submit'
+                loading={isLoading}
+                loadingText="ログイン中..."
                 className='bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700'
               >
                 ログイン
-              </button>
+              </LoadingButton>
             </div>
           </form>
         ) : isNewMFASetup ? (
@@ -272,12 +285,14 @@ const Login = () => {
                 className="mt-2 border-2 rounded-md w-full p-2"
               />
               {errors.totpCode && <span className="text-red-600 text-sm">{errors.totpCode.message}</span>}
-              <button
+              <LoadingButton
                 type="submit"
+                loading={isTotpLoading}
+                loadingText="検証中..."
                 className="mt-2 bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700"
               >
                 検証
-              </button>
+              </LoadingButton>
             </form>
           </div>
         ) : (
@@ -291,12 +306,14 @@ const Login = () => {
                 className="mt-2 border-2 rounded-md w-full p-2"
               />
               {errors.totpCode && <span className="text-red-600 text-sm">{errors.totpCode.message}</span>}
-              <button
+              <LoadingButton
                 type="submit"
+                loading={isTotpLoading}
+                loadingText="検証中..."
                 className="mt-2 bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700"
               >
                 検証
-              </button>
+              </LoadingButton>
             </form>
           </div>
         )}

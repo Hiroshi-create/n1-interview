@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/context/ToastContext";
+import { ConsoleProvider } from "@/context/ConsoleProvider";
 
 export const metadata: Metadata = {
   title: "N1 Interview",
@@ -15,7 +18,15 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="bg-background text-text">
-        <AppProvider>{children}</AppProvider>
+        <ErrorBoundary>
+          <ConsoleProvider>
+            <AppProvider>
+              <ToastProvider>
+                {children}
+              </ToastProvider>
+            </AppProvider>
+          </ConsoleProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

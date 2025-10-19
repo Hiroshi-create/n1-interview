@@ -109,44 +109,44 @@ const InterviewCard: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`bg-white p-6 rounded-lg shadow-md cursor-pointer hover:bg-gray-100 hover:shadow-lg transition-all duration-300 border border-gray-200 flex flex-col h-full ${recruitmentClosed ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`bg-white p-3 lg:p-4 rounded-lg shadow-sm hover:shadow-md cursor-pointer hover:bg-gray-50 transition-all duration-200 border border-gray-200 flex flex-col h-full ${recruitmentClosed ? 'opacity-50 pointer-events-none' : ''}`}
       onClick={handleClick}
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full truncate max-w-[60%]">
           {themeNav.organizationName}
         </span>
-        <span className="text-sm text-gray-500">
-          作成日: {formatTimestamp(themeNav.theme.createdAt)}
+        <span className="text-xs text-gray-500">
+          {formatTimestamp(themeNav.theme.createdAt)}
         </span>
       </div>
-      <h2 className="text-xl md:text-2xl font-bold text-gray-800 leading-tight mb-2 line-clamp-2">
+      <h2 className="text-sm md:text-base font-bold text-gray-800 leading-tight mb-2 line-clamp-2 min-h-[2.5rem]">
         {themeNav.theme.theme}
       </h2>
-      <div className="mt-auto mt-6">
-      <div className="flex justify-end mb-2">
-        <p className="text-sm text-gray-600">
-          {themeNav.theme.collectInterviewsCount} / {themeNav.theme.maximumNumberOfInterviews} 達成
+      <div className="mt-auto mt-3">
+      <div className="flex justify-end mb-1">
+        <p className="text-xs text-gray-600">
+          {themeNav.theme.collectInterviewsCount} / {themeNav.theme.maximumNumberOfInterviews}
         </p>
       </div>
-        <div className="w-full rounded-full h-4 mb-4">
+        <div className="w-full rounded-full h-2 mb-3 bg-gray-100">
           <div 
-            className={`${isOverAchieved ? 'bg-blue-500' : 'bg-green-500'} bg-opacity-70 h-4 rounded-full transition-all duration-300`}
+            className={`${isOverAchieved ? 'bg-blue-500' : 'bg-green-500'} bg-opacity-80 h-2 rounded-full transition-all duration-300`}
             style={{ width: `${cappedProgressPercentage}%` }}
           />
         </div>
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-2 border-t border-gray-100">
           <div className="flex justify-between items-center">
-            <div className="flex items-center text-sm font-medium text-red-500">
+            <div className="flex items-center text-xs font-medium text-red-500">
               <Clock
-                className="mr-2"
-                height={16}
-                width={16}
+                className="mr-1"
+                height={14}
+                width={14}
               />
               {timeLeft}
             </div>
-            <div className={`text-sm font-semibold ${interviewCollected ? 'text-red-600' : 'text-blue-600 group-hover:text-blue-800'} transition-colors duration-200`}>
-              {interviewCollected ? '回答済み' : '詳細を見る →'}
+            <div className={`text-xs font-semibold ${interviewCollected ? 'text-red-600' : 'text-blue-600'} transition-colors duration-200`}>
+              {interviewCollected ? '回答済み' : '詳細 →'}
             </div>
           </div>
         </div>

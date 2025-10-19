@@ -4,17 +4,90 @@ import { adminDb } from '../../../../lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { IndividualReport } from '@/stores/IndividualReport';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '@/lib/logger';
+import { generateIndividualReport } from '@/lib/report/auto-report-generator';
 
+// OpenAI API with secure key management
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY || '-',
+  apiKey: process.env.OPENAI_API_KEY || '',
 });
 
 interface RequestBody {
   theme: string | null;
   interviewRefPath: string;
+  forceRegenerate?: boolean;  // 強制再生成オプション
+  useGPT4?: boolean;          // GPT-4使用オプション
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    const { theme, interviewRefPath, forceRegenerate = false, useGPT4 = false }: RequestBody = await req.json();
+    
+    if (!theme) {
+      return NextResponse.json({ error: 'テーマが指定されていません' }, { status: 400 });
+    }
+
+    if (!interviewRefPath) {
+      return NextResponse.json({ error: 'インタビューパスが指定されていません' }, { status: 400 });
+    }
+
+    logger.info('individualReport API: リクエスト受信', {
+      interviewRefPath,
+      theme,
+      forceRegenerate,
+      useGPT4
+    });
+
+    // auto-report-generatorを使用してレポート生成
+    const result = await generateIndividualReport(
+      interviewRefPath,
+      theme,
+      {
+        forceRegenerate,
+        useGPT4,
+        skipIfExists: !forceRegenerate
+      }
+    );
+
+    if (result.success) {
+      logger.info('individualReport API: レポート生成成功', {
+        interviewRefPath,
+        reportId: result.reportId
+      });
+
+      // 既存APIとの互換性のためtemporaryIdも返す
+      const interviewRef = adminDb.doc(interviewRefPath);
+      const interviewDoc = await interviewRef.get();
+      const temporaryId = interviewDoc.data()?.temporaryId || uuidv4();
+
+      return NextResponse.json({ 
+        report: result.report, 
+        reportId: result.reportId,
+        temporaryId: temporaryId,
+        generated: true
+      });
+    } else {
+      logger.error('individualReport API: レポート生成失敗', undefined, {
+        interviewRefPath,
+        error: result.error
+      });
+      return NextResponse.json({ 
+        error: result.error || 'レポートの生成に失敗しました',
+        generated: false 
+      }, { status: 500 });
+    }
+
+  } catch (error) {
+    logger.error('individualReport API: 予期しないエラー', error as Error, {
+      interviewRefPath: (await req.json()).interviewRefPath
+    });
+    return NextResponse.json({ error: 'レポートの生成に失敗しました' }, { status: 500 });
+  }
+}
+
+// 既存のレポート生成ロジックをバックアップとして保持
+// Legacy POST function (not exported)
+async function POST_LEGACY(req: NextRequest) {
   try {
     const { theme, interviewRefPath }: RequestBody = await req.json();
     const interviewRef = adminDb.doc(interviewRefPath);

@@ -1,4 +1,11 @@
-export const sunburstData = [
+interface SunburstDataItem {
+  id: string;
+  parent: string;
+  name: string;
+  value?: number;
+}
+
+export const sunburstData: SunburstDataItem[] = [
     { id: '0.0', parent: '', name: 'Villa' },
     
     { id: '1.1', parent: '0.0', name: '設備' },
