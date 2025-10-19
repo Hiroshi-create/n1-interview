@@ -22,6 +22,8 @@ const SelectSubscriptionPlans: React.FC = () => {
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
     const [inOrganization, setInOrganization] = useState<boolean | null>(null);
     const [client, setClient] = useState<Client | null>(null);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
     const [newPlan, setNewPlan] = useState<{
       planType: string;
       billingCycle: string;
@@ -31,23 +33,32 @@ const SelectSubscriptionPlans: React.FC = () => {
       billingCycle: '',
       startDate: '',
     })
-  
+
     useEffect(() => {
         const fetchPlans = async () => {
-            const q = query(collection(db, "subscriptionPlans"), where("isActive", "==", true))
-            const querySnapshot = await getDocs(q)
-            const fetchedPlans: SubscriptionPlans[] = []
-            querySnapshot.forEach((doc) => {
-                fetchedPlans.push({ subscriptionPlansId: doc.id, ...doc.data() } as SubscriptionPlans)
-            });
-            
-            // プランタイプに基づいて並び替え
-            const sortedPlans = fetchedPlans.sort((a, b) => {
-                const order = { basic: 1, pro: 2, enterprise: 3 }
-                return order[a.planType as keyof typeof order] - order[b.planType as keyof typeof order]
-            });
-            
-            setPlans(sortedPlans);
+            try {
+                setLoading(true);
+                setError(null);
+                const q = query(collection(db, "subscriptionPlans"), where("isActive", "==", true))
+                const querySnapshot = await getDocs(q)
+                const fetchedPlans: SubscriptionPlans[] = []
+                querySnapshot.forEach((doc) => {
+                    fetchedPlans.push({ subscriptionPlansId: doc.id, ...doc.data() } as SubscriptionPlans)
+                });
+
+                // プランタイプに基づいて並び替え
+                const sortedPlans = fetchedPlans.sort((a, b) => {
+                    const order = { basic: 1, pro: 2, enterprise: 3 }
+                    return order[a.planType as keyof typeof order] - order[b.planType as keyof typeof order]
+                });
+
+                setPlans(sortedPlans);
+            } catch (err) {
+                console.error('プランの取得に失敗しました:', err);
+                setError('プランの読み込みに失敗しました。ページを再読み込みしてください。');
+            } finally {
+                setLoading(false);
+            }
         }
         fetchPlans();
     }, [])
@@ -173,6 +184,53 @@ const SelectSubscriptionPlans: React.FC = () => {
         }
     }
     
+    // ローディング中の表示
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center py-24">
+                <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto"></div>
+                    <p className="text-lg text-muted-foreground">料金プランを読み込み中...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // エラー時の表示
+    if (error) {
+        return (
+            <div className="flex justify-center items-center py-24">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                    <h3 className="text-xl font-semibold text-red-600">エラーが発生しました</h3>
+                    <p className="text-muted-foreground">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                        ページを再読み込み
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // プランが0件の場合の表示
+    if (plans.length === 0) {
+        return (
+            <div className="flex justify-center items-center py-24">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="text-gray-400 text-5xl mb-4">📋</div>
+                    <h3 className="text-xl font-semibold">現在利用可能なプランがありません</h3>
+                    <p className="text-muted-foreground">
+                        しばらくしてから再度お試しください。<br />
+                        問題が解決しない場合は、サポートにお問い合わせください。
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 auto-rows-fr">
             {plans.map((plan) => (
